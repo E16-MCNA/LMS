@@ -20,7 +20,7 @@ export async function seedCoreLearningData(db: Queryable) {
     for (const e of store.enrollments) await db.query("INSERT INTO enrollments (id, course_id, student_id, status, enrolled_at, completed_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [e.id, e.courseId, e.studentId, e.status, e.enrolledAt, e.completedAt || null]);
   }
   if (Number((await db.query("SELECT COUNT(*) AS count FROM lesson_progress")).rows[0].count) === 0) {
-    for (const p of store.lessonProgress) await db.query("INSERT INTO lesson_progress (id, enrollment_id, lesson_id, completed, completed_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING", [p.id, p.enrollmentId, p.lessonId, p.completed ? 1 : 0, p.completedAt || null]).catch(() => undefined);
+    for (const p of store.lessonProgress) await db.query("INSERT INTO lesson_progress (id, enrollment_id, lesson_id, completed, completed_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING", [p.id, p.enrollmentId, p.lessonId, p.completed, p.completedAt || null]).catch(() => undefined);
   }
   if (Number((await db.query("SELECT COUNT(*) AS count FROM quizzes")).rows[0].count) === 0) {
     for (const q of store.quizzes) await db.query("INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING", [q.id, q.courseId, q.lessonId || null, q.title, q.passingScore, q.timeLimit, q.maxAttempts]);
@@ -34,7 +34,7 @@ export async function seedCoreLearningData(db: Queryable) {
     for (const f of store.tuitionFees) await db.query("INSERT INTO tuition_fees (id, student_id, semester_id, amount, due_date, status, paid_amount, paid_at, receipt_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING", [f.id, f.studentId, f.semesterId || null, f.amount, f.dueDate, f.status, f.paidAmount, f.paidAt || null, f.receiptCode || null]);
   }
   if (Number((await db.query("SELECT COUNT(*) AS count FROM academic_warnings")).rows[0].count) === 0) {
-    for (const w of store.academicWarnings) await db.query("INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [w.id, w.studentId, w.type, w.message, w.isResolved ? 1 : 0, w.createdAt]);
+    for (const w of store.academicWarnings) await db.query("INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [w.id, w.studentId, w.type, w.message, w.isResolved, w.createdAt]);
   }
 }
 

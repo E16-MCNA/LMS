@@ -15,7 +15,7 @@ export const academicsRepository = {
     const warning: AcademicWarning = { ...input, id: generateId("warning"), isResolved: false, createdAt: new Date().toISOString() };
     await db.query(
       "INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at) VALUES ($1,$2,$3,$4,$5,$6)",
-      [warning.id, warning.studentId, warning.type, warning.message, 0, warning.createdAt]
+      [warning.id, warning.studentId, warning.type, warning.message, false, warning.createdAt]
     );
     return warning;
   },

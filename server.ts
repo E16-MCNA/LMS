@@ -331,6 +331,12 @@ app.post("/api/enrollments/register", requireAuth, requireRole(["student"]), val
   await audit(req, "enroll_course", course.id, course.title);
   res.status(201).json(enrollment);
 }));
+app.post("/api/enrollments/:id/activate", requireAuth, requireRole(["admin", "super_admin", "finance"]), asyncHandler(async (req, res) => {
+  const enrollment = await enrollmentsRepository.activateEnrollment(pool, req.params.id);
+  if (!enrollment) return res.status(404).json({ error: "Enrollment not found." });
+  await audit(req, "activate_enrollment", enrollment.id, `Activated enrollment for student ID: ${enrollment.studentId}`);
+  res.json(enrollment);
+}));
 app.post("/api/progress/toggle", requireAuth, requireRole(["student"]), validateBody(schemas.toggleProgress), asyncHandler(async (req, res) => {
   const enrollment = await enrollmentsRepository.findStudentEnrollment(pool, req.user!.id, req.body.enrollmentId);
   if (!enrollment) return res.status(404).json({ error: "Enrollment not found." });

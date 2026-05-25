@@ -31,7 +31,7 @@ export const usersRepository = {
     await db.query(
       `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [user.id, user.email.toLowerCase(), user.passwordHash, user.passwordSalt || null, user.name, normalizeRole(user.role), user.isActive ? 1 : 0, user.phone || null, user.linkedStudentId || null, user.createdAt]
+      [user.id, user.email.toLowerCase(), user.passwordHash, user.passwordSalt || null, user.name, normalizeRole(user.role), user.isActive, user.phone || null, user.linkedStudentId || null, user.createdAt]
     );
     return { ...user, passwordHash: "" };
   },
@@ -42,13 +42,13 @@ export const usersRepository = {
         `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
          ON CONFLICT (id) DO NOTHING`,
-        [user.id, user.email.toLowerCase(), user.passwordHash, user.passwordSalt || null, user.name, normalizeRole(user.role), user.isActive ? 1 : 0, user.phone || null, user.linkedStudentId || null, user.createdAt]
+        [user.id, user.email.toLowerCase(), user.passwordHash, user.passwordSalt || null, user.name, normalizeRole(user.role), user.isActive, user.phone || null, user.linkedStudentId || null, user.createdAt]
       );
     }
   },
 
   async setActive(db: Queryable, id: string, isActive: boolean) {
-    const row = (await db.query<DbUserRow>("UPDATE users SET is_active = $1 WHERE id = $2 RETURNING *", [isActive ? 1 : 0, id])).rows[0];
+    const row = (await db.query<DbUserRow>("UPDATE users SET is_active = $1 WHERE id = $2 RETURNING *", [isActive, id])).rows[0];
     return row ? toPublicUser(row) : null;
   }
 };

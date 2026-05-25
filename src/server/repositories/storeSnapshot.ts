@@ -17,7 +17,78 @@ export async function storeSnapshotFromDb(db: Queryable) {
   const tuitionFees = (await db.query("SELECT * FROM tuition_fees")).rows.map(tuitionFeeFromRow);
   const academicWarnings = (await db.query("SELECT * FROM academic_warnings")).rows.map(academicWarningFromRow);
   const auditLogs = (await db.query("SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 200")).rows.map(row => ({ id: row.id, userId: row.user_id, action: row.action, target: row.target, detail: row.detail || "", createdAt: row.created_at }));
-  return { ...getInitialStore(), users, courses, lessons, enrollments, lessonProgress, quizzes, questions, quizAttempts, assignments, submissions, tuitionFees, academicWarnings, auditLogs };
+
+  // New academic structural tables
+  const academicYears = (await db.query("SELECT * FROM academic_years")).rows.map(row => ({ id: row.id, name: row.name, startDate: row.start_date, endDate: row.end_date, isCurrent: Boolean(row.is_current) }));
+  const semesters = (await db.query("SELECT * FROM semesters")).rows.map(row => ({ id: row.id, academicYearId: row.academic_year_id, name: row.name, type: row.type, startDate: row.start_date, endDate: row.end_date, registrationOpen: row.registration_open, registrationClose: row.registration_close }));
+  const departments = (await db.query("SELECT * FROM departments")).rows.map(row => ({ id: row.id, name: row.name, code: row.code, headTeacherId: row.head_teacher_id, description: row.description }));
+  const programs = (await db.query("SELECT * FROM programs")).rows.map(row => ({ id: row.id, departmentId: row.department_id, name: row.name, code: row.code, type: row.type, totalCredits: row.total_credits, description: row.description }));
+  const programCourses = (await db.query("SELECT * FROM program_courses")).rows.map(row => ({ id: row.id, programId: row.program_id, courseId: row.course_id, credits: row.credits, isRequired: Boolean(row.is_required), semester: row.semester }));
+
+  // Missing Student Profiles, Attendance, Notifications & Transactions
+  const studentProfiles = (await db.query("SELECT * FROM student_profiles")).rows.map(row => ({ id: row.id, userId: row.user_id, studentCode: row.student_code, programId: row.program_id, departmentId: row.department_id, academicYear: row.academic_year, enrollmentDate: row.enrollment_date, expectedGraduation: row.expected_graduation, status: row.status, gpa: Number(row.gpa), totalCreditsEarned: row.total_credits_earned, address: row.address || undefined, phone: row.phone || undefined, dateOfBirth: row.date_of_birth || undefined, gender: row.gender || undefined, guardianName: row.guardian_name || undefined, guardianPhone: row.guardian_phone || undefined, guardianEmail: row.guardian_email || undefined, notes: row.notes || undefined }));
+  const attendanceSessions = (await db.query("SELECT * FROM attendance_sessions")).rows.map(row => ({ id: row.id, courseId: row.course_id, semesterId: row.semester_id, teacherId: row.teacher_id, date: row.date, topic: row.topic }));
+  const attendanceRecords = (await db.query("SELECT * FROM attendance_records")).rows.map(row => ({ id: row.id, sessionId: row.session_id, studentId: row.student_id, status: row.status, note: row.note || undefined }));
+  const notifications = (await db.query("SELECT * FROM notifications ORDER BY created_at DESC LIMIT 200")).rows.map(row => ({ id: row.id, userId: row.user_id, type: row.type, message: row.message, isRead: Boolean(row.is_read), createdAt: row.created_at }));
+  const transactions = (await db.query("SELECT * FROM transactions ORDER BY created_at DESC")).rows.map(row => ({ id: row.id, studentId: row.student_id, courseId: row.course_id, amount: Number(row.amount), status: row.status, paymentMethod: row.payment_method, createdAt: row.created_at, processedAt: row.processed_at || undefined, processedBy: row.processed_by || undefined, notes: row.notes || undefined }));
+  const advisorNotes = (await db.query("SELECT * FROM advisor_notes")).rows.map(row => ({ id: row.id, advisorId: row.advisor_id, studentId: row.student_id, content: row.content, type: row.type, createdAt: row.created_at }));
+
+  // Missing registration & requests
+  const courseSections = (await db.query("SELECT * FROM course_sections")).rows.map(row => ({ id: row.id, courseId: row.course_id, semesterId: row.semester_id, teacherId: row.teacher_id, sectionCode: row.section_code, maxStudents: row.max_students, schedule: JSON.parse(row.schedule_json || '[]'), status: row.status }));
+  const registrationPeriods = (await db.query("SELECT * FROM registration_periods")).rows.map(row => ({ id: row.id, semesterId: row.semester_id, name: row.name, startDate: row.start_date, endDate: row.end_date, allowedYears: JSON.parse(row.allowed_years_json || '[]'), isOpen: Boolean(row.is_open) }));
+  const courseRegistrations = (await db.query("SELECT * FROM course_registrations")).rows.map(row => ({ id: row.id, studentId: row.student_id, sectionId: row.section_id, semesterId: row.semester_id, status: row.status, registeredAt: row.registered_at, droppedAt: row.dropped_at || undefined, grade: row.grade || undefined, letterGrade: row.letter_grade || undefined, gradePoint: row.grade_point === null ? undefined : Number(row.grade_point), credits: row.credits, isRetake: Boolean(row.is_retake) }));
+  const scholarships = (await db.query("SELECT * FROM scholarships")).rows.map(row => ({ id: row.id, name: row.name, type: row.type, amount: row.amount === null ? undefined : Number(row.amount), discountPercent: row.discount_percent === null ? undefined : Number(row.discount_percent), semesterId: row.semester_id, conditions: row.conditions }));
+  const scholarshipApplications = (await db.query("SELECT * FROM scholarship_applications")).rows.map(row => ({ id: row.id, studentId: row.student_id, scholarshipId: row.scholarship_id, semesterId: row.semester_id, status: row.status, appliedAt: row.applied_at, reviewedBy: row.reviewed_by || undefined, reviewNote: row.review_note || undefined }));
+  const gradeAppeals = (await db.query("SELECT * FROM grade_appeals")).rows.map(row => ({ id: row.id, studentId: row.student_id, courseRegistrationId: row.course_registration_id, reason: row.reason, status: row.status, originalGrade: Number(row.original_grade), revisedGrade: row.revised_grade === null ? undefined : Number(row.revised_grade), submittedAt: row.submitted_at, resolvedAt: row.resolved_at || undefined, resolvedBy: row.resolved_by || undefined, resolutionNote: row.resolution_note || undefined }));
+  const advisorAssignments = (await db.query("SELECT * FROM advisor_assignments")).rows.map(row => ({ id: row.id, advisorId: row.advisor_id, studentId: row.student_id, semesterId: row.semester_id, assignedAt: row.assigned_at }));
+  const leaveRequests = (await db.query("SELECT * FROM leave_requests")).rows.map(row => ({ id: row.id, studentId: row.student_id, type: row.type, semesterId: row.semester_id, reason: row.reason, status: row.status, requestedAt: row.requested_at, reviewedBy: row.reviewed_by || undefined, reviewNote: row.review_note || undefined, resumeSemesterId: row.resume_semester_id }));
+  const graduationApplications = (await db.query("SELECT * FROM graduation_applications")).rows.map(row => ({ id: row.id, studentId: row.student_id, status: row.status, appliedAt: row.applied_at, reviewedBy: row.reviewed_by || undefined, totalCreditsAtApplication: row.total_credits_at_application, gpaAtApplication: Number(row.gpa_at_application), note: row.note || undefined }));
+  const certificates = (await db.query("SELECT * FROM certificates")).rows.map(row => ({ id: row.id, enrollmentId: row.enrollment_id, studentId: row.student_id, courseId: row.course_id, issuedAt: row.issued_at, certificateCode: row.certificate_code }));
+
+  const forumReplies = (await db.query("SELECT * FROM forum_replies")).rows.map(row => ({ id: row.id, postId: row.post_id, authorId: row.author_id, content: row.content, createdAt: row.created_at }));
+  const forumPosts = (await db.query("SELECT * FROM forum_posts")).rows.map(row => {
+    const postReplies = forumReplies.filter(r => r.postId === row.id);
+    return { id: row.id, courseId: row.course_id, authorId: row.author_id, title: row.title, content: row.content, replies: postReplies, createdAt: row.created_at };
+  });
+
+  return {
+    ...getInitialStore(),
+    users,
+    courses,
+    lessons,
+    enrollments,
+    lessonProgress,
+    quizzes,
+    questions,
+    quizAttempts,
+    assignments,
+    submissions,
+    tuitionFees,
+    academicWarnings,
+    auditLogs,
+    academicYears,
+    semesters,
+    departments,
+    programs,
+    programCourses,
+    studentProfiles,
+    attendanceSessions,
+    attendanceRecords,
+    notifications,
+    transactions,
+    advisorNotes,
+    courseSections,
+    registrationPeriods,
+    courseRegistrations,
+    scholarships,
+    scholarshipApplications,
+    gradeAppeals,
+    advisorAssignments,
+    leaveRequests,
+    graduationApplications,
+    certificates,
+    forumPosts
+  };
 }
 
 export function limitStoreForRole(store: any, user: User) {
@@ -57,12 +128,39 @@ export function limitStoreForRole(store: any, user: User) {
       submissions: store.submissions.filter((item: any) => item.studentId === user.id),
       tuitionFees: store.tuitionFees.filter((item: any) => item.studentId === user.id),
       academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === user.id),
-      assignments: store.assignments.filter((item: any) => myCourseIds.has(item.courseId))
+      assignments: store.assignments.filter((item: any) => myCourseIds.has(item.courseId)),
+      notifications: store.notifications.filter((item: any) => item.userId === user.id)
+    };
+  }
+
+  if (user.role === "parent") {
+    const childId = user.linkedStudentId || "";
+    const childEnrollments = store.enrollments.filter((item: Enrollment) => item.studentId === childId);
+    const childCourseIds = new Set(childEnrollments.map((item: Enrollment) => item.courseId));
+    return {
+      ...store,
+      users: store.users.filter((item: User) => item.id === user.id || item.id === childId).map((item: User) => ({ ...item, passwordHash: "" })),
+      enrollments: childEnrollments,
+      lessonProgress: store.lessonProgress.filter((item: LessonProgress) => childEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
+      quizAttempts: store.quizAttempts.filter((item: any) => item.studentId === childId),
+      submissions: store.submissions.filter((item: any) => item.studentId === childId),
+      tuitionFees: store.tuitionFees.filter((item: any) => item.studentId === childId),
+      academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === childId),
+      assignments: store.assignments.filter((item: any) => childCourseIds.has(item.courseId)),
+      studentProfiles: store.studentProfiles.filter((item: any) => item.userId === childId),
+      notifications: store.notifications.filter((item: any) => item.userId === user.id || item.userId === childId)
     };
   }
 
   return {
     ...store,
-    users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" }))
+    users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
+    enrollments: [],
+    lessonProgress: [],
+    quizAttempts: [],
+    submissions: [],
+    tuitionFees: [],
+    academicWarnings: [],
+    assignments: []
   };
 }
