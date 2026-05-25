@@ -6,7 +6,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { getInitialStore } from "./src/store";
 import { hashPassword, verifyPassword } from "./src/authHash";
-import { User } from "./src/types";
+import { LMSDataStore, StudentProfile, User } from "./src/types";
 import { runMigrations } from "./src/dbMigrations";
 import { pool } from "./src/server/db";
 import { generateId } from "./src/server/ids";
@@ -163,6 +163,125 @@ function requireRole(roles: Array<User["role"]>) {
 async function audit(req: AuthRequest, action: string, target: string, detail: string) {
   if (!req.user) return;
   await auditRepository.log(pool, req.user.id, action, target, detail);
+}
+
+async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    for (const user of store.users || []) {
+      if (user.role === "parent") continue;
+      await client.query(
+        `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
+         VALUES ($1,$2,COALESCE(NULLIF($3, ''), 'client-sync-placeholder'),$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (id) DO UPDATE SET
+           email = EXCLUDED.email,
+           name = EXCLUDED.name,
+           role = EXCLUDED.role,
+           is_active = EXCLUDED.is_active,
+           phone = EXCLUDED.phone,
+           linked_student_id = EXCLUDED.linked_student_id,
+           password_hash = COALESCE(NULLIF($11, ''), users.password_hash),
+           password_salt = COALESCE(EXCLUDED.password_salt, users.password_salt)`,
+        [
+          user.id,
+          user.email.toLowerCase(),
+          user.passwordHash || "",
+          user.passwordSalt || null,
+          user.name,
+          user.role,
+          user.isActive,
+          user.phone || null,
+          user.linkedStudentId || null,
+          user.createdAt || new Date().toISOString(),
+          user.passwordHash || ""
+        ]
+      );
+    }
+
+    for (const profile of store.studentProfiles || []) {
+      await client.query(
+        `INSERT INTO student_profiles (
+          id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
+          expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth,
+          gender, guardian_name, guardian_phone, guardian_email, notes
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        ON CONFLICT (id) DO UPDATE SET
+          user_id = EXCLUDED.user_id,
+          student_code = EXCLUDED.student_code,
+          program_id = EXCLUDED.program_id,
+          department_id = EXCLUDED.department_id,
+          academic_year = EXCLUDED.academic_year,
+          enrollment_date = EXCLUDED.enrollment_date,
+          expected_graduation = EXCLUDED.expected_graduation,
+          status = EXCLUDED.status,
+          gpa = EXCLUDED.gpa,
+          total_credits_earned = EXCLUDED.total_credits_earned,
+          address = EXCLUDED.address,
+          phone = EXCLUDED.phone,
+          date_of_birth = EXCLUDED.date_of_birth,
+          gender = EXCLUDED.gender,
+          guardian_name = EXCLUDED.guardian_name,
+          guardian_phone = EXCLUDED.guardian_phone,
+          guardian_email = EXCLUDED.guardian_email,
+          notes = EXCLUDED.notes`,
+        [
+          profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId,
+          profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status,
+          profile.gpa, profile.totalCreditsEarned, profile.address || null, profile.phone || null,
+          profile.dateOfBirth || null, profile.gender || null, profile.guardianName || null,
+          profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null
+        ]
+      );
+    }
+
+    for (const user of (store.users || []).filter(item => item.role === "student")) {
+      const hasProfile = (store.studentProfiles || []).some(profile => profile.userId === user.id);
+      if (!hasProfile) {
+        const profile: StudentProfile = {
+          id: generateId("profile"),
+          userId: user.id,
+          studentCode: `SV${new Date().getFullYear()}${user.id.slice(-4).toUpperCase()}`,
+          programId: "prog_se",
+          departmentId: "dept_cs",
+          academicYear: 1,
+          enrollmentDate: new Date().toISOString().slice(0, 10),
+          expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
+          status: "active",
+          gpa: 0,
+          totalCreditsEarned: 0
+        };
+        await client.query(
+          `INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           ON CONFLICT (id) DO NOTHING`,
+          [profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId, profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status, profile.gpa, profile.totalCreditsEarned]
+        );
+      }
+    }
+
+    for (const course of store.courses || []) {
+      await client.query(
+        `UPDATE courses SET status = $1, rejection_reason = $2 WHERE id = $3`,
+        [course.status, course.rejectionReason || null, course.id]
+      );
+    }
+
+    await client.query(`
+      DELETE FROM audit_logs WHERE user_id IN (SELECT id FROM users WHERE role = 'parent');
+      DELETE FROM notifications WHERE user_id IN (SELECT id FROM users WHERE role = 'parent');
+      DELETE FROM users WHERE role = 'parent';
+      UPDATE student_profiles SET guardian_name = NULL, guardian_phone = NULL, guardian_email = NULL;
+    `);
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function dashboardFromStore(store: any, user: User) {
@@ -441,8 +560,12 @@ app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "admin", "supe
 }));
 
 app.post("/api/store/sync", requireAuth, asyncHandler(async (req, res) => {
-  await audit(req, "store_sync_ignored", "store", "Client attempted sync; Postgres remains authoritative.");
-  res.json({ ok: true, mode: "postgres-authoritative" });
+  if (!["admin", "super_admin", "academic", "finance"].includes(req.user!.role)) {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+  await syncClientStoreToDb(req.body || {});
+  await audit(req, "store_sync", "store", "Client store changes synchronized into Postgres.");
+  res.json({ ok: true, mode: "postgres-synchronized" });
 }));
 
 async function setupServer() {

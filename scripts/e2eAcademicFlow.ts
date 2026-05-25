@@ -55,7 +55,6 @@ async function main() {
   const student = await login("student@e16.local", "studente16");
   const finance = await login("finance@e16.local", "finance16");
   const academic = await login("academic@e16.local", "academice16");
-  const parent = await login("parent@e16.local", "parent16");
 
   const stamp = Date.now();
   const course = await request<any>("/api/courses", {
@@ -177,9 +176,6 @@ async function main() {
     body: JSON.stringify({ studentId: student.user.id, type: "low-gpa", message: `E2E warning ${stamp}` })
   });
   assert(warning.studentId === student.user.id, "academic warning creation failed");
-
-  const parentDashboard = await request<any>("/api/dashboard/parent", { session: parent });
-  assert(parentDashboard.users?.length === 1, "parent dashboard should only expose scoped user data");
 
   console.log(JSON.stringify({
     ok: true,

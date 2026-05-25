@@ -36,8 +36,6 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện học vụ...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu học vụ.</div>;
 
 
   const showToast = (msg: string) => {
@@ -493,6 +491,8 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
         {/* Tab 2: Tiến độ từng học viên */}
         {activeSubTab === "students" && (
           <div className="space-y-6">
+      {isLoading && <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70">?ang t?i d? li?u...</div>}
+      {isError && <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200">Kh?ng th? t?i d? li?u t? server.</div>}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
               <div>
                 <h4 className="text-base font-display font-semibold text-white">Sổ theo dõi Tiến độ Học tập của Học viên</h4>

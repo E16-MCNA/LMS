@@ -22,7 +22,6 @@ const FINANCE_CREDENTIAL = credential("finance16", "seed_finance");
 const LETAN_CREDENTIAL = credential("letane16", "seed_letan");
 const ACADEMIC_CREDENTIAL = credential("academice16", "seed_academic");
 const ADVISOR_CREDENTIAL = credential("advisor16", "seed_advisor");
-const PARENT_CREDENTIAL = credential("parent16", "seed_parent");
 
 function normalizeLegacyRoles(store: LMSDataStore): void {
   store.users = store.users.map(user => {
@@ -128,17 +127,6 @@ export function getInitialStore(): LMSDataStore {
         role: "advisor",
         isActive: true,
         createdAt: new Date("2026-01-08T15:00:00Z").toISOString()
-      },
-      {
-        id: "user_parent",
-        email: "parent@e16.local",
-        passwordHash: PARENT_CREDENTIAL.hash,
-        passwordSalt: PARENT_CREDENTIAL.salt,
-        name: "Bùi Phụ Huynh (Phụ huynh)",
-        role: "parent",
-        isActive: true,
-        linkedStudentId: studentId,
-        createdAt: new Date("2026-01-09T16:00:00Z").toISOString()
       }
     ],
     courses: [
@@ -512,9 +500,9 @@ export function getInitialStore(): LMSDataStore {
         phone: "0912345678",
         dateOfBirth: "2002-03-15",
         gender: "Nữ",
-        guardianName: "Nguyen Van A",
-        guardianPhone: "0987654321",
-        guardianEmail: "guardian_a@e16.local",
+        guardianName: undefined,
+        guardianPhone: undefined,
+        guardianEmail: undefined,
         notes: "Sinh viên tiêu biểu lớp Kỹ thuật Phần mềm."
       }
     ],

@@ -99,8 +99,6 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
   // General feedback messaging
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện giảng viên...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu giảng viên.</div>;
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);

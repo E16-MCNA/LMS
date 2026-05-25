@@ -201,7 +201,6 @@ export function backfillMegaDemoData(store: LMSDataStore) {
 
   const newStudents: User[] = [];
   const newProfiles: StudentProfile[] = [];
-  const newParentUsers: User[] = [];
 
   const addresses = [
     "Số 1 Đại Cồ Việt, Bách Khoa, Hai Bà Trưng, Hà Nội",
@@ -218,7 +217,6 @@ export function backfillMegaDemoData(store: LMSDataStore) {
 
   for (let i = 1; i <= studentsToGen; i++) {
     const sId = `student_gen_${i}`;
-    const pId = `parent_gen_${i}`;
     const name = generateName();
     
     newStudents.push({
@@ -255,29 +253,12 @@ export function backfillMegaDemoData(store: LMSDataStore) {
       phone: "09" + Math.floor(10000000 + Math.random() * 90000000),
       dateOfBirth: `200${5 - year}-04-12`,
       gender: Math.random() > 0.45 ? "Nam" : "Nữ",
-      notes: "Lý lịch học sinh sinh viên chính thức.",
-      guardianName: "Nguyen Phụ Huynh " + name.split(" ").slice(-1)[0],
-      guardianPhone: "09" + Math.floor(10000000 + Math.random() * 90000000),
-      guardianEmail: `parent_${i}@e16.local`
-    });
-
-    newParentUsers.push({
-      id: pId,
-      email: `parent_${i}@e16.local`,
-      passwordHash: credential("parent16", `seed_parent_gen_${i}`).hash,
-      passwordSalt: credential("parent16", `seed_parent_gen_${i}`).salt,
-      name: `Phụ huynh của SV ${name}`,
-      role: "parent",
-      linkedStudentId: sId,
-      isActive: true,
-      createdAt: new Date("2026-01-09T00:00:00Z").toISOString(),
-      phone: "09" + Math.floor(10000000 + Math.random() * 90000000)
+      notes: "Lý lịch học sinh sinh viên chính thức."
     });
   }
 
   store.users.push(...newStudents);
   store.studentProfiles.push(...newProfiles);
-  store.users.push(...newParentUsers);
 
   const activeStudentIds = store.studentProfiles
     .filter(p => p.userId.startsWith("student_gen_"))

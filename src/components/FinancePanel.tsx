@@ -35,8 +35,6 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
   const [rejectingTxId, setRejectingTxId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện tài chính...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu tài chính.</div>;
 
 
   const showToast = (msg: string) => {

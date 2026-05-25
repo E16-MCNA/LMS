@@ -1,9 +1,36 @@
 import { getInitialStore } from "../store";
+import { backfillMegaDemoData } from "../mockSeeds";
 import { Queryable } from "./db";
 import { usersRepository } from "./repositories/users";
 
-export async function seedCoreLearningData(db: Queryable) {
+async function cleanupParentSeedData(db: Queryable) {
+  await db.query(`
+    DELETE FROM audit_logs WHERE user_id IN (SELECT id FROM users WHERE role = 'parent');
+    DELETE FROM notifications WHERE user_id IN (SELECT id FROM users WHERE role = 'parent');
+    DELETE FROM users WHERE role = 'parent';
+    UPDATE student_profiles SET guardian_name = NULL, guardian_phone = NULL, guardian_email = NULL;
+  `);
+}
+
+function getBackfilledSeedStore() {
   const store = getInitialStore();
+  backfillMegaDemoData(store);
+  store.users = store.users.filter(user => user.role !== "parent");
+  store.studentProfiles = (store.studentProfiles || []).map(profile => ({
+    ...profile,
+    guardianName: undefined,
+    guardianPhone: undefined,
+    guardianEmail: undefined
+  }));
+  return store;
+}
+
+export async function seedCoreLearningData(db: Queryable) {
+  const store = getBackfilledSeedStore();
+  await cleanupParentSeedData(db);
+  const initialCourseCount = Number((await db.query("SELECT COUNT(*) AS count FROM courses")).rows[0].count);
+  const initialProfileCount = Number((await db.query("SELECT COUNT(*) AS count FROM student_profiles")).rows[0].count);
+  const needsMegaBackfill = initialCourseCount < 40 || initialProfileCount < 300;
 
   // 1. Seed Academic Years & Semesters
   if (Number((await db.query("SELECT COUNT(*) AS count FROM academic_years")).rows[0].count) === 0) {
@@ -53,8 +80,25 @@ export async function seedCoreLearningData(db: Queryable) {
       );
     }
   }
+  if (needsMegaBackfill) {
+    for (const c of store.courses) {
+      await db.query(
+        `INSERT INTO courses (id, title, description, teacher_id, status, category, thumbnail, price, level, tags_json, rejection_reason, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO NOTHING`,
+        [c.id, c.title, c.description, c.teacherId, c.status, c.category, c.thumbnail || null, c.price || 0, c.level || null, JSON.stringify(c.tags || []), c.rejectionReason || null, c.createdAt]
+      );
+    }
+  }
 
   if (Number((await db.query("SELECT COUNT(*) AS count FROM lessons")).rows[0].count) === 0) {
+    for (const l of store.lessons) {
+      await db.query(
+        "INSERT INTO lessons (id, course_id, title, content, video_url, lesson_order, duration) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING",
+        [l.id, l.courseId, l.title, l.content, l.videoUrl || null, l.order, l.duration]
+      );
+    }
+  }
+  if (needsMegaBackfill) {
     for (const l of store.lessons) {
       await db.query(
         "INSERT INTO lessons (id, course_id, title, content, video_url, lesson_order, duration) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING",
@@ -87,6 +131,22 @@ export async function seedCoreLearningData(db: Queryable) {
           p.expectedGraduation, p.status, p.gpa, p.totalCreditsEarned, p.address || null, p.phone || null,
           p.dateOfBirth || null, p.gender || null, p.guardianName || null, p.guardianPhone || null,
           p.guardianEmail || null, p.notes || null
+        ]
+      );
+    }
+  }
+  if (needsMegaBackfill) {
+    for (const p of store.studentProfiles) {
+      await db.query(
+        `INSERT INTO student_profiles (
+          id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
+          expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth,
+          gender, guardian_name, guardian_phone, guardian_email, notes
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) ON CONFLICT (id) DO NOTHING`,
+        [
+          p.id, p.userId, p.studentCode, p.programId, p.departmentId, p.academicYear, p.enrollmentDate,
+          p.expectedGraduation, p.status, p.gpa, p.totalCreditsEarned, p.address || null, p.phone || null,
+          p.dateOfBirth || null, p.gender || null, null, null, null, p.notes || null
         ]
       );
     }
@@ -126,6 +186,20 @@ export async function seedCoreLearningData(db: Queryable) {
       );
     }
   }
+  if (needsMegaBackfill) {
+    for (const q of store.quizzes) {
+      await db.query(
+        "INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING",
+        [q.id, q.courseId, q.lessonId || null, q.title, q.passingScore, q.timeLimit, q.maxAttempts]
+      );
+    }
+    for (const q of store.questions) {
+      await db.query(
+        "INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING",
+        [q.id, q.quizId, q.text, q.type, JSON.stringify(q.options || []), q.correctAnswer]
+      );
+    }
+  }
 
   if (Number((await db.query("SELECT COUNT(*) AS count FROM assignments")).rows[0].count) === 0) {
     for (const a of store.assignments) {
@@ -138,6 +212,14 @@ export async function seedCoreLearningData(db: Queryable) {
       await db.query(
         "INSERT INTO submissions (id, assignment_id, student_id, content, score, feedback, submitted_at, graded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING",
         [s.id, s.assignmentId, s.studentId, s.content, s.score ?? null, s.feedback || null, s.submittedAt, s.gradedAt || null]
+      );
+    }
+  }
+  if (needsMegaBackfill) {
+    for (const a of store.assignments) {
+      await db.query(
+        "INSERT INTO assignments (id, course_id, title, description, deadline, max_score) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING",
+        [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore]
       );
     }
   }
@@ -173,6 +255,9 @@ export async function seedCoreLearningData(db: Queryable) {
 }
 
 export async function seedAuthUsers(db: Queryable) {
-  if (await usersRepository.count(db) > 0) return;
-  await usersRepository.seed(db, getInitialStore().users);
+  await cleanupParentSeedData(db);
+  const studentCount = Number((await db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'student'")).rows[0].count);
+  const teacherCount = Number((await db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'teacher'")).rows[0].count);
+  if (studentCount >= 300 && teacherCount >= 20) return;
+  await usersRepository.seed(db, getBackfilledSeedStore().users);
 }
