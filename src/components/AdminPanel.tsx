@@ -1,0 +1,963 @@
+import React, { useState } from "react";
+import { 
+  Users, 
+  BookOpen, 
+  GraduationCap, 
+  DollarSign, 
+  TrendingUp, 
+  UserPlus, 
+  Upload, 
+  Download, 
+  Check, 
+  X, 
+  ArrowLeft, 
+  ArrowRight, 
+  Search, 
+  FileSpreadsheet, 
+  SlidersHorizontal,
+  Database,
+  ShieldCheck,
+  AlertCircle,
+  Info,
+  Calendar,
+  Clock,
+  Building,
+  ShieldAlert,
+  Activity,
+  LogOut,
+  ChevronRight
+} from "lucide-react";
+import { LMSDataStore, User, Course, Lesson, Quiz, Question, Assignment, Submission, QuizAttempt } from "../types";
+import { AppStore } from "../store";
+import { generateId } from "../utils";
+import { hashPassword } from "../authHash";
+
+// Import modular sub-components
+import AcademicManager from "./AcademicManager";
+import StudentRegistry from "./StudentRegistry";
+import AttendanceManager from "./AttendanceManager";
+import TuitionManager from "./TuitionManager";
+import WarningAndReports from "./WarningAndReports";
+
+interface AdminPanelProps {
+  currentUser: User;
+  onLogout: () => void;
+  onRefreshData: () => void;
+}
+
+export default function AdminPanel({ currentUser, onLogout, onRefreshData }: AdminPanelProps) {
+  const store = AppStore.get();
+
+  // Navigation tab states
+  // Groupings: ACADEMIC, STUDENTS, LEARNING, REPORTS
+  const [activeSubTab, setActiveSubTab] = useState<
+    | "academic_years" 
+    | "semesters" 
+    | "departments" 
+    | "programs" 
+    | "students" 
+    | "attendance" 
+    | "tuition" 
+    | "warnings" 
+    | "approval" 
+    | "users" 
+    | "analytics" 
+    | "reports"
+    | "audit"
+  >("students");
+
+  // Keep student selection state for quick lookup redirection from other tabs
+  const [registryLookupStudentId, setRegistryLookupStudentId] = useState<string | null>(null);
+
+  // Existing User modals states
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"student" | "teacher" | "admin" | "finance" | "le_tan" | "academic">("student");
+  const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Course rejection states
+  const [rejectingCourseId, setRejectingCourseId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // Search & Filter flags for users registry
+  const [userSearch, setUserSearch] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [userPage, setUserPage] = useState(1);
+  const itemsPerPage = 8;
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Create User Action
+  const handleCreateUserSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserEmail.includes("@") || newUserPassword.length < 6 || !newUserName.trim()) {
+      triggerToast("Thông tin đăng ký chưa hợp lệ (Mật khẩu tối thiểu 6 ký tự).");
+      return;
+    }
+
+    const storeData = AppStore.get();
+    const exists = storeData.users.find(u => u.email.toLowerCase() === newUserEmail.toLowerCase());
+    if (exists) {
+      triggerToast("Email đăng ký này tài khoản đã tồn tại.");
+      return;
+    }
+
+    const credential = hashPassword(newUserPassword);
+    const added: User = {
+      id: generateId("user"),
+      name: newUserName.trim(),
+      email: newUserEmail.toLowerCase().trim(),
+      passwordHash: credential.hash,
+      passwordSalt: credential.salt,
+      role: newUserRole,
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+
+    storeData.users.push(added);
+
+    // If it's a student account, auto-generate StudentProfile
+    if (newUserRole === "student") {
+      if (!storeData.studentProfiles) storeData.studentProfiles = [];
+      const studentCode = `SV${new Date().getFullYear()}${String(storeData.studentProfiles.length + 1).padStart(4, "0")}`;
+      storeData.studentProfiles.push({
+        id: generateId("profile"),
+        userId: added.id,
+        studentCode,
+        programId: "prog_se", // software engineering as default seeded
+        departmentId: "dept_cs", // computerscience default
+        academicYear: 1, // year 1
+        enrollmentDate: new Date().toISOString().slice(0, 10),
+        expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
+        status: "active",
+        gpa: 0.0,
+        totalCreditsEarned: 0
+      });
+    }
+
+    AppStore.log(currentUser.id, "create_user", added.email, `Khởi tạo người dùng quyền: ${added.role}`);
+    AppStore.save(storeData);
+    
+    setNewUserEmail("");
+    setNewUserName("");
+    setNewUserPassword("");
+    setShowAddUserModal(false);
+    onRefreshData();
+    triggerToast("Đã lưu trữ và thiết lập tài khoản thành công.");
+  };
+
+  // CSV Users Bulk Import Entry
+  const handleImportCSVSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!csvText.trim()) {
+      triggerToast("Chưa nhập nội dung tệp CSV.");
+      return;
+    }
+
+    const rows = csvText.split("\n").map(r => r.trim()).filter(Boolean);
+    let successCount = 0;
+    let errorCount = 0;
+    const storeData = AppStore.get();
+
+    rows.forEach((row, index) => {
+      if (index === 0 && (row.toLowerCase().includes("name") || row.toLowerCase().includes("email"))) {
+        return; // skip headers
+      }
+
+      const columns = row.split(",").map(c => c.trim().replace(/"/g, ""));
+      if (columns.length < 3) {
+        errorCount++;
+        return;
+      }
+
+      const [name, email, role] = columns;
+      const cleanRole = role.toLowerCase() as any;
+      const roleValidated = ["student", "teacher", "admin", "finance", "le_tan", "academic"].includes(cleanRole);
+      const emailUnique = !storeData.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+      if (name && email.includes("@") && roleValidated && emailUnique) {
+        const credential = hashPassword("password123");
+        const importedUser: User = {
+          id: generateId("user"),
+          name,
+          email: email.toLowerCase(),
+          passwordHash: credential.hash,
+          passwordSalt: credential.salt,
+          role: cleanRole,
+          isActive: true,
+          createdAt: new Date().toISOString()
+        };
+
+        storeData.users.push(importedUser);
+
+        // Auto profile for student imports
+        if (cleanRole === "student") {
+          if (!storeData.studentProfiles) storeData.studentProfiles = [];
+          const studentCode = `SV${new Date().getFullYear()}${String(storeData.studentProfiles.length + 1).padStart(4, "0")}`;
+          storeData.studentProfiles.push({
+            id: generateId("profile"),
+            userId: importedUser.id,
+            studentCode,
+            programId: "prog_se",
+            departmentId: "dept_cs",
+            academicYear: 1,
+            enrollmentDate: new Date().toISOString().slice(0, 10),
+            expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
+            status: "active",
+            gpa: 0.0,
+            totalCreditsEarned: 0
+          });
+        }
+
+        AppStore.notify(importedUser.id, "info", `Tài khoản của bạn đã được khởi tạo thông qua tệp nhập liệu CSV của Quản trị viên.`);
+        successCount++;
+      } else {
+        errorCount++;
+      }
+    });
+
+    if (successCount > 0) {
+      AppStore.log(currentUser.id, "bulk_csv_import", "users", `Nhập dữ liệu CSV đồng loạt thành công: ${successCount} dòng.`);
+      AppStore.save(storeData);
+      onRefreshData();
+      setImportMessage({ 
+        type: "success", 
+        text: `Đã nhập đồng loạt. Thành công: ${successCount} tài khoản. Thất bại hoặc trùng lặp: ${errorCount}.` 
+      });
+      setCsvText("");
+      setTimeout(() => setShowImportModal(false), 3000);
+    } else {
+      setImportMessage({ 
+        type: "error", 
+        text: `Nhập dữ liệu đồng loạt thất bại. Toàn bộ ${errorCount} dòng có lỗi schema cấu trúc cấu trúc hoặc đã bị trùng email.` 
+      });
+    }
+  };
+
+  // Toggle user active status action
+  const handleToggleUserStatus = (userId: string) => {
+    const storeData = AppStore.get();
+    storeData.users = storeData.users.map(u => {
+      if (u.id === userId) {
+        const nextState = !u.isActive;
+        AppStore.log(currentUser.id, "toggle_user_status", u.email, `Thay đổi trạng thái tài khoản thành: ${nextState ? "Active" : "Locked"}`);
+        return { ...u, isActive: nextState };
+      }
+      return u;
+    });
+    AppStore.save(storeData);
+    onRefreshData();
+    triggerToast("Đã cập nhật trạng thái hoạt động người dùng.");
+  };
+
+  // Approve Course selection
+  const handleApproveCourse = (courseId: string) => {
+    const storeData = AppStore.get();
+    storeData.courses = storeData.courses.map(c => {
+      if (c.id === courseId) {
+        AppStore.log(currentUser.id, "approve_course", c.title, "Phê duyệt công khai khóa giảng dạy.");
+        AppStore.notify(c.teacherId, "success", `Tin vui: Bài yêu cầu mở môn "${c.title}" của bạn đã được quản trị viên duyệt công bố hoàn tất!`);
+        return { ...c, status: "published" };
+      }
+      return c;
+    });
+    AppStore.save(storeData);
+    onRefreshData();
+    triggerToast("Đã phê duyệt và phát hành khóa học.");
+  };
+
+  const handleStartRejectCourse = (courseId: string) => {
+    setRejectingCourseId(courseId);
+    setRejectReason("");
+  };
+
+  const handleConfirmRejectCourse = () => {
+    if (!rejectingCourseId) return;
+    if (!rejectReason.trim()) {
+      triggerToast("Vui lòng ghi rõ lý do trả về học phần.");
+      return;
+    }
+
+    const storeData = AppStore.get();
+    storeData.courses = storeData.courses.map(c => {
+      if (c.id === rejectingCourseId) {
+        AppStore.log(currentUser.id, "reject_course", c.title, `Trả về yêu cầu: ${rejectReason}`);
+        AppStore.notify(c.teacherId, "danger", `Bài đăng ký khóa học "${c.title}" của bạn đã được phản hồi lỗi điều chỉnh học phần lý do: ${rejectReason}`);
+        return { ...c, status: "rejected" };
+      }
+      return c;
+    });
+    AppStore.save(storeData);
+    setRejectingCourseId(null);
+    onRefreshData();
+    triggerToast("Học phần lớp học được trả về để điều hành giảng viên bổ sung.");
+  };
+
+  // Local JSON snapshot export dump backup
+  const handleExportDataStore = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(store, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `sis_lms_backup_data_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    triggerToast("Đã sao lưu dọn dẹp kết tinh tệp JSON sao lưu.");
+  };
+
+  // Computed counters metrics
+  const totalUsersCount = store.users.length;
+  const totalCoursesCount = store.courses.length;
+  const totalEnrollmentsCount = store.enrollments.length;
+
+  // Search filter listings
+  const filteredUsers = store.users.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+                          u.email.toLowerCase().includes(userSearch.toLowerCase());
+    const matchesRole = filterRole === "all" || u.role === filterRole;
+    const matchesStatus = filterStatus === "all" || 
+      (filterStatus === "active" && u.isActive) || 
+      (filterStatus === "inactive" && !u.isActive);
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  const pageCount = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * itemsPerPage, userPage * itemsPerPage);
+  const pendingCourses = store.courses.filter(c => c.status === "pending");
+
+  // Redirection link callback helper to load Student Profile Modal details
+  const handleSelectStudentProfileRedirect = (userId: string) => {
+    setRegistryLookupStudentId(userId);
+    setActiveSubTab("students");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Toast alarms logs alert */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#2563eb] border border-blue-400 text-white font-medium text-xs px-4 py-3 rounded-2xl shadow-2xl animate-fade-in animate-bounce">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Main Administrative Header Area */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-9e0">
+        <div>
+          <span className="text-xs font-mono font-semibold tracking-widest text-[#2563eb] bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 uppercase">
+            CỔNG THÔNG TIN QUẢN TRỊ VIÊN & PHÒNG ĐÀO TẠO (SIS-LMS)
+          </span>
+          <h2 className="text-xl font-display font-bold text-white mt-2">Executive Portal & Academic Records</h2>
+          <p className="text-xs text-white/50">Phân quyền giám sát cấu trúc học kỳ niên khóa, chuyên cần học sinh, tổng vụ tài chính kế toán.</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs">
+          <button 
+            onClick={() => setShowImportModal(true)}
+            className="px-3.5 py-1.5 text-xs font-bold text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <Upload className="h-4.5 w-4.5" /> Nhập CSV Users
+          </button>
+          <button 
+            onClick={handleExportDataStore}
+            className="px-3.5 py-1.5 text-xs font-bold text-white/90 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <Download className="h-4.5 w-4.5" /> Sao lưu JSON
+          </button>
+          <button 
+            onClick={() => setShowAddUserModal(true)}
+            className="px-3.5 py-1.5 text-xs font-bold text-indigo-950 bg-white hover:bg-white/95 rounded-xl flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+          >
+            <UserPlus className="h-4.5 w-4.5" /> Tạo người dùng
+          </button>
+        </div>
+      </div>
+
+      {/* Grid counters stat cards metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Nhân khẩu học (Tổng số tài khoản)</p>
+          <h3 className="text-2xl font-bold font-mono text-white mt-1">{totalUsersCount}</h3>
+        </div>
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Khóa học môn giảng dạy</p>
+          <h3 className="text-2xl font-bold font-mono text-white mt-1">{totalCoursesCount}</h3>
+        </div>
+        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">Đăng ký lớp học niên khóa</p>
+          <h3 className="text-2xl font-bold font-mono text-white mt-1">{totalEnrollmentsCount}</h3>
+        </div>
+      </div>
+
+      {/* Main Two-Column Layout split sidebar list vs viewports */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        
+        {/* Left Column navbar structured sections */}
+        <div className="lg:w-64 flex-shrink-0 space-y-4">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-xs space-y-4">
+            
+            <div className="space-y-1.5">
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest block px-2.5">
+                SCHOLASTIC (Cấu trúc đào tạo)
+              </span>
+              <button
+                onClick={() => { setActiveSubTab("academic_years"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "academic_years" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Năm học</span>
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("semesters"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "semesters" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> Học Kỳ</span>
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("departments"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "departments" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Building className="h-4 w-4" /> Khoa (Departments)</span>
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("programs"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "programs" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Chương trình đào tạo</span>
+              </button>
+            </div>
+
+            <div className="space-y-1.5 border-t border-white/5 pt-3">
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest block px-2.5">
+                STUDENTS & ACADEMICS (Hồ sơ học vụ)
+              </span>
+              <button
+                onClick={() => { setActiveSubTab("students"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "students" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Sổ Học sinh Sinh viên</span>
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("attendance"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "attendance" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Activity className="h-4 w-4" /> Quản trị Điểm danh</span>
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("tuition"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "tuition" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Kế toán Học Phí</span>
+              </button>
+            </div>
+
+            <div className="space-y-1.5 border-t border-white/5 pt-3">
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest block px-2.5">
+                LEARNING PLATFORM (LMS mặc định)
+              </span>
+              <button
+                onClick={() => { setActiveSubTab("approval"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "approval" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Duyệt khóa học</span>
+                {pendingCourses.length > 0 && (
+                  <span className="bg-amber-500 text-slate-950 font-sans font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center">
+                    {pendingCourses.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("users"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "users" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Phân quyền người dùng</span>
+              </button>
+              <button
+                onClick={() => { setActiveSubTab("audit"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "audit" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Database className="h-4 w-4" /> Nhật ký hệ thống (Audit)</span>
+              </button>
+            </div>
+
+            <div className="space-y-1.5 border-t border-white/5 pt-3">
+              <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest block px-2.5">
+                REPORTS STATS (Thống kê tổng hợp)
+              </span>
+              <button
+                onClick={() => { setActiveSubTab("warnings"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "warnings" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Cảnh báo & Thống Kê</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        {/* Right Main viewport area container */}
+        <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl p-6 min-w-0">
+          
+          {/* SCHOLASTIC GROUP (Academic Manager) */}
+          {(activeSubTab === "academic_years" || activeSubTab === "semesters" || activeSubTab === "departments" || activeSubTab === "programs") && (
+            <AcademicManager 
+              store={store} 
+              currentUser={currentUser} 
+              onRefreshData={onRefreshData} 
+              triggerToast={triggerToast} 
+            />
+          )}
+
+          {/* STUDENTS GROUP (Student registry layout) */}
+          {activeSubTab === "students" && (
+            <StudentRegistry 
+              store={store} 
+              currentUser={currentUser} 
+              onRefreshData={onRefreshData} 
+              triggerToast={triggerToast} 
+            />
+          )}
+
+          {/* ATTENDANCE GROUP */}
+          {activeSubTab === "attendance" && (
+            <AttendanceManager 
+              store={store} 
+              currentUser={currentUser} 
+              onRefreshData={onRefreshData} 
+              triggerToast={triggerToast} 
+            />
+          )}
+
+          {/* TUITION BILLINGS GROUP */}
+          {activeSubTab === "tuition" && (
+            <TuitionManager 
+              store={store} 
+              currentUser={currentUser} 
+              onRefreshData={onRefreshData} 
+              triggerToast={triggerToast} 
+            />
+          )}
+
+          {/* WARNINGS & HISTOGRAMS REPORTS GROUP */}
+          {(activeSubTab === "warnings" || activeSubTab === "reports") && (
+            <WarningAndReports 
+              store={store} 
+              currentUser={currentUser} 
+              onRefreshData={onRefreshData} 
+              triggerToast={triggerToast} 
+              onSelectStudentProfile={handleSelectStudentProfileRedirect} 
+            />
+          )}
+
+          {/* EXISTING APPROVED TAB */}
+          {activeSubTab === "approval" && (
+            <div className="space-y-6">
+              <div className="border-b border-white/10 pb-3">
+                <h3 className="text-base font-bold text-white">Xử lý Phê duyệt Mở Môn học & Đề cương</h3>
+                <p className="text-xs text-white/50">Phê duyệt để đưa bài khóa học của Giáo viên chuyên môn lên Hệ thống tuyển sinh đào tạo.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingCourses.map(course => {
+                  const teacherUser = store.users.find(u => u.id === course.teacherId) || { name: "Giảng viên" };
+                  return (
+                    <div key={course.id} className="p-4 bg-white/3 border border-white/5 rounded-2xl flex flex-col justify-between">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-mono text-cyan-400 font-bold uppercase">{course.category}</span>
+                          <span className="text-white/40">{teacherUser.name}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-white leading-snug">{course.title}</h4>
+                        <p className="text-xs text-white/60 line-clamp-2">{course.description}</p>
+                      </div>
+
+                      <div className="flex gap-2 justify-end text-xs pt-4 border-t border-white/5 mt-4">
+                        <button
+                          onClick={() => handleStartRejectCourse(course.id)}
+                          className="px-3.5 py-1.5 text-red-400 hover:bg-red-500/10 rounded-xl transition text-[11px]"
+                        >
+                          Trả về yêu cầu
+                        </button>
+                        <button
+                          onClick={() => handleApproveCourse(course.id)}
+                          className="px-4.5 py-1.5 bg-white text-indigo-950 font-bold rounded-xl hover:bg-indigo-50 transition text-[11px]"
+                        >
+                          Phê duyệt lập tức
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {pendingCourses.length === 0 && (
+                  <div className="col-span-2 py-16 text-center text-white/30 text-xs">
+                    Sạch tệp hồ tuyển sinh! Không có bài yêu cầu phê duyệt mở học phần nào đang treo.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* EXISTING USER ACCESS CONTROLS REGISTRY */}
+          {activeSubTab === "users" && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-white">Interactive User Directory & Access Controls</h3>
+                  <p className="text-xs text-white/50">Giám sát tài khoản phân hệ trực quan.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên, email..."
+                    value={userSearch}
+                    onChange={(e) => { setUserSearch(e.target.value); setUserPage(1); }}
+                    className="px-3 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-xl focus:outline-none"
+                  />
+
+                  <select
+                    value={filterRole}
+                    onChange={(e) => { setFilterRole(e.target.value); setUserPage(1); }}
+                    className="p-1.5 bg-black/25 text-white/85 border border-white/10 rounded-xl"
+                  >
+                    <option value="all" className="bg-slate-900">Mọi vai trò</option>
+                    <option value="student" className="bg-slate-900">Sinh Viên</option>
+                    <option value="teacher" className="bg-slate-900">Giáo Viên</option>
+                    <option value="admin" className="bg-slate-900">Quản Trị Viên</option>
+                    <option value="finance" className="bg-slate-900">Kế Toán</option>
+                    <option value="academic" className="bg-slate-900">Chuyên viên Học Vụ</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="bg-white/3 rounded-2xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-white/2 text-[10px] uppercase text-white/50">
+                        <th className="py-2.5 px-3">Họ và Tên</th>
+                        <th className="py-2.5 px-3">Email cá nhân</th>
+                        <th className="py-2.5 px-3">Quyền hạn</th>
+                        <th className="py-2.5 px-3">Trạng thái khóa</th>
+                        <th className="py-2.5 px-3 text-right">Khóa/Mở Khóa</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {paginatedUsers.map(usr => (
+                        <tr key={usr.id} className="hover:bg-white/2 transition">
+                          <td className="py-3 px-3 font-semibold text-white">{usr.name}</td>
+                          <td className="py-3 px-3 font-mono text-white/60">{usr.email}</td>
+                          <td className="py-3 px-3">
+                            <span className="capitalize font-mono font-bold text-[10px] px-2 py-0.5 rounded bg-white/5 text-indigo-300 border border-white/5">
+                              {usr.role === "finance" ? "C??n b??? T??i ch??nh" :
+                               usr.role === "academic" ? "Ph??ng H???c V???" :
+                               usr.role === "student" ? "Sinh Viên" :
+                               usr.role === "teacher" ? "Giảng Viên" : usr.role}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            {usr.isActive ? (
+                              <span className="text-emerald-400 font-bold text-[10.5px]">Đang hoạt động</span>
+                            ) : (
+                              <span className="text-red-400 font-bold text-[10.5px]">Đang khóa</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            {usr.id !== currentUser.id ? (
+                              <button
+                                onClick={() => handleToggleUserStatus(usr.id)}
+                                className={`px-2 py-1 rounded transition text-[10.5px] cursor-pointer ${
+                                  usr.isActive ? "bg-red-500/10 text-red-400 hover:bg-red-500/15" : "bg-emerald-500/10 text-emerald-400"
+                                }`}
+                              >
+                                {usr.isActive ? "Khóa" : "Kích hoạt"}
+                              </button>
+                            ) : (
+                              <span className="text-white/30 text-[10.5px]">Tài khoản hiện hành</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Paginations */}
+              {pageCount > 1 && (
+                <div className="flex justify-between items-center text-xs">
+                  <button
+                    onClick={() => setUserPage(p => Math.max(p - 1, 1))}
+                    disabled={userPage === 1}
+                    className="p-1 px-2 border border-white/10 rounded hover:bg-white/5 disabled:opacity-40"
+                  >
+                    Trước
+                  </button>
+                  <span className="text-white/50 text-[11px]">Trang {userPage} / {pageCount}</span>
+                  <button
+                    onClick={() => setUserPage(p => Math.min(p + 1, pageCount))}
+                    disabled={userPage === pageCount}
+                    className="p-1 px-2 border border-white/10 rounded hover:bg-white/5 disabled:opacity-40"
+                  >
+                    Sau
+                  </button>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* SYSTEM SECURITY COMPLIANCE AUDIT LOGS */}
+          {activeSubTab === "audit" && (
+            <div className="space-y-6">
+              <div className="border-b border-white/10 pb-3">
+                <h3 className="text-base font-bold text-white">Nhật ký Hệ thống & Access Audits (Infrastructure Logs)</h3>
+                <p className="text-xs text-white/50">Nhật ký theo dõi các bút toán an ninh, sửa đổi kết cấu điểm số, học bạ chính xác theo thời gian thực.</p>
+              </div>
+
+              <div className="bg-black/40 border border-white/10 rounded-2xl p-4 font-mono text-[10.5px] leading-relaxed max-h-96 overflow-y-auto space-y-2 text-white/90">
+                {store.auditLogs.map((log, i) => (
+                  <div key={log.id || i} className="border-b border-white/5 pb-2">
+                    <span className="text-indigo-400">[{log.createdAt.slice(11, 19)}]</span>{" "}
+                    <span className="text-cyan-300 font-bold">{log.action.toUpperCase()}</span>{" "}
+                    <span className="text-slate-400">by:</span> <span className="text-emerald-400 font-bold">{log.userId}</span>{" "}
+                    <span className="text-slate-400">target:</span> <span className="text-yellow-400">{log.target}</span> --{" "}
+                    <span className="text-white/80">{log.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* USER REGISTRATION POPUP MODAL */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-150">
+            <button 
+              onClick={() => setShowAddUserModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3 uppercase tracking-wider">
+              Khởi tạo người dùng hệ thống mới
+            </h3>
+
+            <form onSubmit={handleCreateUserSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-white/60">Họ và Tên</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Gavin Belson"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-white/60">Địa chỉ Email</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. gavin@hooli.com"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-white/60">Mật khẩu ban đầu</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Tối thiểu 6 ký tự bảo mật"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-white/60">Phân hệ Quyền</label>
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                >
+                  <option value="student" className="bg-slate-900">Sinh Viên (Student)</option>
+                  <option value="teacher" className="bg-slate-900">Giảng Viên (Teacher)</option>
+                  <option value="admin" className="bg-slate-900">Quản Trị Viên (Admin)</option>
+                  <option value="finance" className="bg-slate-900">Cán bộ Kế toán (Ke toan)</option>
+                  <option value="academic" className="bg-slate-900">Quản Lý Học Vụ (Học vụ)</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 text-xs pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(false)}
+                  className="px-4 py-2 bg-transparent text-white/50 hover:text-white transition cursor-pointer"
+                >
+                  Bỏ qua
+                </button>
+                <button
+                  type="submit"
+                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Tạo tài khoản
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* REJECT MODAL CHAT BOX */}
+      {rejectingCourseId && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-150">
+            <button 
+              onClick={() => setRejectingCourseId(null)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3 uppercase">
+              Trả lại hồ sơ đăng lý giảng dạy
+            </h3>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleConfirmRejectCourse(); }} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-white/60">Góp ý lý do trả về đính kèm:</label>
+                <textarea
+                  required
+                  placeholder="Ví dụ: Đề cương chương 3 chưa đính kèm bài giảng lý thuyết..."
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/25 text-white placeholder-white/20 border border-white/10 rounded-xl focus:outline-none h-24"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 text-xs pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectingCourseId(null)}
+                  className="px-4 py-2 bg-transparent text-white/50 hover:text-white transition cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-4.5 py-2 bg-red-600 text-white font-bold rounded-xl transition cursor-pointer"
+                >
+                  Xác nhận trả về
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT MULTIPLE USERS REGISTRY CSV */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative">
+            <button 
+              onClick={() => { setShowImportModal(false); setImportMessage(null); }}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/50 cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3 uppercase tracking-wider">
+              Nhập đồng loạt người dùng từ CSV
+            </h3>
+
+            {importMessage && (
+              <div className={`mb-4 rounded-xl p-3 flex items-center gap-2 text-xs border ${
+                importMessage.type === "success" 
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
+                  : "bg-red-500/10 border-red-500/20 text-red-400 animate-shake"
+              }`}>
+                <Info className="h-4 w-4 flex-shrink-0" />
+                <span>{importMessage.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleImportCSVSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <p className="text-[10.5px] text-white/45 leading-relaxed">
+                  Nhập dòng giá trị ngăn cách bởi dấu phẩy. Cột định dạng: <code className="text-indigo-400 font-bold">name, email, role</code>. Mật khẩu mặc định sinh tự động là <code className="text-cyan-400 font-bold">password123</code>.
+                </p>
+                <textarea
+                  required
+                  placeholder="name, email, role&#10;Gavin Belson, gavin@hooli.com, student&#10;Laurie Bream, laurie@raviga.com, teacher"
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/25 text-white font-mono placeholder-white/20 border border-white/10 rounded-xl focus:outline-none h-36 mt-1.5"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 text-xs pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowImportModal(false); setImportMessage(null); }}
+                  className="px-4 py-2 bg-transparent text-white/50 hover:text-white transition cursor-pointer"
+                >
+                  Bỏ qua
+                </button>
+                <button
+                  type="submit"
+                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer"
+                >
+                  Xác nhận tải tệp lên
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
