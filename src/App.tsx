@@ -137,9 +137,11 @@ export default function App() {
     if (currentUser) {
       AppStore.log(currentUser.id, "authentication_logout", "security", "Successfully closed session.");
     }
+    const csrfToken = sessionStorage.getItem("e16_lms_csrf");
     await fetch("/api/auth/logout", {
       method: "POST",
-      credentials: "include"
+      credentials: "include",
+      headers: csrfToken ? { "X-CSRF-Token": csrfToken } : undefined
     }).catch(() => undefined);
     setCurrentUser(null);
     setCsrfToken(null);

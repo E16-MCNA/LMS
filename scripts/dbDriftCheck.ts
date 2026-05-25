@@ -20,6 +20,8 @@ const expected: Record<string, string[]> = {
   submissions: ["id", "assignment_id", "student_id", "content", "score", "feedback", "submitted_at", "graded_at"],
   tuition_fees: ["id", "student_id", "semester_id", "amount", "due_date", "status", "paid_amount", "paid_at", "receipt_code"],
   academic_warnings: ["id", "student_id", "type", "message", "is_resolved", "created_at"],
+  audit_logs: ["id", "user_id", "action", "target", "detail", "created_at"],
+  advisor_notes: ["id", "advisor_id", "student_id", "content", "type", "created_at"],
   schema_migrations: ["version", "name", "applied_at"]
 };
 
@@ -35,6 +37,8 @@ const requiredIndexes = [
   "idx_quiz_attempts_student_id",
   "idx_submissions_student_id",
   "idx_tuition_fees_student_id",
+  "idx_audit_logs_user_id",
+  "idx_advisor_notes_student_id",
   "ux_enrollments_student_course",
   "ux_lesson_progress_enrollment_lesson"
 ];
@@ -54,7 +58,9 @@ const requiredForeignKeys = [
   "submissions_assignment_id_fkey",
   "submissions_student_id_fkey",
   "tuition_fees_student_id_fkey",
-  "academic_warnings_student_id_fkey"
+  "academic_warnings_student_id_fkey",
+  "audit_logs_user_id_fkey",
+  "advisor_notes_student_id_fkey"
 ];
 
 const pool = new pg.Pool({

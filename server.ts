@@ -4,11 +4,24 @@ import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
-import pg from "pg";
 import { getInitialStore } from "./src/store";
-import { verifyPassword } from "./src/authHash";
-import { Course, Enrollment, LessonProgress, Question, TuitionFee, User } from "./src/types";
+import { hashPassword, verifyPassword } from "./src/authHash";
+import { User } from "./src/types";
 import { runMigrations } from "./src/dbMigrations";
+import { pool } from "./src/server/db";
+import { generateId } from "./src/server/ids";
+import { DbUserRow, toPublicUser } from "./src/server/mappers";
+import { validateBody, schemas } from "./src/server/validation";
+import { seedAuthUsers, seedCoreLearningData } from "./src/server/seedCore";
+import { usersRepository } from "./src/server/repositories/users";
+import { coursesRepository } from "./src/server/repositories/courses";
+import { enrollmentsRepository } from "./src/server/repositories/enrollments";
+import { quizzesRepository } from "./src/server/repositories/quizzes";
+import { assignmentsRepository } from "./src/server/repositories/assignments";
+import { financeRepository } from "./src/server/repositories/finance";
+import { academicsRepository } from "./src/server/repositories/academics";
+import { auditRepository } from "./src/server/repositories/audit";
+import { limitStoreForRole, storeSnapshotFromDb } from "./src/server/repositories/storeSnapshot";
 
 dotenv.config();
 
@@ -26,45 +39,11 @@ if (process.env.NODE_ENV === "production" && !JWT_SECRET) {
 }
 
 type AuthRequest = express.Request & { user?: User };
-type DbUserRow = {
-  id: string;
-  email: string;
-  password_hash: string;
-  password_salt?: string | null;
-  name: string;
-  role: User["role"];
-  is_active: number | boolean;
-  phone?: string | null;
-  linked_student_id?: string | null;
-  created_at: string;
-};
+type AsyncRoute = (req: AuthRequest, res: express.Response, next: express.NextFunction) => Promise<unknown>;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required for the Postgres/Supabase backend.");
-}
-
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("supabase.co") ? { rejectUnauthorized: false } : undefined
-});
-
-function normalizeRole(role: string): User["role"] {
-  if (role === "ke_toan") return "finance";
-  if (role === "quan_ly_hoc_vu" || role === "academic_admin") return "academic";
-  return role as User["role"];
-}
-
-function toPublicUser(row: DbUserRow): User {
-  return {
-    id: row.id,
-    email: row.email,
-    passwordHash: "",
-    name: row.name,
-    role: normalizeRole(row.role),
-    isActive: Boolean(row.is_active),
-    phone: row.phone || undefined,
-    linkedStudentId: row.linked_student_id || undefined,
-    createdAt: row.created_at
+function asyncHandler(handler: AsyncRoute) {
+  return (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
+    handler(req, res, next).catch(next);
   };
 }
 
@@ -159,18 +138,19 @@ function requireCsrf(req: AuthRequest, res: express.Response, next: express.Next
 }
 
 async function requireAuth(req: AuthRequest, res: express.Response, next: express.NextFunction) {
-  const token = extractBearerToken(req);
-  if (!token) return res.status(401).json({ error: "Missing session." });
-  const payload = verifyToken(token);
-  if (!payload) return res.status(401).json({ error: "Invalid or expired session." });
-  const result = await pool.query<DbUserRow>("SELECT * FROM users WHERE id = $1", [payload.sub]);
-  const row = result.rows[0];
-  if (!row || !row.is_active) return res.status(401).json({ error: "User is not available." });
-  req.user = toPublicUser(row);
-  next();
+  try {
+    const token = extractBearerToken(req);
+    if (!token) return res.status(401).json({ error: "Missing session." });
+    const payload = verifyToken(token);
+    if (!payload) return res.status(401).json({ error: "Invalid or expired session." });
+    const user = await usersRepository.findById(pool, payload.sub);
+    if (!user || !user.isActive) return res.status(401).json({ error: "User is not available." });
+    req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
-
-app.use("/api", requireCsrf);
 
 function requireRole(roles: Array<User["role"]>) {
   return (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
@@ -179,347 +159,284 @@ function requireRole(roles: Array<User["role"]>) {
   };
 }
 
-function generateId(prefix: string) {
-  return `${prefix}_${crypto.randomBytes(6).toString("hex")}`;
+async function audit(req: AuthRequest, action: string, target: string, detail: string) {
+  if (!req.user) return;
+  await auditRepository.log(pool, req.user.id, action, target, detail);
 }
 
-function courseFromRow(row: any): Course {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    teacherId: row.teacher_id,
-    status: row.status,
-    category: row.category,
-    thumbnail: row.thumbnail || undefined,
-    price: row.price ?? undefined,
-    level: row.level || undefined,
-    tags: row.tags_json ? JSON.parse(row.tags_json) : [],
-    rejectionReason: row.rejection_reason || undefined,
-    createdAt: row.created_at
-  };
-}
-
-function enrollmentFromRow(row: any): Enrollment {
-  return {
-    id: row.id,
-    courseId: row.course_id,
-    studentId: row.student_id,
-    status: row.status,
-    enrolledAt: row.enrolled_at,
-    completedAt: row.completed_at || undefined
-  };
-}
-
-function questionFromRow(row: any): Question {
-  return {
-    id: row.id,
-    quizId: row.quiz_id,
-    text: row.text,
-    type: row.type,
-    options: row.options_json ? JSON.parse(row.options_json) : [],
-    correctAnswer: row.correct_answer
-  };
+function dashboardFromStore(store: any, user: User) {
+  const scoped = limitStoreForRole(store, user);
+  if (user.role === "admin" || user.role === "super_admin") {
+    return {
+      ...scoped,
+      dashboard: {
+        users: scoped.users.length,
+        courses: scoped.courses.length,
+        pendingCourses: scoped.courses.filter((course: any) => course.status === "pending").length,
+        activeEnrollments: scoped.enrollments.filter((item: any) => item.status === "active").length
+      }
+    };
+  }
+  if (user.role === "teacher") {
+    return {
+      ...scoped,
+      dashboard: {
+        courses: scoped.courses.length,
+        enrollments: scoped.enrollments.length,
+        submissionsToGrade: scoped.submissions.filter((item: any) => item.score === undefined).length
+      }
+    };
+  }
+  if (user.role === "student") {
+    return {
+      ...scoped,
+      dashboard: {
+        enrolledCourses: scoped.enrollments.length,
+        completedLessons: scoped.lessonProgress.filter((item: any) => item.completed).length,
+        unpaidFees: scoped.tuitionFees.filter((fee: any) => fee.status !== "paid").length
+      }
+    };
+  }
+  return scoped;
 }
 
 async function initializeDatabase() {
   await runMigrations(pool);
-  await pool.query(`
-    UPDATE users SET role = 'finance' WHERE role = 'ke_toan';
-    UPDATE users SET role = 'academic' WHERE role IN ('quan_ly_hoc_vu', 'academic_admin');
-  `);
-  await seedAuthUsers();
-  await seedCoreLearningData();
-}
-
-async function seedAuthUsers() {
-  const count = Number((await pool.query("SELECT COUNT(*) AS count FROM users")).rows[0].count);
-  if (count > 0) return;
-  const store = getInitialStore();
-  for (const user of store.users) {
-    await pool.query(
-      `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       ON CONFLICT (id) DO NOTHING`,
-      [user.id, user.email.toLowerCase(), user.passwordHash, user.passwordSalt || null, user.name, normalizeRole(user.role), user.isActive ? 1 : 0, user.phone || null, user.linkedStudentId || null, user.createdAt]
-    );
-  }
-}
-
-async function seedCoreLearningData() {
-  const store = getInitialStore();
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM courses")).rows[0].count) === 0) {
-    for (const c of store.courses) {
-      await pool.query(
-        `INSERT INTO courses (id, title, description, teacher_id, status, category, thumbnail, price, level, tags_json, rejection_reason, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT (id) DO NOTHING`,
-        [c.id, c.title, c.description, c.teacherId, c.status, c.category, c.thumbnail || null, c.price || 0, c.level || null, JSON.stringify(c.tags || []), c.rejectionReason || null, c.createdAt]
-      );
-    }
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM lessons")).rows[0].count) === 0) {
-    for (const l of store.lessons) await pool.query("INSERT INTO lessons (id, course_id, title, content, video_url, lesson_order, duration) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING", [l.id, l.courseId, l.title, l.content, l.videoUrl || null, l.order, l.duration]);
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM enrollments")).rows[0].count) === 0) {
-    for (const e of store.enrollments) await pool.query("INSERT INTO enrollments (id, course_id, student_id, status, enrolled_at, completed_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [e.id, e.courseId, e.studentId, e.status, e.enrolledAt, e.completedAt || null]);
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM lesson_progress")).rows[0].count) === 0) {
-    for (const p of store.lessonProgress) await pool.query("INSERT INTO lesson_progress (id, enrollment_id, lesson_id, completed, completed_at) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING", [p.id, p.enrollmentId, p.lessonId, p.completed ? 1 : 0, p.completedAt || null]).catch(() => undefined);
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM quizzes")).rows[0].count) === 0) {
-    for (const q of store.quizzes) await pool.query("INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING", [q.id, q.courseId, q.lessonId || null, q.title, q.passingScore, q.timeLimit, q.maxAttempts]);
-    for (const q of store.questions) await pool.query("INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [q.id, q.quizId, q.text, q.type, JSON.stringify(q.options || []), q.correctAnswer]);
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM assignments")).rows[0].count) === 0) {
-    for (const a of store.assignments) await pool.query("INSERT INTO assignments (id, course_id, title, description, deadline, max_score) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore]);
-    for (const s of store.submissions) await pool.query("INSERT INTO submissions (id, assignment_id, student_id, content, score, feedback, submitted_at, graded_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING", [s.id, s.assignmentId, s.studentId, s.content, s.score ?? null, s.feedback || null, s.submittedAt, s.gradedAt || null]);
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM tuition_fees")).rows[0].count) === 0) {
-    for (const f of store.tuitionFees) await pool.query("INSERT INTO tuition_fees (id, student_id, semester_id, amount, due_date, status, paid_amount, paid_at, receipt_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING", [f.id, f.studentId, f.semesterId || null, f.amount, f.dueDate, f.status, f.paidAmount, f.paidAt || null, f.receiptCode || null]);
-  }
-  if (Number((await pool.query("SELECT COUNT(*) AS count FROM academic_warnings")).rows[0].count) === 0) {
-    for (const w of store.academicWarnings) await pool.query("INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING", [w.id, w.studentId, w.type, w.message, w.isResolved ? 1 : 0, w.createdAt]);
-  }
-}
-
-async function storeSnapshotFromDb() {
-  const users = (await pool.query<DbUserRow>("SELECT * FROM users")).rows.map(toPublicUser);
-  const courses = (await pool.query("SELECT * FROM courses")).rows.map(courseFromRow);
-  const lessons = (await pool.query("SELECT * FROM lessons")).rows.map(row => ({ id: row.id, courseId: row.course_id, title: row.title, content: row.content, videoUrl: row.video_url || undefined, order: row.lesson_order, duration: row.duration }));
-  const enrollments = (await pool.query("SELECT * FROM enrollments")).rows.map(enrollmentFromRow);
-  const lessonProgress = (await pool.query("SELECT * FROM lesson_progress")).rows.map(row => ({ id: row.id, enrollmentId: row.enrollment_id, lessonId: row.lesson_id, completed: Boolean(row.completed), completedAt: row.completed_at || undefined }));
-  const quizzes = (await pool.query("SELECT * FROM quizzes")).rows.map(row => ({ id: row.id, courseId: row.course_id, lessonId: row.lesson_id || undefined, title: row.title, passingScore: row.passing_score, timeLimit: row.time_limit, maxAttempts: row.max_attempts }));
-  const questions = (await pool.query("SELECT * FROM questions")).rows.map(questionFromRow);
-  const quizAttempts = (await pool.query("SELECT * FROM quiz_attempts")).rows.map(row => ({ id: row.id, quizId: row.quiz_id, studentId: row.student_id, answers: row.answers_json ? JSON.parse(row.answers_json) : {}, score: row.score, passed: Boolean(row.passed), startedAt: row.started_at, submittedAt: row.submitted_at }));
-  const assignments = (await pool.query("SELECT * FROM assignments")).rows.map(row => ({ id: row.id, courseId: row.course_id, title: row.title, description: row.description, deadline: row.deadline, maxScore: row.max_score }));
-  const submissions = (await pool.query("SELECT * FROM submissions")).rows.map(row => ({ id: row.id, assignmentId: row.assignment_id, studentId: row.student_id, content: row.content, score: row.score ?? undefined, feedback: row.feedback || undefined, submittedAt: row.submitted_at, gradedAt: row.graded_at || undefined }));
-  const tuitionFees = (await pool.query("SELECT * FROM tuition_fees")).rows.map(row => ({ id: row.id, studentId: row.student_id, semesterId: row.semester_id || "", amount: row.amount, dueDate: row.due_date, status: row.status, paidAmount: row.paid_amount, paidAt: row.paid_at || undefined, receiptCode: row.receipt_code || undefined }));
-  const academicWarnings = (await pool.query("SELECT * FROM academic_warnings")).rows.map(row => ({ id: row.id, studentId: row.student_id, type: row.type, message: row.message, isResolved: Boolean(row.is_resolved), createdAt: row.created_at }));
-  return { ...getInitialStore(), users, courses, lessons, enrollments, lessonProgress, quizzes, questions, quizAttempts, assignments, submissions, tuitionFees, academicWarnings };
-}
-
-function limitStoreForRole(store: any, user: User) {
-  if (user.role === "admin" || user.role === "super_admin" || user.role === "academic") {
-    return {
-      ...store,
-      users: store.users.map((item: User) => ({
-        id: item.id,
-        email: item.email,
-        name: item.name,
-        role: item.role,
-        isActive: item.isActive,
-        phone: item.phone,
-        linkedStudentId: item.linkedStudentId,
-        createdAt: item.createdAt,
-        passwordHash: ""
-      }))
-    };
-  }
-
-  if (user.role === "teacher") {
-    const teacherCourseIds = new Set(store.courses.filter((course: Course) => course.teacherId === user.id).map((course: Course) => course.id));
-    const visibleEnrollments = store.enrollments.filter((item: Enrollment) => teacherCourseIds.has(item.courseId));
-    const visibleStudentIds = new Set(visibleEnrollments.map((item: Enrollment) => item.studentId));
-    visibleStudentIds.add(user.id);
-    return {
-      ...store,
-      users: store.users.filter((item: User) => visibleStudentIds.has(item.id) || item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
-      courses: store.courses.filter((course: Course) => teacherCourseIds.has(course.id)),
-      enrollments: visibleEnrollments,
-      lessonProgress: store.lessonProgress.filter((item: LessonProgress) => visibleEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
-      quizzes: store.quizzes.filter((quiz: any) => teacherCourseIds.has(quiz.courseId)),
-      assignments: store.assignments.filter((assignment: any) => teacherCourseIds.has(assignment.courseId)),
-      submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId))
-    };
-  }
-
-  if (user.role === "student") {
-    const myEnrollments = store.enrollments.filter((item: Enrollment) => item.studentId === user.id);
-    const myCourseIds = new Set(myEnrollments.map((item: Enrollment) => item.courseId));
-    const myAssignmentIds = new Set(store.assignments.filter((item: any) => myCourseIds.has(item.courseId)).map((item: any) => item.id));
-    return {
-      ...store,
-      users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
-      enrollments: myEnrollments,
-      lessonProgress: store.lessonProgress.filter((item: LessonProgress) => myEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
-      quizAttempts: store.quizAttempts.filter((item: any) => item.studentId === user.id),
-      submissions: store.submissions.filter((item: any) => item.studentId === user.id),
-      tuitionFees: store.tuitionFees.filter((item: any) => item.studentId === user.id),
-      academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === user.id),
-      assignments: store.assignments.filter((item: any) => myCourseIds.has(item.courseId) || myAssignmentIds.has(item.id))
-    };
-  }
-
-  return {
-    ...store,
-    users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" }))
-  };
+  await usersRepository.normalizeLegacyRoles(pool);
+  await seedAuthUsers(pool);
+  await seedCoreLearningData(pool);
 }
 
 const apiKey = process.env.GEMINI_API_KEY;
 const ai = apiKey ? new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } }) : null;
 
-app.post("/api/analyze", async (req, res) => {
+app.use("/api", requireCsrf);
+
+app.post("/api/analyze", asyncHandler(async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: "Code content is required." });
   if (!ai) return res.status(503).json({ error: "Gemini API Key is not configured in the workspace secrets. Please configure GEMINI_API_KEY in Settings." });
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: `Analyze this web/backend application entrypoint file, specifically looking at its structure, routing, models (if applicable), and configuration, and generate a structured JSON feedback. Here is the code:\n\n${code}`,
-      config: {
-        systemInstruction: "You are an expert full-stack engineer specialized in web frameworks, microservices, and porting applications across Python (Flask) and Node.js/Express.js.",
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            explanation: { type: Type.STRING },
-            configs: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, defaultValue: { type: Type.STRING }, envVar: { type: Type.STRING }, description: { type: Type.STRING } }, required: ["name", "defaultValue", "envVar", "description"] } },
-            nodePort: { type: Type.STRING },
-            tips: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["explanation", "configs", "nodePort", "tips"]
-        }
+  const response = await ai.models.generateContent({
+    model: "gemini-3.5-flash",
+    contents: `Analyze this web/backend application entrypoint file, specifically looking at its structure, routing, models (if applicable), and configuration, and generate a structured JSON feedback. Here is the code:\n\n${code}`,
+    config: {
+      systemInstruction: "You are an expert full-stack engineer specialized in web frameworks, microservices, and porting applications across Python (Flask) and Node.js/Express.js.",
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          explanation: { type: Type.STRING },
+          configs: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, defaultValue: { type: Type.STRING }, envVar: { type: Type.STRING }, description: { type: Type.STRING } }, required: ["name", "defaultValue", "envVar", "description"] } },
+          nodePort: { type: Type.STRING },
+          tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["explanation", "configs", "nodePort", "tips"]
       }
-    });
-    res.json(JSON.parse(response.text?.trim() ?? "{}"));
-  } catch (error: any) {
-    res.status(500).json({ error: error.message || "An error occurred during code analysis." });
-  }
-});
+    }
+  });
+  res.json(JSON.parse(response.text?.trim() ?? "{}"));
+}));
 
-app.get("/health", async (_req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    res.json({ ok: true, database: "ok", uptime: process.uptime() });
-  } catch {
-    res.status(503).json({ ok: false, database: "unavailable" });
-  }
-});
+app.get("/health", asyncHandler(async (_req, res) => {
+  await pool.query("SELECT 1");
+  res.json({ ok: true, database: "ok", uptime: process.uptime() });
+}));
 
-app.post("/api/auth/login", rateLimitLogin, async (req, res) => {
-  const email = String(req.body?.email || "").trim().toLowerCase();
-  const password = String(req.body?.password || "");
-  if (!email || !password) return res.status(400).json({ error: "Email and password are required." });
-  const row = (await pool.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [email])).rows[0];
+app.post("/api/auth/login", rateLimitLogin, validateBody(schemas.login), asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const row = await usersRepository.findAuthByEmail(pool, email) as DbUserRow | null;
   if (!row || !verifyPassword(password, row.password_hash, row.password_salt || undefined)) return res.status(401).json({ error: "Incorrect email or password." });
   if (!row.is_active) return res.status(403).json({ error: "Account inactive." });
   const user = toPublicUser(row);
   setAuthCookie(res, signToken(user));
   const csrfToken = crypto.randomBytes(24).toString("base64url");
   setCsrfCookie(res, csrfToken);
+  await auditRepository.log(pool, user.id, "authentication_login", "security", `Authenticated role ${user.role}.`);
   res.json({ user, csrfToken });
-});
+}));
 
-app.post("/api/auth/logout", (req, res) => {
+app.post("/api/auth/logout", requireAuth, asyncHandler(async (req, res) => {
   const token = extractBearerToken(req);
   if (token) revokedTokens.add(token);
+  await audit(req, "authentication_logout", "security", "Session closed.");
   clearAuthCookie(res);
   res.status(204).send();
-});
+}));
 
 app.get("/api/auth/me", requireAuth, (req: AuthRequest, res) => res.json({ user: req.user }));
-app.get("/api/store", requireAuth, async (req: AuthRequest, res) => res.json(limitStoreForRole(await storeSnapshotFromDb(), req.user!)));
-app.get("/api/courses", requireAuth, async (_req, res) => res.json((await pool.query("SELECT * FROM courses ORDER BY created_at DESC")).rows.map(courseFromRow)));
+app.get("/api/store", requireAuth, asyncHandler(async (req, res) => res.json(limitStoreForRole(await storeSnapshotFromDb(pool), req.user!))));
 
-app.post("/api/courses", requireAuth, requireRole(["teacher", "admin", "super_admin", "academic"]), async (req: AuthRequest, res) => {
-  const course: Course = { id: generateId("course"), title: String(req.body.title || "").trim(), description: String(req.body.description || "").trim(), teacherId: req.user!.role === "teacher" ? req.user!.id : String(req.body.teacherId || req.user!.id), status: "draft", category: String(req.body.category || "General"), thumbnail: req.body.thumbnail || undefined, price: Number(req.body.price || 0), level: req.body.level || undefined, tags: Array.isArray(req.body.tags) ? req.body.tags : [], createdAt: new Date().toISOString() };
-  if (!course.title || !course.description) return res.status(400).json({ error: "Title and description are required." });
-  await pool.query("INSERT INTO courses (id,title,description,teacher_id,status,category,thumbnail,price,level,tags_json,rejection_reason,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)", [course.id, course.title, course.description, course.teacherId, course.status, course.category, course.thumbnail || null, course.price || 0, course.level || null, JSON.stringify(course.tags || []), null, course.createdAt]);
+app.get("/api/dashboard/admin", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const store = await storeSnapshotFromDb(pool);
+  res.json({ ...dashboardFromStore(store, req.user!), auditLogs: await auditRepository.listRecent(pool, 100) });
+}));
+app.get("/api/dashboard/teacher", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(dashboardFromStore(await storeSnapshotFromDb(pool), req.user!))));
+app.get("/api/dashboard/student", requireAuth, requireRole(["student"]), asyncHandler(async (req, res) => res.json(dashboardFromStore(await storeSnapshotFromDb(pool), req.user!))));
+app.get("/api/dashboard/finance", requireAuth, requireRole(["finance", "admin", "super_admin"]), asyncHandler(async (_req, res) => res.json(await financeRepository.getDashboard(pool))));
+app.get("/api/dashboard/academic", requireAuth, requireRole(["academic", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json({ ...dashboardFromStore(await storeSnapshotFromDb(pool), req.user!), warnings: await academicsRepository.listWarnings(pool) })));
+app.get("/api/dashboard/advisor", requireAuth, requireRole(["advisor", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json({ ...limitStoreForRole(await storeSnapshotFromDb(pool), req.user!), advisorNotes: await academicsRepository.getAdvisorNotes(pool, req.user!.id) })));
+app.get("/api/dashboard/parent", requireAuth, requireRole(["parent"]), asyncHandler(async (req, res) => res.json(limitStoreForRole(await storeSnapshotFromDb(pool), req.user!))));
+
+app.get("/api/courses", requireAuth, asyncHandler(async (_req, res) => res.json(await coursesRepository.list(pool))));
+app.post("/api/courses", requireAuth, requireRole(["teacher", "admin", "super_admin", "academic"]), validateBody(schemas.createCourse), asyncHandler(async (req, res) => {
+  const body = req.body;
+  const course = await coursesRepository.create(pool, {
+    title: body.title,
+    description: body.description,
+    teacherId: req.user!.role === "teacher" ? req.user!.id : body.teacherId || req.user!.id,
+    status: "draft",
+    category: body.category,
+    thumbnail: body.thumbnail,
+    price: body.price,
+    level: body.level,
+    tags: body.tags
+  });
+  await audit(req, "create_course", course.id, course.title);
   res.status(201).json(course);
-});
+}));
+app.post("/api/courses/:id/submit", requireAuth, requireRole(["teacher", "admin", "super_admin", "academic"]), asyncHandler(async (req, res) => {
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.params.id)) return res.status(403).json({ error: "Permission denied." });
+  const course = await coursesRepository.setStatus(pool, req.params.id, "pending");
+  if (!course) return res.status(404).json({ error: "Course not found." });
+  await audit(req, "submit_course_approval", course.id, course.title);
+  res.json(course);
+}));
+app.post("/api/courses/:id/publish", requireAuth, requireRole(["admin", "super_admin", "academic"]), asyncHandler(async (req, res) => {
+  const course = await coursesRepository.setStatus(pool, req.params.id, "published");
+  if (!course) return res.status(404).json({ error: "Course not found." });
+  await audit(req, "approve_course", course.id, course.title);
+  res.json(course);
+}));
+app.post("/api/courses/:id/reject", requireAuth, requireRole(["admin", "super_admin", "academic"]), validateBody(schemas.rejectCourse), asyncHandler(async (req, res) => {
+  const course = await coursesRepository.setStatus(pool, req.params.id, "rejected", req.body.rejectionReason);
+  if (!course) return res.status(404).json({ error: "Course not found." });
+  await audit(req, "reject_course", course.id, req.body.rejectionReason);
+  res.json(course);
+}));
 
-app.post("/api/courses/:id/publish", requireAuth, requireRole(["admin", "super_admin", "academic"]), async (req, res) => {
-  const result = await pool.query("UPDATE courses SET status = 'published' WHERE id = $1 RETURNING *", [req.params.id]);
-  if (result.rowCount === 0) return res.status(404).json({ error: "Course not found." });
-  res.json(courseFromRow(result.rows[0]));
-});
+app.post("/api/lessons", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.addLesson), asyncHandler(async (req, res) => {
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.body.courseId)) return res.status(403).json({ error: "Permission denied." });
+  const lesson = await coursesRepository.addLesson(pool, req.body);
+  await audit(req, "add_lesson", lesson.id, lesson.title);
+  res.status(201).json(lesson);
+}));
 
-app.get("/api/enrollments", requireAuth, async (req: AuthRequest, res) => {
-  const result = ["admin", "super_admin", "academic"].includes(req.user!.role) ? await pool.query("SELECT * FROM enrollments") : await pool.query("SELECT * FROM enrollments WHERE student_id = $1", [req.user!.id]);
-  res.json(result.rows.map(enrollmentFromRow));
-});
-
-app.post("/api/enrollments/register", requireAuth, requireRole(["student"]), async (req: AuthRequest, res) => {
-  const courseId = String(req.body.courseId || "");
-  const course = (await pool.query("SELECT * FROM courses WHERE id = $1 AND status = 'published'", [courseId])).rows[0];
-  if (!course) return res.status(404).json({ error: "Published course not found." });
-  const existing = (await pool.query("SELECT id FROM enrollments WHERE course_id = $1 AND student_id = $2", [courseId, req.user!.id])).rows[0];
-  if (existing) return res.status(409).json({ error: "Enrollment already exists." });
-  const enrollment: Enrollment = { id: generateId("enroll"), courseId, studentId: req.user!.id, status: Number(course.price || 0) > 0 ? "pending_payment" : "active", enrolledAt: new Date().toISOString() };
-  await pool.query("INSERT INTO enrollments (id,course_id,student_id,status,enrolled_at,completed_at) VALUES ($1,$2,$3,$4,$5,$6)", [enrollment.id, enrollment.courseId, enrollment.studentId, enrollment.status, enrollment.enrolledAt, null]);
+app.get("/api/enrollments", requireAuth, asyncHandler(async (req, res) => res.json(await enrollmentsRepository.listForUser(pool, req.user!))));
+app.post("/api/enrollments/register", requireAuth, requireRole(["student"]), validateBody(schemas.registerEnrollment), asyncHandler(async (req, res) => {
+  const course = await coursesRepository.findById(pool, req.body.courseId);
+  if (!course || course.status !== "published") return res.status(404).json({ error: "Published course not found." });
+  if (await enrollmentsRepository.existsForCourse(pool, req.user!.id, course.id)) return res.status(409).json({ error: "Enrollment already exists." });
+  const enrollment = await enrollmentsRepository.register(pool, req.user!.id, course.id, Number(course.price || 0) > 0);
+  await audit(req, "enroll_course", course.id, course.title);
   res.status(201).json(enrollment);
-});
-
-app.post("/api/progress/toggle", requireAuth, requireRole(["student"]), async (req: AuthRequest, res) => {
-  const enrollmentId = String(req.body.enrollmentId || "");
-  const lessonId = String(req.body.lessonId || "");
-  const enrollment = (await pool.query("SELECT id FROM enrollments WHERE id = $1 AND student_id = $2", [enrollmentId, req.user!.id])).rows[0];
+}));
+app.post("/api/progress/toggle", requireAuth, requireRole(["student"]), validateBody(schemas.toggleProgress), asyncHandler(async (req, res) => {
+  const enrollment = await enrollmentsRepository.findStudentEnrollment(pool, req.user!.id, req.body.enrollmentId);
   if (!enrollment) return res.status(404).json({ error: "Enrollment not found." });
-  const existing = (await pool.query("SELECT * FROM lesson_progress WHERE enrollment_id = $1 AND lesson_id = $2", [enrollmentId, lessonId])).rows[0];
-  if (existing) {
-    const completed = existing.completed ? 0 : 1;
-    const completedAt = completed ? new Date().toISOString() : null;
-    await pool.query("UPDATE lesson_progress SET completed = $1, completed_at = $2 WHERE id = $3", [completed, completedAt, existing.id]);
-    return res.json({ id: existing.id, enrollmentId, lessonId, completed: Boolean(completed), completedAt: completedAt || undefined } satisfies LessonProgress);
-  }
-  const progress: LessonProgress = { id: generateId("prog"), enrollmentId, lessonId, completed: true, completedAt: new Date().toISOString() };
-  await pool.query("INSERT INTO lesson_progress (id,enrollment_id,lesson_id,completed,completed_at) VALUES ($1,$2,$3,$4,$5)", [progress.id, enrollmentId, lessonId, 1, progress.completedAt]);
+  const progress = await enrollmentsRepository.toggleProgress(pool, req.body.enrollmentId, req.body.lessonId);
+  await audit(req, "toggle_lesson_progress", req.body.lessonId, `completed=${progress.completed}`);
   res.json(progress);
-});
+}));
 
-app.post("/api/quizzes/submit", requireAuth, requireRole(["student"]), async (req: AuthRequest, res) => {
-  const quizId = String(req.body.quizId || "");
-  const answers = (req.body.answers || {}) as Record<string, string>;
-  const quiz = (await pool.query("SELECT * FROM quizzes WHERE id = $1", [quizId])).rows[0];
+app.post("/api/quizzes", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.createQuiz), asyncHandler(async (req, res) => {
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.body.courseId)) return res.status(403).json({ error: "Permission denied." });
+  const quiz = await quizzesRepository.create(pool, req.body);
+  await audit(req, "create_quiz", quiz.id, quiz.title);
+  res.status(201).json(quiz);
+}));
+app.post("/api/quizzes/:id/questions", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.addQuestion), asyncHandler(async (req, res) => {
+  const quiz = await quizzesRepository.findById(pool, req.params.id);
   if (!quiz) return res.status(404).json({ error: "Quiz not found." });
-  const questions = (await pool.query("SELECT * FROM questions WHERE quiz_id = $1", [quizId])).rows.map(questionFromRow);
-  let correctCount = 0;
-  for (const q of questions) {
-    const studentAnswer = answers[q.id] || "";
-    if (q.type === "text" && q.correctAnswer.toLowerCase().split(",").map(key => key.trim()).some(key => studentAnswer.toLowerCase().includes(key))) correctCount++;
-    else if (q.type !== "text" && studentAnswer === q.correctAnswer) correctCount++;
-  }
-  const score = Math.round((correctCount / (questions.length || 1)) * 100);
-  const passed = score >= quiz.passing_score;
-  const attempt = { id: generateId("attempt"), quizId, studentId: req.user!.id, answers, score, passed, startedAt: req.body.startedAt || new Date().toISOString(), submittedAt: new Date().toISOString() };
-  await pool.query("INSERT INTO quiz_attempts (id,quiz_id,student_id,answers_json,score,passed,started_at,submitted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)", [attempt.id, quizId, req.user!.id, JSON.stringify(answers), score, passed ? 1 : 0, attempt.startedAt, attempt.submittedAt]);
-  res.status(201).json({ ...attempt, correctAnswers: correctCount, total: questions.length });
-});
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, quiz.courseId)) return res.status(403).json({ error: "Permission denied." });
+  const question = await quizzesRepository.addQuestion(pool, { ...req.body, quizId: req.params.id });
+  await audit(req, "add_quiz_question", question.id, quiz.id);
+  res.status(201).json(question);
+}));
+app.post("/api/quizzes/submit", requireAuth, requireRole(["student"]), validateBody(schemas.submitQuiz), asyncHandler(async (req, res) => {
+  const attempt = await quizzesRepository.submitAttempt(pool, req.body.quizId, req.user!.id, req.body.answers, req.body.startedAt);
+  if (!attempt) return res.status(404).json({ error: "Quiz not found." });
+  await audit(req, "submit_quiz_attempt", attempt.quizId, `Score ${attempt.score}.`);
+  res.status(201).json(attempt);
+}));
 
-app.post("/api/assignments/grade", requireAuth, requireRole(["teacher", "admin", "super_admin"]), async (req: AuthRequest, res) => {
-  const submissionId = String(req.body.submissionId || "");
-  const score = Number(req.body.score);
-  const feedback = String(req.body.feedback || "");
-  const submission = (await pool.query("SELECT s.*, a.max_score, c.teacher_id FROM submissions s JOIN assignments a ON a.id = s.assignment_id JOIN courses c ON c.id = a.course_id WHERE s.id = $1", [submissionId])).rows[0];
+app.post("/api/assignments", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.createAssignment), asyncHandler(async (req, res) => {
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.body.courseId)) return res.status(403).json({ error: "Permission denied." });
+  const assignment = await assignmentsRepository.create(pool, req.body);
+  await audit(req, "create_assignment", assignment.id, assignment.title);
+  res.status(201).json(assignment);
+}));
+app.post("/api/assignments/submit", requireAuth, requireRole(["student"]), validateBody(schemas.submitAssignment), asyncHandler(async (req, res) => {
+  const submission = await assignmentsRepository.submit(pool, req.user!.id, req.body.assignmentId, req.body.content);
+  await audit(req, "submit_assignment", submission.id, submission.assignmentId);
+  res.status(201).json(submission);
+}));
+app.post("/api/assignments/grade", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.gradeAssignment), asyncHandler(async (req, res) => {
+  const submission = await assignmentsRepository.findSubmissionForGrading(pool, req.body.submissionId);
   if (!submission) return res.status(404).json({ error: "Submission not found." });
   if (req.user!.role === "teacher" && submission.teacher_id !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
-  if (Number.isNaN(score) || score < 0 || score > submission.max_score) return res.status(400).json({ error: "Invalid score." });
-  await pool.query("UPDATE submissions SET score = $1, feedback = $2, graded_at = $3 WHERE id = $4", [score, feedback, new Date().toISOString(), submissionId]);
-  res.json({ id: submissionId, score, feedback });
-});
+  if (req.body.score > Number(submission.max_score)) return res.status(400).json({ error: "Invalid score." });
+  const result = await assignmentsRepository.grade(pool, req.body.submissionId, req.body.score, req.body.feedback);
+  await audit(req, "grade_assignment", req.body.submissionId, `Score ${req.body.score}.`);
+  res.json(result);
+}));
 
-app.get("/api/academics/warnings", requireAuth, async (req: AuthRequest, res) => {
-  const result = ["admin", "super_admin", "academic", "advisor"].includes(req.user!.role) ? await pool.query("SELECT * FROM academic_warnings ORDER BY created_at DESC") : await pool.query("SELECT * FROM academic_warnings WHERE student_id = $1 ORDER BY created_at DESC", [req.user!.id]);
-  res.json(result.rows.map(row => ({ id: row.id, studentId: row.student_id, type: row.type, message: row.message, isResolved: Boolean(row.is_resolved), createdAt: row.created_at })));
-});
+app.post("/api/admin/users", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
+  const credential = hashPassword(req.body.password);
+  const user: User = {
+    id: generateId("user"),
+    email: req.body.email,
+    passwordHash: credential.hash,
+    passwordSalt: credential.salt,
+    name: req.body.name,
+    role: req.body.role,
+    isActive: true,
+    phone: req.body.phone,
+    linkedStudentId: req.body.linkedStudentId,
+    createdAt: new Date().toISOString()
+  };
+  const created = await usersRepository.create(pool, user);
+  await audit(req, "create_user", created.id, created.email);
+  res.status(201).json(created);
+}));
+app.patch("/api/admin/users/:id/status", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.setUserActive), asyncHandler(async (req, res) => {
+  const user = await usersRepository.setActive(pool, req.params.id, req.body.isActive);
+  if (!user) return res.status(404).json({ error: "User not found." });
+  await audit(req, "toggle_user_status", user.id, `isActive=${user.isActive}`);
+  res.json(user);
+}));
 
-app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "admin", "super_admin"]), async (req, res) => {
-  const feeId = String(req.body.feeId || "");
-  const paidAmount = Number(req.body.paidAmount || 0);
-  const fee = (await pool.query("SELECT * FROM tuition_fees WHERE id = $1", [feeId])).rows[0];
-  if (!fee) return res.status(404).json({ error: "Tuition fee not found." });
-  const totalPaid = Math.min(Number(fee.amount), Number(fee.paid_amount || 0) + paidAmount);
-  const status: TuitionFee["status"] = totalPaid >= Number(fee.amount) ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
-  const paidAt = status === "paid" ? new Date().toISOString() : fee.paid_at;
-  const receiptCode = fee.receipt_code || `RC${Date.now()}`;
-  await pool.query("UPDATE tuition_fees SET paid_amount = $1, status = $2, paid_at = $3, receipt_code = $4 WHERE id = $5", [totalPaid, status, paidAt, receiptCode, feeId]);
-  res.json({ id: feeId, paidAmount: totalPaid, status, paidAt, receiptCode });
-});
+app.get("/api/academics/warnings", requireAuth, asyncHandler(async (req, res) => {
+  const canViewAll = ["admin", "super_admin", "academic", "advisor"].includes(req.user!.role);
+  res.json(await academicsRepository.listWarnings(pool, canViewAll ? undefined : req.user!.id));
+}));
+app.post("/api/academics/warnings", requireAuth, requireRole(["academic", "advisor", "admin", "super_admin"]), validateBody(schemas.createWarning), asyncHandler(async (req, res) => {
+  const warning = await academicsRepository.createWarning(pool, req.body);
+  await audit(req, "create_academic_warning", warning.studentId, warning.message);
+  res.status(201).json(warning);
+}));
+app.post("/api/academics/warnings/:id/resolve", requireAuth, requireRole(["academic", "advisor", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const warning = await academicsRepository.resolveWarning(pool, req.params.id);
+  if (!warning) return res.status(404).json({ error: "Warning not found." });
+  await audit(req, "resolve_academic_warning", warning.id, warning.studentId);
+  res.json(warning);
+}));
+app.post("/api/advisor/notes", requireAuth, requireRole(["advisor", "admin", "super_admin"]), validateBody(schemas.addAdvisorNote), asyncHandler(async (req, res) => {
+  const note = await academicsRepository.addAdvisorNote(pool, req.user!.id, req.body.studentId, req.body.content, req.body.type);
+  await audit(req, "add_advisor_note", note.studentId, note.type);
+  res.status(201).json(note);
+}));
 
-app.post("/api/store/sync", requireAuth, async (_req, res) => {
+app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "admin", "super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
+  const result = await financeRepository.payTuition(pool, req.body.feeId, req.body.paidAmount);
+  if (!result) return res.status(404).json({ error: "Tuition fee not found." });
+  await audit(req, "record_tuition_payment", req.body.feeId, `Paid amount ${req.body.paidAmount}.`);
+  res.json(result);
+}));
+
+app.post("/api/store/sync", requireAuth, asyncHandler(async (req, res) => {
+  await audit(req, "store_sync_ignored", "store", "Client attempted sync; Postgres remains authoritative.");
   res.json({ ok: true, mode: "postgres-authoritative" });
-});
+}));
 
 async function setupServer() {
   await initializeDatabase();

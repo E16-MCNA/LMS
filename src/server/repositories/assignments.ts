@@ -1,0 +1,32 @@
+import { Assignment, Submission } from "../../types";
+import { Queryable } from "../db";
+import { generateId } from "../ids";
+
+export const assignmentsRepository = {
+  async create(db: Queryable, input: Omit<Assignment, "id">) {
+    const assignment = { ...input, id: generateId("assign") };
+    await db.query(
+      "INSERT INTO assignments (id, course_id, title, description, deadline, max_score) VALUES ($1,$2,$3,$4,$5,$6)",
+      [assignment.id, assignment.courseId, assignment.title, assignment.description, assignment.deadline, assignment.maxScore]
+    );
+    return assignment;
+  },
+
+  async submit(db: Queryable, studentId: string, assignmentId: string, content: string) {
+    const submission: Submission = { id: generateId("sub"), assignmentId, studentId, content, submittedAt: new Date().toISOString() };
+    await db.query(
+      "INSERT INTO submissions (id, assignment_id, student_id, content, submitted_at) VALUES ($1,$2,$3,$4,$5)",
+      [submission.id, assignmentId, studentId, content, submission.submittedAt]
+    );
+    return submission;
+  },
+
+  async findSubmissionForGrading(db: Queryable, submissionId: string) {
+    return (await db.query("SELECT s.*, a.max_score, c.teacher_id FROM submissions s JOIN assignments a ON a.id = s.assignment_id JOIN courses c ON c.id = a.course_id WHERE s.id = $1", [submissionId])).rows[0] || null;
+  },
+
+  async grade(db: Queryable, submissionId: string, score: number, feedback: string) {
+    await db.query("UPDATE submissions SET score = $1, feedback = $2, graded_at = $3 WHERE id = $4", [score, feedback, new Date().toISOString(), submissionId]);
+    return { id: submissionId, score, feedback };
+  }
+};
