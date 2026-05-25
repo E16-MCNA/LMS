@@ -33,7 +33,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
   const [activeTab, setActiveTab] = useState<"overview" | "grades" | "attendance" | "warnings" | "financial" | "notifications">("overview");
 
   // Parents are linked to exactly one student via linkedStudentId
-  const childId = currentUser.linkedStudentId || "user_student";
+  const childId = currentUser.role === "student" ? currentUser.id : (currentUser.linkedStudentId || "user_student");
   const childUser = store.users.find(u => u.id === childId);
   const childProfile = store.studentProfiles.find(p => p.userId === childId);
   const childProgram = store.programs.find(p => p.id === childProfile?.programId);
@@ -183,15 +183,15 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
                 <div className="space-y-3">
                   <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Họ và Tên Học Viên:</span><span className="font-bold text-white">{childUser.name}</span></div>
                   <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Mã Số Định Danh SV:</span><span className="font-mono text-white">{childProfile.studentCode}</span></div>
-                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Ngành Học Đăng Ký:</span><span className="text-white font-semibold">{childProgram?.name || "N/A"}</span></div>
+                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Ngành Học Đăng Ký:</span><span className="text-white font-semibold">{childProgram?.name || "Chưa cập nhật"}</span></div>
                   <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Xếp Loại Học Lực:</span><span className="font-bold text-indigo-400">{childProfile.gpa >= 3.2 ? "Giỏi/Xuất Sắc" : childProfile.gpa >= 2.5 ? "Khá" : "Trung Bình"}</span></div>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Ngày Sinh Trực Tuyến:</span><span className="text-white">{childProfile.dateOfBirth || "N/A"}</span></div>
-                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Giới Tính Sinh Viên:</span><span className="text-white">{childProfile.gender || "N/A"}</span></div>
-                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Số Điện Thoại Trắc Lượng:</span><span className="font-mono text-white">{childProfile.phone || "N/A"}</span></div>
-                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Dự Kiến Tốt Nghiệp:</span><span className="text-white">{childProfile.expectedGraduation || "N/A"}</span></div>
+                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Ngày Sinh Trực Tuyến:</span><span className="text-white">{childProfile.dateOfBirth || "Chưa cập nhật"}</span></div>
+                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Giới Tính Sinh Viên:</span><span className="text-white">{childProfile.gender || "Chưa cập nhật"}</span></div>
+                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Số Điện Thoại Trắc Lượng:</span><span className="font-mono text-white">{childProfile.phone || "Chưa cập nhật"}</span></div>
+                  <div className="flex justify-between border-b border-white/5 py-1.5"><span className="text-white/40">Dự Kiến Tốt Nghiệp:</span><span className="text-white">{childProfile.expectedGraduation || "Chưa cập nhật"}</span></div>
                 </div>
               </div>
 
@@ -253,8 +253,8 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
 
                         return (
                           <tr key={enroll.id}>
-                            <td className="py-3 font-bold text-white">{course?.title || "N/A"}</td>
-                            <td className="py-3 text-white/45">{teacher?.name || "N/A"}</td>
+                            <td className="py-3 font-bold text-white">{course?.title || "Không xác định"}</td>
+                            <td className="py-3 text-white/45">{teacher?.name || "Không xác định"}</td>
                             <td className="py-3 font-mono">Học kỳ {course?.category || "Lớp SIS"}</td>
                             <td className="py-3 text-right font-mono text-emerald-400 font-bold">
                               {maxQuizScore ? `${maxQuizScore}% (Trắc nghiệm)` : "78% (Đánh giá chung)"}

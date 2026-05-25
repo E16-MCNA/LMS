@@ -101,7 +101,7 @@ export default function StudentAcademics(props: ComponentProps) {
                     </div>
                     <div>
                       <h5 className="font-bold text-white text-sm">{currentUser.name}</h5>
-                      <span className="text-[10.5px] text-indigo-300 font-mono font-bold block">{myProfile.studentCode} • expected graduation: {myProfile.expectedGraduation}</span>
+                      <span className="text-[10.5px] text-indigo-300 font-mono font-bold block">{myProfile.studentCode} • dự kiến tốt nghiệp: {myProfile.expectedGraduation}</span>
                     </div>
                   </div>
 
@@ -140,11 +140,11 @@ export default function StudentAcademics(props: ComponentProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
                       <div>
                         <span className="text-white/40 block">Người bảo hộ</span>
-                        <span className="font-bold text-white mt-0.5">{myProfile.guardianName || "N/A"}</span>
+                        <span className="font-bold text-white mt-0.5">{myProfile.guardianName || "Chưa cập nhật"}</span>
                       </div>
                       <div>
                         <span className="text-white/40 block">Số điện thoại liên hệ</span>
-                        <span className="font-bold text-white mt-0.5">{myProfile.guardianPhone || "N/A"}</span>
+                        <span className="font-bold text-white mt-0.5">{myProfile.guardianPhone || "Chưa cập nhật"}</span>
                       </div>
                     </div>
                   </div>
@@ -190,7 +190,7 @@ export default function StudentAcademics(props: ComponentProps) {
                     <label className="text-white/70 block font-bold">Số điện thoại cá nhân</label>
                     <input
                       type="text"
-                      placeholder="e.g. 0912xxxxx"
+                      placeholder="Ví dụ: 0912xxxxx"
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
                       className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl"
@@ -328,9 +328,9 @@ export default function StudentAcademics(props: ComponentProps) {
                     const course = store.courses.find(c => c.id === enroll.courseId);
                     return (
                       <tr key={enroll.id}>
-                        <td className="py-2.5 font-bold text-white">{course ? course.title : "N/A"}</td>
+                        <td className="py-2.5 font-bold text-white">{course ? course.title : "Không xác định"}</td>
                         <td className="py-2.5 text-center font-mono font-bold text-indigo-300">3 Tín</td>
-                        <td className="py-2.5 text-white/50">{course ? course.category : "N/A"}</td>
+                        <td className="py-2.5 text-white/50">{course ? course.category : "Không xác định"}</td>
                         <td className="py-2.5 text-right font-bold text-emerald-400">
                           {enroll.status === "completed" ? "Đã xong" : "Đang học"}
                         </td>
@@ -592,7 +592,7 @@ export default function StudentAcademics(props: ComponentProps) {
               </div>
 
               <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-mono text-white/50">
-                <span>Tổng Credits Tích Lũy: <strong className="text-white">{myProfile.totalCreditsEarned} Tín</strong></span>
+                <span>Tổng số tín chỉ tích lũy: <strong className="text-white">{myProfile.totalCreditsEarned} Tín</strong></span>
                 <span>GPA Trung bình Tích Lũy cuối đợt: <strong className="text-amber-400 text-sm">{myProfile.gpa?.toFixed(2) || "0.00"}</strong></span>
               </div>
             </div>
@@ -616,7 +616,7 @@ export default function StudentAcademics(props: ComponentProps) {
             {/* Standard letterhead of academic institute */}
             <div className="text-center space-y-2 border-b-2 border-slate-900 pb-4">
               <h3 className="text-sm font-serif font-black uppercase tracking-widest text-indigo-900">BỘ GIÁO DỤC VÀ ĐÀO TẠO • HỆ THỐNG PHÁT TRIỂN E16</h3>
-              <h2 className="text-lg font-serif font-black uppercase tracking-tight text-slate-900">HỌC BẠ CHÍNH THỨC - OFFICIAL TRANSCRIPT OF ACADEMIC RECORD</h2>
+              <h2 className="text-lg font-serif font-black uppercase tracking-tight text-slate-900">HỌC BẠ CHÍNH THỨC - BẢNG ĐIỂM HỌC TẬP</h2>
               <div className="text-[10px] text-slate-500 tracking-wider">Xác thực hệ thống điện tử khóa MB099162438104</div>
             </div>
 
@@ -673,13 +673,13 @@ export default function StudentAcademics(props: ComponentProps) {
               <div className="text-center space-y-1 select-none">
                 <span className="block font-bold">MỘC XÁC THỰC ĐIỆN TỬ</span>
                 <div className="w-16 h-16 rounded-full border-4 border-double border-red-500/80 flex items-center justify-center text-red-500 font-serif font-black text-[9px] rotate-12 mx-auto uppercase">
-                   E16 SEALED
+                   ĐÃ ĐÓNG DẤU E16
                 </div>
               </div>
               <div className="text-center space-y-1.5">
                 <span className="block italic text-slate-500">Hà Nội, ngày cấp chứng tích</span>
                 <span className="block font-bold">HỘI ĐỒNG TUYỂN SINH PHÒNG HỌC VỤ</span>
-                <span className="block pt-8 font-sans font-black text-slate-400">E15 VIETNAM SIGNED</span>
+                <span className="block pt-8 font-sans font-black text-slate-400">E15 VIỆT NAM ĐÃ KÝ</span>
               </div>
             </div>
 

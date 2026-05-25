@@ -274,7 +274,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold block truncate">{u?.name || "N/A"}</span>
+                      <span className="text-xs font-bold block truncate">{u?.name || "Không xác định"}</span>
                       {hasAlert && (
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
                       )}
@@ -325,15 +325,15 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Phone className="h-3 w-3 text-indigo-400" />
-                        <span>{selectedProfile.phone || "N/A"}</span>
+                        <span>{selectedProfile.phone || "Chưa cập nhật"}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3 w-3 text-indigo-400" />
-                        <span>Sinh: {selectedProfile.dateOfBirth || "N/A"}</span>
+                        <span>Sinh: {selectedProfile.dateOfBirth || "Chưa cập nhật"}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <BookOpen className="h-3 w-3 text-indigo-400" />
-                        <span className="truncate">Ngành: {selectedProgram?.name || "N/A"}</span>
+                        <span className="truncate">Ngành: {selectedProgram?.name || "Không xác định"}</span>
                       </div>
                     </div>
                   </div>
@@ -428,7 +428,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                         return (
                           <div key={pc.id} className={`p-3 rounded-xl border flex justify-between items-center ${statusColor}`}>
                             <div className="min-w-0 pr-2">
-                              <span className="font-bold block truncate">{matchedCourse?.title || "N/A"}</span>
+                              <span className="font-bold block truncate">{matchedCourse?.title || "Không xác định"}</span>
                               <span className="text-[10px] text-white/40 mt-0.5 block">{pc.credits} tín chỉ | Kỳ {pc.semester} | {pc.isRequired ? "Bắt buộc" : "Tự chọn"}</span>
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-wider shrink-0">{statusText}</span>
@@ -474,7 +474,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                           className="rounded border-white/10 bg-black/25 text-indigo-600 focus:ring-0"
                         />
                         <label htmlFor="shareInput" className="text-white/70 font-semibold text-xs select-none cursor-pointer flex items-center gap-1">
-                          <Share2 className="h-3 w-3 text-indigo-400" /> Share dữ liệu với Phụ Huynh
+                          <Share2 className="h-3 w-3 text-indigo-400" /> Chia sẻ dữ liệu với Phụ Huynh
                         </label>
                       </div>
                     </div>
@@ -501,7 +501,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                   {/* Next Semester suggestions planer form */}
                   <form onSubmit={handleSaveSuggestedPlan} className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-4">
                     <span className="text-xs font-bold text-white uppercase tracking-wider block border-b border-white/5 pb-2">
-                      Đề xuất đăng ký môn học kì tới (Semester Plan)
+                      Đề xuất đăng ký môn học kì tới (Kế hoạch học tập)
                     </span>
                     <p className="text-[10px] text-white/50">Các nhận xét, lộ trình đề cử sẽ xuất hiện trực tiếp tại giao diện đăng ký học phần kì tới của sinh viên.</p>
 

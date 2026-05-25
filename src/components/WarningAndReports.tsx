@@ -50,7 +50,7 @@ export default function WarningAndReports({
     const linkedUser = users.find(u => u.id === w.studentId);
     return {
       ...w,
-      studentName: linkedUser ? linkedUser.name : "N/A",
+      studentName: linkedUser ? linkedUser.name : "Không xác định",
       studentCode: studentProf ? studentProf.studentCode : "SV-UNLINKED"
     };
   }).filter(w => {

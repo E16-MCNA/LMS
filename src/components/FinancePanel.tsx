@@ -26,8 +26,7 @@ interface FinancePanelProps {
 
 export default function FinancePanel({ currentUser, onLogout, onRefreshData }: FinancePanelProps) {
   const { store, isLoading, isError } = useApiStore();
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading finance dashboard...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load finance data.</div>;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [startDate, setStartDate] = useState("");
@@ -35,6 +34,10 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
   const [rejectionNotes, setRejectionNotes] = useState("");
   const [rejectingTxId, setRejectingTxId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện tài chính...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu tài chính.</div>;
+
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -146,10 +149,10 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
     let csvContent = "Mã giao dịch,Học viên,Email học viên,Số tiền (VND),Khóa học,Trạng thái,Phương thức,Ngày đăng ký,Ngày duyệt,Người duyệt,Ghi chú thực tế\n";
     filteredTransactions.forEach(t => {
       const student = store.users.find(u => u.id === t.studentId);
-      const studentName = student?.name || "N/A";
-      const studentEmail = student?.email || "N/A";
-      const courseTitle = store.courses.find(c => c.id === t.courseId)?.title || "N/A";
-      const approverName = store.users.find(u => u.id === t.processedBy)?.name || "N/A";
+      const studentName = student?.name || "Không xác định";
+      const studentEmail = student?.email || "Không xác định";
+      const courseTitle = store.courses.find(c => c.id === t.courseId)?.title || "Không xác định";
+      const approverName = store.users.find(u => u.id === t.processedBy)?.name || "Không xác định";
       
       let statusViet = "Chờ đối soát";
       if (t.status === "approved") statusViet = "Đã phê duyệt";
@@ -336,11 +339,11 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
                   <tr key={tx.id} className="hover:bg-white/5 transition duration-150">
                     <td className="p-4 font-mono font-bold text-white/75">{tx.id}</td>
                     <td className="p-4">
-                      <div className="font-bold text-white">{studentUser?.name || "N/A"}</div>
+                      <div className="font-bold text-white">{studentUser?.name || "Không xác định"}</div>
                       <div className="text-[10px] text-white/40 font-mono">{studentUser?.email}</div>
                     </td>
                     <td className="p-4">
-                      <div className="font-semibold text-white/80 max-w-xs truncate">{courseObj?.title || "N/A"}</div>
+                      <div className="font-semibold text-white/80 max-w-xs truncate">{courseObj?.title || "Không xác định"}</div>
                       <div className="text-[10px] text-white/40 font-mono uppercase">{courseObj?.category}</div>
                     </td>
                     <td className="p-4 font-semibold text-emerald-400 font-mono text-sm">

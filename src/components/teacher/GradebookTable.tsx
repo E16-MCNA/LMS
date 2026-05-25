@@ -136,8 +136,8 @@ export default function GradebookTable(props: ComponentProps) {
 
                     return (
                       <tr key={i} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-medium text-white">{studentUser?.name || "N/A"}</td>
-                        <td className="p-4 font-mono text-white/50">{studentUser?.email || "N/A"}</td>
+                        <td className="p-4 font-medium text-white">{studentUser?.name || "Không xác định"}</td>
+                        <td className="p-4 font-mono text-white/50">{studentUser?.email || "Không xác định"}</td>
                         <td className="p-4 text-xs font-mono">
                           Đã hoàn thành {completedLessons}/{totalLessons} bài học
                         </td>

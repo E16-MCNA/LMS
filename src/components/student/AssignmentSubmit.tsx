@@ -81,7 +81,7 @@ export default function AssignmentSubmit(props: ComponentProps) {
             <div className="space-y-4">
               {store.assignments.filter(a => myEnrolledCourseIds.includes(a.courseId)).map(a => {
                 const sub = store.submissions.find(s => s.assignmentId === a.id && s.studentId === currentUser.id);
-                const courseTitle = store.courses.find(c => c.id === a.courseId)?.title || "N/A";
+                const courseTitle = store.courses.find(c => c.id === a.courseId)?.title || "Không xác định";
                 const isDeadlineExpired = new Date(a.deadline).getTime() < Date.now();
 
                 return (

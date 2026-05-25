@@ -153,8 +153,8 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
         st.studentCode,
         st.name,
         st.email,
-        dept ? dept.name : "N/A",
-        prog ? prog.name : "N/A",
+        dept ? dept.name : "Không xác định",
+        prog ? prog.name : "Không xác định",
         st.academicYear,
         st.gpa,
         st.status
@@ -303,11 +303,11 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
               className="px-2 py-1.5 text-[11px] bg-black/25 text-white/80 border border-white/10 rounded-xl focus:outline-none"
             >
               <option value="all" className="bg-slate-900">Mọi Trạng Thái</option>
-              <option value="active" className="bg-slate-900">Đang học (Active)</option>
-              <option value="on-leave" className="bg-slate-900">Bảo lưu (On-leave)</option>
-              <option value="suspended" className="bg-slate-900">Đình chỉ (Suspended)</option>
-              <option value="graduated" className="bg-slate-900">Tốt nghiệp (Graduated)</option>
-              <option value="withdrawn" className="bg-slate-900">Thôi học (Withdrawn)</option>
+              <option value="active" className="bg-slate-900">Đang học</option>
+              <option value="on-leave" className="bg-slate-900">Bảo lưu</option>
+              <option value="suspended" className="bg-slate-900">Đình chỉ</option>
+              <option value="graduated" className="bg-slate-900">Tốt nghiệp</option>
+              <option value="withdrawn" className="bg-slate-900">Thôi học</option>
             </select>
           </div>
         </div>
@@ -372,8 +372,8 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
                       <div className="font-bold text-white text-xs">{st.name}</div>
                       <div className="text-[10px] text-white/40 font-mono">{st.email}</div>
                     </td>
-                    <td className="py-3 px-3 font-medium text-white/80">{dept ? dept.code : "N/A"}</td>
-                    <td className="py-3 px-3 text-[11px] text-white/70">{prog ? prog.name : "N/A"}</td>
+                    <td className="py-3 px-3 font-medium text-white/80">{dept ? dept.code : "Không xác định"}</td>
+                    <td className="py-3 px-3 text-[11px] text-white/70">{prog ? prog.name : "Không xác định"}</td>
                     <td className="py-3 px-3 text-center font-bold text-indigo-300">Năm {st.academicYear}</td>
                     <td className="py-3 px-3 text-center font-bold font-mono text-amber-400">{st.gpa}</td>
                     <td className="py-3 px-3">
@@ -419,11 +419,11 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
               className="px-2.5 py-1.5 text-xs bg-slate-900 text-white border border-white/15 rounded-xl focus:outline-none"
             >
               <option value="">-- Đổi trạng thái hàng loạt --</option>
-              <option value="active">Đang học (Active)</option>
-              <option value="on-leave">Bảo lưu (On-leave)</option>
-              <option value="suspended">Đình chỉ (Suspended)</option>
-              <option value="graduated">Tốt nghiệp (Graduated)</option>
-              <option value="withdrawn">Thôi học (Withdrawn)</option>
+              <option value="active">Đang học</option>
+              <option value="on-leave">Bảo lưu</option>
+              <option value="suspended">Đình chỉ</option>
+              <option value="graduated">Tốt nghiệp</option>
+              <option value="withdrawn">Thôi học</option>
             </select>
             <button
               type="submit"
@@ -452,7 +452,7 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
                       {currentDetailedProfile.studentCode}
                     </span>
                   </h3>
-                  <p className="text-xs text-white/50">{currentDetailedProfile.email} • expected graduation: {currentDetailedProfile.expectedGraduation}</p>
+                  <p className="text-xs text-white/50">{currentDetailedProfile.email} • dự kiến tốt nghiệp: {currentDetailedProfile.expectedGraduation}</p>
                 </div>
               </div>
 
@@ -502,11 +502,11 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
                     <div className="border-t border-white/5 pt-3 mt-3 grid grid-cols-2 gap-4 text-xs">
                       <div>
                         <div className="text-white/40">Người bảo hộ (Phụ huynh)</div>
-                        <div className="font-bold text-white mt-0.5">{currentDetailedProfile.guardianName || "N/A"}</div>
+                        <div className="font-bold text-white mt-0.5">{currentDetailedProfile.guardianName || "Chưa cập nhật"}</div>
                       </div>
                       <div>
                         <div className="text-white/40">Số liên hệ bảo hộ</div>
-                        <div className="font-bold text-white mt-0.5">{currentDetailedProfile.guardianPhone || "N/A"}</div>
+                        <div className="font-bold text-white mt-0.5">{currentDetailedProfile.guardianPhone || "Chưa cập nhật"}</div>
                       </div>
                     </div>
                   </div>
@@ -531,9 +531,9 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
                             const course = courses.find(c => c.id === enroll.courseId);
                             return (
                               <tr key={enroll.id}>
-                                <td className="py-2.5 font-bold text-white">{course ? course.title : "N/A"}</td>
+                                <td className="py-2.5 font-bold text-white">{course ? course.title : "Không xác định"}</td>
                                 <td className="py-2.5 font-mono text-white/60">{((enroll as any).createdAt || new Date().toISOString()).slice(0,10)}</td>
-                                <td className="py-2.5 text-white/50">{course ? course.category : "N/A"}</td>
+                                <td className="py-2.5 text-white/50">{course ? course.category : "Không xác định"}</td>
                                 <td className="py-2.5 text-right capitalize">
                                   <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold ${
                                     enroll.status === "active" ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "bg-emerald-500/10 text-emerald-400"
@@ -557,7 +557,7 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
                   {/* Attendance detail status box */}
                   <div className="bg-white/3 border border-white/5 rounded-2xl p-5 space-y-3">
                     <h4 className="text-xs font-bold text-white/80 uppercase tracking-wider flex items-center gap-1.5">
-                      <Activity className="h-4 w-4 text-indigo-400" /> Báo cáo tỷ lệ chuyên cần (Attendance Summary)
+                      <Activity className="h-4 w-4 text-indigo-400" /> Báo cáo tỷ lệ chuyên cần
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {detailedAttendance.map((att, i) => (
@@ -641,7 +641,7 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
                 {/* Right col: Advisor notes timeline logs */}
                 <div className="lg:col-span-4 bg-white/2 border border-white/5 rounded-2xl p-4 flex flex-col space-y-4 max-h-[100%]">
                   <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-white/5">
-                    <MessageSquare className="h-4 w-4" /> Sổ tư vấn Cố vấn học tập (Advisor Notes)
+                    <MessageSquare className="h-4 w-4" /> Sổ tư vấn Cố vấn học tập
                   </h4>
 
                   {/* Note input forms */}

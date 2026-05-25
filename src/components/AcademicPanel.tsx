@@ -25,8 +25,6 @@ interface AcademicPanelProps {
 
 export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: AcademicPanelProps) {
   const { store, isLoading, isError } = useApiStore();
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading academic dashboard...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load academic data.</div>;
 
   // Active sub tab navigation
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts">("overview");
@@ -37,6 +35,10 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
   const [searchStudentQuery, setSearchStudentQuery] = useState("");
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện học vụ...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu học vụ.</div>;
+
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -530,7 +532,7 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
                       </td>
                       <td className="p-4 text-white/80 font-semibold">{item.course?.title}</td>
                       <td className="p-4 font-mono text-white/40">
-                        {item.enrollment.enrolledAt ? new Date(item.enrollment.enrolledAt).toLocaleDateString("vi-VN") : "N/A"}
+                        {item.enrollment.enrolledAt ? new Date(item.enrollment.enrolledAt).toLocaleDateString("vi-VN") : "Không xác định"}
                       </td>
                       <td className="p-4 font-mono text-white/70">
                         {item.completedCount}/{item.totalCount} bài học

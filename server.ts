@@ -108,6 +108,7 @@ function extractCookie(req: express.Request, name: string): string | null {
 }
 
 function rateLimitLogin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (process.env.NODE_ENV !== "production") return next();
   const key = req.ip || req.socket.remoteAddress || "unknown";
   const now = Date.now();
   const windowMs = 15 * 60 * 1000;

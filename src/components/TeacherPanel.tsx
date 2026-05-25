@@ -41,8 +41,6 @@ interface TeacherPanelProps {
 
 export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: TeacherPanelProps) {
   const { store, isLoading, isError } = useApiStore();
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading teacher dashboard...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load teacher data.</div>;
 
   // Local active sub-module state
   const [activeSubTab, setActiveSubTab] = useState<"courses" | "quizzes" | "assignments" | "gradebook" | "analytics">("courses");
@@ -100,6 +98,9 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
 
   // General feedback messaging
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện giảng viên...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu giảng viên.</div>;
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -380,11 +381,11 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
       const course = storeData.courses.find(c => c.id === assignment?.courseId);
       
       const parts = [
-        `"${student?.name || "N/A"}"`,
-        `"${student?.email || "N/A"}"`,
-        `"${course?.title || "N/A"}"`,
-        `"${assignment?.title || "N/A"}"`,
-        `"${sub.score ?? "Ungraded"}"`,
+        `"${student?.name || "Không xác định"}"`,
+        `"${student?.email || "Không xác định"}"`,
+        `"${course?.title || "Không xác định"}"`,
+        `"${assignment?.title || "Không xác định"}"`,
+        `"${sub.score ?? "Chưa chấm"}"`,
         `"${assignment?.maxScore || 100}"`
       ];
       csvContent += parts.join(",") + "\n";

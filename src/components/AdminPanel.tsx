@@ -48,8 +48,6 @@ interface AdminPanelProps {
 
 export default function AdminPanel({ currentUser, onLogout, onRefreshData }: AdminPanelProps) {
   const { store, isLoading, isError } = useApiStore();
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading admin dashboard...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load admin data.</div>;
 
   // Navigation tab states
   // Groupings: ACADEMIC, STUDENTS, LEARNING, REPORTS
@@ -94,6 +92,10 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
   const itemsPerPage = 8;
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện quản trị viên...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu quản trị viên.</div>;
+
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -800,7 +802,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
                 <input
                   type="email"
                   required
-                  placeholder="e.g. gavin@hooli.com"
+                  placeholder="Ví dụ: gavin@hooli.com"
                   value={newUserEmail}
                   onChange={(e) => setNewUserEmail(e.target.value)}
                   className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"

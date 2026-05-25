@@ -124,7 +124,7 @@ export default function AssignmentGrader(props: ComponentProps) {
                     return (
                       <tr key={sub.id} className="hover:bg-white/5 transition-colors">
                         <td className="p-4 font-medium text-white">{student?.name || "Học viên ẩn danh"}</td>
-                        <td className="p-4 font-bold text-indigo-200">{challenge?.title || "N/A"}</td>
+                        <td className="p-4 font-bold text-indigo-200">{challenge?.title || "Không xác định"}</td>
                         <td className="p-4 text-white/50">{new Date(sub.submittedAt).toLocaleDateString()}</td>
                         <td className="p-4">
                           {sub.score !== undefined ? (
@@ -178,16 +178,16 @@ export default function AssignmentGrader(props: ComponentProps) {
             </button>
 
             <h3 className="text-lg font-display font-medium text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3">
-              <FileText className="h-5 w-5 text-indigo-400" /> Create Course Assignment
+              <FileText className="h-5 w-5 text-indigo-400" /> Tạo Thử thách Bài tự luận Khóa học
             </h3>
 
             <form onSubmit={handleAddAssignmentSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-white/70">Challenge Title</label>
+                <label className="text-xs font-bold text-white/70">Tiêu đề Thử thách bài tập</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Building Express Routing Controller"
+                  placeholder="Ví dụ: Thiết lập Express Routing Controller"
                   value={assignTitle}
                   onChange={(e) => setAssignTitle(e.target.value)}
                   className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400"
@@ -196,7 +196,7 @@ export default function AssignmentGrader(props: ComponentProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/70">Completion Deadline</label>
+                  <label className="text-xs font-bold text-white/70">Hạn chót Hoàn thành</label>
                   <input
                     type="date"
                     required
@@ -207,7 +207,7 @@ export default function AssignmentGrader(props: ComponentProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/70">Max Scaled Score</label>
+                  <label className="text-xs font-bold text-white/70">Điểm tối đa</label>
                   <input
                     type="number"
                     required
@@ -221,10 +221,10 @@ export default function AssignmentGrader(props: ComponentProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-white/70">Description / Requirements</label>
+                <label className="text-xs font-bold text-white/70">Mô tả / Yêu cầu chi tiết</label>
                 <textarea
                   required
-                  placeholder="Paste details of expected deliverables files formatting..."
+                  placeholder="Dán các định dạng file hoặc yêu cầu nộp sản phẩm..."
                   value={assignDesc}
                   onChange={(e) => setAssignDesc(e.target.value)}
                   className="w-full px-3 py-2 bg-black/20 text-white h-24 max-h-32 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 text-xs"
@@ -237,13 +237,13 @@ export default function AssignmentGrader(props: ComponentProps) {
                   onClick={() => setShowAssignModal(false)}
                   className="px-4 py-2 bg-transparent text-white/60 hover:text-white transition cursor-pointer"
                 >
-                  Cancel
+                  Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer"
                 >
-                  Activate Challenge
+                  Kích hoạt Thử thách
                 </button>
               </div>
             </form>

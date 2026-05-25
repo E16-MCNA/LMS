@@ -415,7 +415,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                     return (
                       <tr key={s.id} className="hover:bg-white/5 transition">
                         <td className="py-3 px-3 font-semibold text-white">{s.name}</td>
-                        <td className="py-3 px-3 text-white/60">{linkedY ? linkedY.name : "N/A"}</td>
+                        <td className="py-3 px-3 text-white/60">{linkedY ? linkedY.name : "Không xác định"}</td>
                         <td className="py-3 px-3 uppercase text-cyan-400 font-mono text-[10px]">{s.type}</td>
                         <td className="py-3 px-3 text-white/70">
                           {s.startDate} đến {s.endDate}

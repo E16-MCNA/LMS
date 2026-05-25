@@ -39,6 +39,7 @@ import MyLearningWorkspace from "./student/MyLearningWorkspace";
 import QuizConsole from "./student/QuizConsole";
 import AssignmentSubmit from "./student/AssignmentSubmit";
 import StudentAcademics from "./student/StudentAcademics";
+import ParentPanel from "./ParentPanel";
 import { generateId, escapeHTML } from "../utils";
 import { useApiStore } from "../hooks/apiHooks";
 
@@ -50,8 +51,7 @@ interface StudentPanelProps {
 
 export default function StudentPanel({ currentUser, onLogout, onRefreshData }: StudentPanelProps) {
   const { store, isLoading, isError } = useApiStore();
-  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading student workspace...</div>;
-  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load student data.</div>;
+
 
   // Safeguard StudentProfile backfill so it never crashes
   const studentProfiles = store.studentProfiles || [];
@@ -103,6 +103,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
     | "student_attendance"
     | "student_tuition"
     | "student_transcript"
+    | "parent_view"
   >("profile");
 
   // Payment popup state
@@ -157,6 +158,9 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
       return () => clearInterval(interval);
     }
   }, [activeQuizId, quizTimeRemaining, quizFinishedState]);
+
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Đang tải giao diện học viên...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Không thể tải dữ liệu học viên.</div>;
 
   // Compute active variables
   const publishedCourses = store.courses.filter(c => c.status === "published");
@@ -429,6 +433,16 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
     onRefreshData();
   };
 
+  const handleMarkAllNotificationsRead = () => {
+    const storeData = AppStore.get();
+    storeData.notifications = storeData.notifications.map(n => {
+      if (n.userId === currentUser.id) return { ...n, isRead: true };
+      return n;
+    });
+    AppStore.save(storeData);
+    onRefreshData();
+  };
+
   const myNotifications = store.notifications.filter(n => n.userId === currentUser.id);
 
   // active course workspace helper values
@@ -522,11 +536,14 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
 
         {/* Dynamic Unread Indicators */}
         <button
-          onClick={() => setActiveSubTab("notifications")}
+          onClick={() => {
+            setActiveSubTab("notifications");
+            handleMarkAllNotificationsRead();
+          }}
           className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl relative flex items-center gap-1.5 transition text-white text-xs cursor-pointer self-start"
         >
           <Bell className="h-4 w-4" />
-          <span>Alerts notification</span>
+          <span>Xem thông báo</span>
           {myNotifications.some(n => !n.isRead) && (
             <span className="w-2.5 h-2.5 bg-red-500 rounded-full absolute -top-1 -right-1 border border-slate-900 animate-pulse" />
           )}
@@ -627,6 +644,14 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
           >
             Học bạ chính thức
           </button>
+          <button
+            onClick={() => setActiveSubTab("parent_view")}
+            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "parent_view" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Cổng Phụ Huynh
+          </button>
         </div>
       </div>
 
@@ -725,6 +750,14 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
         {/* Tab SIS 1: My Profile Section */}
         <StudentAcademics {...studentPanelProps} />
         <QuizConsole {...studentPanelProps} />
+
+        {activeSubTab === "parent_view" && (
+          <ParentPanel 
+            currentUser={currentUser} 
+            onLogout={onLogout} 
+            onRefreshData={onRefreshData} 
+          />
+        )}
 
         </div>
 

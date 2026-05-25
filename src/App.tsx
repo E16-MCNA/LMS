@@ -35,9 +35,13 @@ import { api, setCsrfToken } from "./api";
 const queryClient = new QueryClient();
 
 function AppShell() {
+  console.log("APP: AppShell function executing...");
   const queryClient = useQueryClient();
   // Store instance reactivity state
+  console.log("APP: Initializing storeData state...");
   const [storeData, setStoreData] = useState<LMSDataStore>(AppStore.get());
+  console.log("APP: storeData initialized:", !!storeData);
+
   
   // Auth states
   const [currentUser, setCurrentUser] = useState<User | null>(null);
