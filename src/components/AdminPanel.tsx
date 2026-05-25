@@ -31,6 +31,7 @@ import { LMSDataStore, User, Course, Lesson, Quiz, Question, Assignment, Submiss
 import { AppStore } from "../store";
 import { generateId } from "../utils";
 import { hashPassword } from "../authHash";
+import { useApiStore } from "../hooks/apiHooks";
 
 // Import modular sub-components
 import AcademicManager from "./AcademicManager";
@@ -46,7 +47,9 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ currentUser, onLogout, onRefreshData }: AdminPanelProps) {
-  const store = AppStore.get();
+  const { store, isLoading, isError } = useApiStore();
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading admin dashboard...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load admin data.</div>;
 
   // Navigation tab states
   // Groupings: ACADEMIC, STUDENTS, LEARNING, REPORTS

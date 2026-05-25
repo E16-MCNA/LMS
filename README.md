@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# E16 LMS
 
-# Run and deploy your AI Studio app
+## Production Setup
 
-This contains everything you need to run your app locally.
+Recommended host: Render web service using `render.yaml`.
 
-View your app in AI Studio: https://ai.studio/apps/a57ff544-03e1-4ce7-b624-087173414b7c
+Required environment variables:
 
-## Run Locally
+```env
+NODE_ENV=production
+DATABASE_URL=postgresql://...
+JWT_SECRET=change-me-to-a-long-random-secret
+SUPABASE_URL=https://...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
 
-**Prerequisites:**  Node.js
+Deploy steps:
 
+```bash
+npm ci
+npm run db:migrate
+npm run db:drift
+npm run build
+npm start
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+CI runs `npm ci`, `npm run lint`, and `npm run build` on push and pull request.
+
+Post-deploy smoke test:
+
+```bash
+DEPLOY_URL=https://your-domain.example npm run smoke:deploy
+```
+
+Academic E2E flow against a running server:
+
+```bash
+E2E_BASE_URL=http://localhost:3100 npm run test:e2e
+```
+
+Enable HTTPS/SSL in the host provider, attach the custom domain, then run the smoke test against the final HTTPS URL.
+
+Rollback procedure is documented in `docs/rollback-checklist.md`.

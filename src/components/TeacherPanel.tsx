@@ -31,6 +31,7 @@ import AssignmentGrader from "./teacher/AssignmentGrader";
 import GradebookTable from "./teacher/GradebookTable";
 import TeacherAnalytics from "./teacher/TeacherAnalytics";
 import { generateId } from "../utils";
+import { useApiStore } from "../hooks/apiHooks";
 
 interface TeacherPanelProps {
   currentUser: User;
@@ -39,7 +40,9 @@ interface TeacherPanelProps {
 }
 
 export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: TeacherPanelProps) {
-  const store = AppStore.get();
+  const { store, isLoading, isError } = useApiStore();
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading teacher dashboard...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load teacher data.</div>;
 
   // Local active sub-module state
   const [activeSubTab, setActiveSubTab] = useState<"courses" | "quizzes" | "assignments" | "gradebook" | "analytics">("courses");

@@ -40,6 +40,7 @@ import QuizConsole from "./student/QuizConsole";
 import AssignmentSubmit from "./student/AssignmentSubmit";
 import StudentAcademics from "./student/StudentAcademics";
 import { generateId, escapeHTML } from "../utils";
+import { useApiStore } from "../hooks/apiHooks";
 
 interface StudentPanelProps {
   currentUser: UserType;
@@ -48,7 +49,9 @@ interface StudentPanelProps {
 }
 
 export default function StudentPanel({ currentUser, onLogout, onRefreshData }: StudentPanelProps) {
-  const store = AppStore.get();
+  const { store, isLoading, isError } = useApiStore();
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading student workspace...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load student data.</div>;
 
   // Safeguard StudentProfile backfill so it never crashes
   const studentProfiles = store.studentProfiles || [];

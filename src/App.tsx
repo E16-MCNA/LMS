@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { 
   Terminal, 
   Settings, 
@@ -31,7 +32,10 @@ import AdvisorPanel from "./components/AdvisorPanel";
 import ParentPanel from "./components/ParentPanel";
 import { api, setCsrfToken } from "./api";
 
-export default function App() {
+const queryClient = new QueryClient();
+
+function AppShell() {
+  const queryClient = useQueryClient();
   // Store instance reactivity state
   const [storeData, setStoreData] = useState<LMSDataStore>(AppStore.get());
   
@@ -97,6 +101,7 @@ export default function App() {
     const serverStore = await api.getStore();
     AppStore.hydrate(serverStore);
     setStoreData({ ...serverStore });
+    await queryClient.invalidateQueries();
     if (currentUser) {
       const freshUser = serverStore.users.find(u => u.id === currentUser.id);
       if (freshUser) setCurrentUser(freshUser);
@@ -610,5 +615,13 @@ export default function App() {
       )}
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppShell />
+    </QueryClientProvider>
   );
 }

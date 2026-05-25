@@ -809,12 +809,13 @@ export class AppStore {
   public static hydrate(store: LMSDataStore): void {
     normalizeLegacyRoles(store);
     this.storeInstance = store;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stripCredentialFields(store)));
+    localStorage.removeItem(STORAGE_KEY);
   }
 
   public static get(): LMSDataStore {
     if (!this.storeInstance) {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+      const raw = null;
       if (raw) {
         try {
           this.storeInstance = JSON.parse(raw);
@@ -904,7 +905,7 @@ export class AppStore {
 
   public static save(store: LMSDataStore): void {
     this.storeInstance = store;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stripCredentialFields(store)));
+    localStorage.removeItem(STORAGE_KEY);
     if (typeof fetch !== "undefined") {
       const csrfToken = sessionStorage.getItem("e16_lms_csrf");
       fetch("/api/store/sync", {

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { User, Course, Enrollment, Lesson, LessonProgress } from "../types";
 import { AppStore } from "../store";
+import { useApiStore } from "../hooks/apiHooks";
 
 interface AcademicPanelProps {
   currentUser: User;
@@ -23,7 +24,9 @@ interface AcademicPanelProps {
 }
 
 export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: AcademicPanelProps) {
-  const store = AppStore.get();
+  const { store, isLoading, isError } = useApiStore();
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading academic dashboard...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load academic data.</div>;
 
   // Active sub tab navigation
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts">("overview");

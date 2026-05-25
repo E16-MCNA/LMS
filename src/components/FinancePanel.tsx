@@ -16,6 +16,7 @@ import {
 import { User, Transaction, Course } from "../types";
 import { AppStore } from "../store";
 import { generateId } from "../utils";
+import { useApiStore } from "../hooks/apiHooks";
 
 interface FinancePanelProps {
   currentUser: User;
@@ -24,7 +25,9 @@ interface FinancePanelProps {
 }
 
 export default function FinancePanel({ currentUser, onLogout, onRefreshData }: FinancePanelProps) {
-  const store = AppStore.get();
+  const { store, isLoading, isError } = useApiStore();
+  if (isLoading) return <div className="min-h-screen bg-slate-950 text-white grid place-items-center">Loading finance dashboard...</div>;
+  if (isError) return <div className="min-h-screen bg-slate-950 text-red-300 grid place-items-center">Unable to load finance data.</div>;
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
   const [startDate, setStartDate] = useState("");
