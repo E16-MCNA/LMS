@@ -183,83 +183,104 @@ async function audit(req: AuthRequest, action: string, target: string, detail: s
   await auditRepository.log(pool, req.user.id, action, target, detail);
 }
 
+let isSyncing = false;
+const syncQueue: (() => void)[] = [];
+
+const safeDateStr = (d: any) => {
+  if (!d) return null;
+  const dateObj = d instanceof Date ? d : new Date(d);
+  if (isNaN(dateObj.getTime())) return null;
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+};
+
 async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    // Fetch existing users to skip identical inserts/updates
-    const dbUsersRes = await client.query("SELECT id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id FROM users");
-    const dbUsersMap = new Map<string, any>(dbUsersRes.rows.map(r => [r.id, r]));
-
-    for (const user of store.users || []) {
-      if (user.role === "parent") continue;
-      
-      const dbUser = dbUsersMap.get(user.id);
-      const emailLower = user.email.toLowerCase();
-      
-      // Determine if dirty
-      const isDirty = !dbUser || 
-        dbUser.email !== emailLower ||
-        dbUser.name !== user.name ||
-        dbUser.role !== user.role ||
-        Boolean(dbUser.is_active) !== Boolean(user.isActive) ||
-        dbUser.phone !== (user.phone || null) ||
-        dbUser.linked_student_id !== (user.linkedStudentId || null) ||
-        (user.passwordHash && dbUser.password_hash !== user.passwordHash) ||
-        (user.passwordSalt && dbUser.password_salt !== user.passwordSalt);
-
-      if (isDirty) {
-        await client.query(
-          `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
-           VALUES ($1,$2,COALESCE(NULLIF($3, ''), 'client-sync-placeholder'),$4,$5,$6,$7,$8,$9,$10)
-           ON CONFLICT (id) DO UPDATE SET
-             email = EXCLUDED.email,
-             name = EXCLUDED.name,
-             role = EXCLUDED.role,
-             is_active = EXCLUDED.is_active,
-             phone = EXCLUDED.phone,
-             linked_student_id = EXCLUDED.linked_student_id,
-             password_hash = COALESCE(NULLIF($11, ''), users.password_hash),
-             password_salt = COALESCE(EXCLUDED.password_salt, users.password_salt)`,
-          [
-            user.id,
-            emailLower,
-            user.passwordHash || "",
-            user.passwordSalt || null,
-            user.name,
-            user.role,
-            user.isActive ? 1 : 0,
-            user.phone || null,
-            user.linkedStudentId || null,
-            user.createdAt || new Date().toISOString(),
-            user.passwordHash || ""
-          ]
-        );
-      }
+  // Serialize syncs to prevent PostgreSQL deadlocks on concurrent saves
+  await new Promise<void>((resolve) => {
+    if (!isSyncing) {
+      isSyncing = true;
+      resolve();
+    } else {
+      syncQueue.push(resolve);
     }
+  });
 
-    // Fetch existing profiles to skip identical inserts/updates
-    const dbProfilesRes = await client.query("SELECT id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, notes, fee_hold, academic_probation FROM student_profiles");
-    const dbProfilesMap = new Map<string, any>(dbProfilesRes.rows.map(r => [r.id, r]));
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    for (const profile of store.studentProfiles || []) {
-      const dbProfile = dbProfilesMap.get(profile.id);
-      
-      const isDirty = !dbProfile ||
-        dbProfile.user_id !== profile.userId ||
-        dbProfile.student_code !== profile.studentCode ||
-        dbProfile.program_id !== profile.programId ||
-        dbProfile.department_id !== profile.departmentId ||
-        Number(dbProfile.academic_year) !== Number(profile.academicYear) ||
-        dbProfile.enrollment_date !== profile.enrollmentDate ||
-        dbProfile.expected_graduation !== profile.expectedGraduation ||
-        dbProfile.status !== profile.status ||
+      // Fetch existing users to skip identical inserts/updates
+      const dbUsersRes = await client.query("SELECT id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id FROM users");
+      const dbUsersMap = new Map<string, any>(dbUsersRes.rows.map(r => [r.id, r]));
+
+      for (const user of store.users || []) {
+        if (user.role === "parent") continue;
+        
+        const dbUser = dbUsersMap.get(user.id);
+        const emailLower = user.email.toLowerCase();
+        
+        // Determine if dirty
+        const isDirty = !dbUser || 
+          dbUser.email !== emailLower ||
+          dbUser.name !== user.name ||
+          dbUser.role !== user.role ||
+          Boolean(dbUser.is_active) !== Boolean(user.isActive) ||
+          (dbUser.phone || null) !== (user.phone || null) ||
+          (dbUser.linked_student_id || null) !== (user.linkedStudentId || null) ||
+          (user.passwordHash && dbUser.password_hash !== user.passwordHash) ||
+          (user.passwordSalt && dbUser.password_salt !== user.passwordSalt);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
+             VALUES ($1,$2,COALESCE(NULLIF($3, ''), 'client-sync-placeholder'),$4,$5,$6,$7,$8,$9,$10)
+             ON CONFLICT (id) DO UPDATE SET
+               email = EXCLUDED.email,
+               name = EXCLUDED.name,
+               role = EXCLUDED.role,
+               is_active = EXCLUDED.is_active,
+               phone = EXCLUDED.phone,
+               linked_student_id = EXCLUDED.linked_student_id,
+               password_hash = COALESCE(NULLIF($11, ''), users.password_hash),
+               password_salt = COALESCE(EXCLUDED.password_salt, users.password_salt)`,
+            [
+              user.id,
+              emailLower,
+              user.passwordHash || "",
+              user.passwordSalt || null,
+              user.name,
+              user.role,
+              user.isActive ? 1 : 0,
+              user.phone || null,
+              user.linkedStudentId || null,
+              user.createdAt || new Date().toISOString(),
+              user.passwordHash || ""
+            ]
+          );
+        }
+      }
+
+      // Fetch existing profiles to skip identical inserts/updates
+      const dbProfilesRes = await client.query("SELECT id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, notes, fee_hold, academic_probation FROM student_profiles");
+      const dbProfilesMap = new Map<string, any>(dbProfilesRes.rows.map(r => [r.id, r]));
+
+      for (const profile of store.studentProfiles || []) {
+        const dbProfile = dbProfilesMap.get(profile.id);
+        
+        const isDirty = !dbProfile ||
+          dbProfile.user_id !== profile.userId ||
+          dbProfile.student_code !== profile.studentCode ||
+          dbProfile.program_id !== profile.programId ||
+          dbProfile.department_id !== profile.departmentId ||
+          Number(dbProfile.academic_year) !== Number(profile.academicYear) ||
+          safeDateStr(dbProfile.enrollment_date) !== safeDateStr(profile.enrollmentDate) ||
+          safeDateStr(dbProfile.expected_graduation) !== safeDateStr(profile.expectedGraduation) ||
+          dbProfile.status !== profile.status ||
         Number(dbProfile.gpa) !== Number(profile.gpa) ||
         Number(dbProfile.total_credits_earned) !== Number(profile.totalCreditsEarned) ||
         dbProfile.address !== (profile.address || null) ||
         dbProfile.phone !== (profile.phone || null) ||
-        dbProfile.date_of_birth !== (profile.dateOfBirth || null) ||
+        safeDateStr(dbProfile.date_of_birth) !== safeDateStr(profile.dateOfBirth) ||
         dbProfile.gender !== (profile.gender || null) ||
         dbProfile.guardian_name !== (profile.guardianName || null) ||
         dbProfile.guardian_phone !== (profile.guardianPhone || null) ||
@@ -351,12 +372,20 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       }
     }
 
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   } finally {
-    client.release();
+    if (syncQueue.length > 0) {
+      const next = syncQueue.shift();
+      next!();
+    } else {
+      isSyncing = false;
+    }
   }
 }
 
