@@ -548,113 +548,158 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
         </button>
       </div>
 
-      {/* Dynamic Tab groupings layout */}
-      <div className="flex flex-col gap-3">
-        {/* LMS Modules tab list */}
-        <div className="flex flex-wrap border-b border-white/10 bg-white/3 rounded-2xl p-1 gap-1 text-xs">
-          <span className="text-[10px] text-white/40 uppercase tracking-widest px-3 py-2 border-r border-white/5 font-bold flex items-center font-mono">
-            HỌC TẬP LMS
-          </span>
-          <button
-            onClick={() => { setActiveSubTab("catalog"); setLearningCourseId(null); }}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "catalog" ? "bg-white/10 text-indigo-300 font-bold border border-white/10" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Khám phá Khóa học
-          </button>
-          <button
-            onClick={() => setActiveSubTab("learning")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "learning" ? "bg-white/10 text-indigo-300 font-bold border border-white/10" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Lớp học của tôi
-          </button>
-          <button
-            onClick={() => setActiveSubTab("assignments")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "assignments" ? "bg-white/10 text-indigo-300 font-bold border border-white/10" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Bài tập tự luận
-          </button>
-          <button
-            onClick={() => setActiveSubTab("certificates")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "certificates" ? "bg-white/10 text-indigo-300 font-bold border border-white/10" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Chứng nhận của tôi
-          </button>
-          <button
-            onClick={() => setActiveSubTab("notifications")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "notifications" ? "bg-white/10 text-indigo-300 font-bold border border-white/10" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Hộp thư thông báo ({myNotifications.filter(n => !n.isRead).length})
-          </button>
+      {/* Side-by-side dashboard layout: sidebar navigation on the left, workspace canvas on the right */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Navigation Sidebar */}
+        <div className="w-full lg:w-64 xl:w-72 flex flex-col gap-4 shrink-0">
+          
+          {/* LMS Modules group */}
+          <div className="bg-white/3 border border-white/10 rounded-3xl p-3 flex flex-col gap-1 w-full text-xs">
+            <span className="text-[10px] text-white/40 uppercase tracking-widest px-3 py-2 font-bold font-mono border-b border-white/5 mb-1.5">
+              HỌC TẬP LMS
+            </span>
+            <button
+              onClick={() => { setActiveSubTab("catalog"); setLearningCourseId(null); }}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "catalog" 
+                  ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Search className={`h-4.5 w-4.5 ${activeSubTab === "catalog" ? "text-indigo-300" : "text-white/40"}`} />
+              <span>Khám phá Khóa học</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("learning")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "learning" 
+                  ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <BookOpen className={`h-4.5 w-4.5 ${activeSubTab === "learning" ? "text-indigo-300" : "text-white/40"}`} />
+              <span>Lớp học của tôi</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("assignments")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "assignments" 
+                  ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <FileText className={`h-4.5 w-4.5 ${activeSubTab === "assignments" ? "text-indigo-300" : "text-white/40"}`} />
+              <span>Bài tập tự luận</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("certificates")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "certificates" 
+                  ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Award className={`h-4.5 w-4.5 ${activeSubTab === "certificates" ? "text-indigo-300" : "text-white/40"}`} />
+              <span>Chứng nhận của tôi</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("notifications")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center justify-between gap-2.5 ${
+                activeSubTab === "notifications" 
+                  ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Bell className={`h-4.5 w-4.5 ${activeSubTab === "notifications" ? "text-indigo-300" : "text-white/40"}`} />
+                <span>Hộp thư thông báo</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                myNotifications.filter(n => !n.isRead).length > 0 
+                  ? "bg-red-500/20 text-red-300 animate-pulse border border-red-500/10" 
+                  : "bg-white/10 text-white/50"
+              }`}>
+                {myNotifications.filter(n => !n.isRead).length}
+              </span>
+            </button>
+          </div>
+
+          {/* SIS Academics Systems modules group */}
+          <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-3xl p-3 flex flex-col gap-1 w-full text-xs">
+            <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-widest px-3 py-2 font-mono border-b border-indigo-500/15 mb-1.5">
+              HỒ SƠ HỌC VỤ SIS
+            </span>
+            <button
+              onClick={() => setActiveSubTab("profile")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "profile" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <User className={`h-4.5 w-4.5 ${activeSubTab === "profile" ? "text-white" : "text-white/40"}`} />
+              <span>Lý lịch cá nhân</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("academics_record")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "academics_record" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <GraduationCap className={`h-4.5 w-4.5 ${activeSubTab === "academics_record" ? "text-white" : "text-white/40"}`} />
+              <span>Kết quả học tập</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("student_attendance")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "student_attendance" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Calendar className={`h-4.5 w-4.5 ${activeSubTab === "student_attendance" ? "text-white" : "text-white/40"}`} />
+              <span>Điểm chuyên cần</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("student_tuition")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "student_tuition" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <CreditCard className={`h-4.5 w-4.5 ${activeSubTab === "student_tuition" ? "text-white" : "text-white/40"}`} />
+              <span>Đóng học phí</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("student_transcript")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "student_transcript" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <FileCheck className={`h-4.5 w-4.5 ${activeSubTab === "student_transcript" ? "text-white" : "text-white/40"}`} />
+              <span>Học bạ chính thức</span>
+            </button>
+            <button
+              onClick={() => setActiveSubTab("parent_view")}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "parent_view" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Shield className={`h-4.5 w-4.5 ${activeSubTab === "parent_view" ? "text-white" : "text-white/40"}`} />
+              <span>Cổng Phụ Huynh</span>
+            </button>
+          </div>
         </div>
 
-        {/* SIS Academics Systems modules tab list */}
-        <div className="flex flex-wrap border-b border-indigo-500/10 bg-indigo-505/5 rounded-2xl p-1 gap-1 text-xs border border-white/5">
-          <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-widest px-3 py-2 border-r border-white/5 flex items-center font-mono">
-            HỒ SƠ HỌC VỤ SIS
-          </span>
-          <button
-            onClick={() => setActiveSubTab("profile")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "profile" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Lý lịch cá nhân
-          </button>
-          <button
-            onClick={() => setActiveSubTab("academics_record")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "academics_record" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Kết quả học tập
-          </button>
-          <button
-            onClick={() => setActiveSubTab("student_attendance")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "student_attendance" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Điểm chuyên cần
-          </button>
-          <button
-            onClick={() => setActiveSubTab("student_tuition")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "student_tuition" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Đóng học phí
-          </button>
-          <button
-            onClick={() => setActiveSubTab("student_transcript")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "student_transcript" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Học bạ chính thức
-          </button>
-          <button
-            onClick={() => setActiveSubTab("parent_view")}
-            className={`px-4 py-2 font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "parent_view" ? "bg-indigo-600 text-white font-bold" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Cổng Phụ Huynh
-          </button>
-        </div>
-      </div>
-
-      {/* Canvas workspace content bodies */}
-      <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+        {/* Right Canvas workspace content bodies */}
+        <div className="flex-1 w-full bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md min-w-0">
 
         <CourseCatalog {...studentPanelProps} />
         <MyLearningWorkspace {...studentPanelProps} />
@@ -760,7 +805,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
         )}
 
         </div>
-
+      </div>
     </div>
   );
 }
