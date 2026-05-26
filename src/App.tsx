@@ -99,6 +99,14 @@ function AppShell() {
       });
   }, []);
 
+  useEffect(() => {
+    if (currentUser) {
+      sessionStorage.setItem("e16_lms_role", currentUser.role);
+    } else {
+      sessionStorage.removeItem("e16_lms_role");
+    }
+  }, [currentUser]);
+
   // Refresh reactive data from store changes
   const refreshStoreData = () => {
     setStoreData({ ...AppStore.get() });

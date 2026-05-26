@@ -894,6 +894,15 @@ export class AppStore {
   public static save(store: LMSDataStore): void {
     this.storeInstance = store;
     localStorage.removeItem(STORAGE_KEY);
+    
+    if (typeof sessionStorage !== "undefined") {
+      const role = sessionStorage.getItem("e16_lms_role");
+      if (role && !["admin", "super_admin", "academic_admin", "finance"].includes(role)) {
+        // Skip calling /api/store/sync as this role does not have permission
+        return;
+      }
+    }
+
     if (typeof fetch !== "undefined") {
       const csrfToken = sessionStorage.getItem("e16_lms_csrf");
       fetch("/api/store/sync", {

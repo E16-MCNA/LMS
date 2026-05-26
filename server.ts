@@ -524,7 +524,7 @@ app.patch("/api/student/profile", requireAuth, requireRole(["student"]), validat
          id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
          expected_graduation, status, gpa, total_credits_earned, phone, date_of_birth, gender,
          address, guardian_name, guardian_phone
-       ) VALUES ($1,$2,$3,'prog_se','dept_cs',1,$4,$5,$6,$7,$8,$9,$10)`,
+       ) VALUES ($1, $2, $3, 'prog_se', 'dept_cs', 1, $4, $5, 'active', 0.0, 0, $6, $7, $8, $9, $10, $11)`,
       [
         profileId, req.user!.id, studentCode,
         new Date().toISOString().slice(0, 10),
