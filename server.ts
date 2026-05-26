@@ -188,102 +188,167 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
   try {
     await client.query("BEGIN");
 
+    // Fetch existing users to skip identical inserts/updates
+    const dbUsersRes = await client.query("SELECT id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id FROM users");
+    const dbUsersMap = new Map<string, any>(dbUsersRes.rows.map(r => [r.id, r]));
+
     for (const user of store.users || []) {
       if (user.role === "parent") continue;
-      await client.query(
-        `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
-         VALUES ($1,$2,COALESCE(NULLIF($3, ''), 'client-sync-placeholder'),$4,$5,$6,$7,$8,$9,$10)
-         ON CONFLICT (id) DO UPDATE SET
-           email = EXCLUDED.email,
-           name = EXCLUDED.name,
-           role = EXCLUDED.role,
-           is_active = EXCLUDED.is_active,
-           phone = EXCLUDED.phone,
-           linked_student_id = EXCLUDED.linked_student_id,
-           password_hash = COALESCE(NULLIF($11, ''), users.password_hash),
-           password_salt = COALESCE(EXCLUDED.password_salt, users.password_salt)`,
-        [
-          user.id,
-          user.email.toLowerCase(),
-          user.passwordHash || "",
-          user.passwordSalt || null,
-          user.name,
-          user.role,
-          user.isActive,
-          user.phone || null,
-          user.linkedStudentId || null,
-          user.createdAt || new Date().toISOString(),
-          user.passwordHash || ""
-        ]
-      );
+      
+      const dbUser = dbUsersMap.get(user.id);
+      const emailLower = user.email.toLowerCase();
+      
+      // Determine if dirty
+      const isDirty = !dbUser || 
+        dbUser.email !== emailLower ||
+        dbUser.name !== user.name ||
+        dbUser.role !== user.role ||
+        Boolean(dbUser.is_active) !== Boolean(user.isActive) ||
+        dbUser.phone !== (user.phone || null) ||
+        dbUser.linked_student_id !== (user.linkedStudentId || null) ||
+        (user.passwordHash && dbUser.password_hash !== user.passwordHash) ||
+        (user.passwordSalt && dbUser.password_salt !== user.passwordSalt);
+
+      if (isDirty) {
+        await client.query(
+          `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
+           VALUES ($1,$2,COALESCE(NULLIF($3, ''), 'client-sync-placeholder'),$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (id) DO UPDATE SET
+             email = EXCLUDED.email,
+             name = EXCLUDED.name,
+             role = EXCLUDED.role,
+             is_active = EXCLUDED.is_active,
+             phone = EXCLUDED.phone,
+             linked_student_id = EXCLUDED.linked_student_id,
+             password_hash = COALESCE(NULLIF($11, ''), users.password_hash),
+             password_salt = COALESCE(EXCLUDED.password_salt, users.password_salt)`,
+          [
+            user.id,
+            emailLower,
+            user.passwordHash || "",
+            user.passwordSalt || null,
+            user.name,
+            user.role,
+            user.isActive ? 1 : 0,
+            user.phone || null,
+            user.linkedStudentId || null,
+            user.createdAt || new Date().toISOString(),
+            user.passwordHash || ""
+          ]
+        );
+      }
     }
 
+    // Fetch existing profiles to skip identical inserts/updates
+    const dbProfilesRes = await client.query("SELECT id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, notes, fee_hold, academic_probation FROM student_profiles");
+    const dbProfilesMap = new Map<string, any>(dbProfilesRes.rows.map(r => [r.id, r]));
+
     for (const profile of store.studentProfiles || []) {
-      await client.query(
-        `INSERT INTO student_profiles (
-          id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
-          expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth,
-          gender, guardian_name, guardian_phone, guardian_email, notes
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-        ON CONFLICT (id) DO UPDATE SET
-          user_id = EXCLUDED.user_id,
-          student_code = EXCLUDED.student_code,
-          program_id = EXCLUDED.program_id,
-          department_id = EXCLUDED.department_id,
-          academic_year = EXCLUDED.academic_year,
-          enrollment_date = EXCLUDED.enrollment_date,
-          expected_graduation = EXCLUDED.expected_graduation,
-          status = EXCLUDED.status,
-          gpa = EXCLUDED.gpa,
-          total_credits_earned = EXCLUDED.total_credits_earned,
-          address = EXCLUDED.address,
-          phone = EXCLUDED.phone,
-          date_of_birth = EXCLUDED.date_of_birth,
-          gender = EXCLUDED.gender,
-          guardian_name = EXCLUDED.guardian_name,
-          guardian_phone = EXCLUDED.guardian_phone,
-          guardian_email = EXCLUDED.guardian_email,
-          notes = EXCLUDED.notes`,
-        [
-          profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId,
-          profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status,
-          profile.gpa, profile.totalCreditsEarned, profile.address || null, profile.phone || null,
-          profile.dateOfBirth || null, profile.gender || null, profile.guardianName || null,
-          profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null
-        ]
-      );
+      const dbProfile = dbProfilesMap.get(profile.id);
+      
+      const isDirty = !dbProfile ||
+        dbProfile.user_id !== profile.userId ||
+        dbProfile.student_code !== profile.studentCode ||
+        dbProfile.program_id !== profile.programId ||
+        dbProfile.department_id !== profile.departmentId ||
+        Number(dbProfile.academic_year) !== Number(profile.academicYear) ||
+        dbProfile.enrollment_date !== profile.enrollmentDate ||
+        dbProfile.expected_graduation !== profile.expectedGraduation ||
+        dbProfile.status !== profile.status ||
+        Number(dbProfile.gpa) !== Number(profile.gpa) ||
+        Number(dbProfile.total_credits_earned) !== Number(profile.totalCreditsEarned) ||
+        dbProfile.address !== (profile.address || null) ||
+        dbProfile.phone !== (profile.phone || null) ||
+        dbProfile.date_of_birth !== (profile.dateOfBirth || null) ||
+        dbProfile.gender !== (profile.gender || null) ||
+        dbProfile.guardian_name !== (profile.guardianName || null) ||
+        dbProfile.guardian_phone !== (profile.guardianPhone || null) ||
+        dbProfile.guardian_email !== (profile.guardianEmail || null) ||
+        dbProfile.notes !== (profile.notes || null) ||
+        Boolean(dbProfile.fee_hold) !== Boolean(profile.feeHold) ||
+        Boolean(dbProfile.academic_probation) !== Boolean(profile.academicProbation);
+
+      if (isDirty) {
+        await client.query(
+          `INSERT INTO student_profiles (
+            id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
+            expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth,
+            gender, guardian_name, guardian_phone, guardian_email, notes
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+          ON CONFLICT (id) DO UPDATE SET
+            user_id = EXCLUDED.user_id,
+            student_code = EXCLUDED.student_code,
+            program_id = EXCLUDED.program_id,
+            department_id = EXCLUDED.department_id,
+            academic_year = EXCLUDED.academic_year,
+            enrollment_date = EXCLUDED.enrollment_date,
+            expected_graduation = EXCLUDED.expected_graduation,
+            status = EXCLUDED.status,
+            gpa = EXCLUDED.gpa,
+            total_credits_earned = EXCLUDED.total_credits_earned,
+            address = EXCLUDED.address,
+            phone = EXCLUDED.phone,
+            date_of_birth = EXCLUDED.date_of_birth,
+            gender = EXCLUDED.gender,
+            guardian_name = EXCLUDED.guardian_name,
+            guardian_phone = EXCLUDED.guardian_phone,
+            guardian_email = EXCLUDED.guardian_email,
+            notes = EXCLUDED.notes`,
+          [
+            profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId,
+            profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status,
+            profile.gpa, profile.totalCreditsEarned, profile.address || null, profile.phone || null,
+            profile.dateOfBirth || null, profile.gender || null, profile.guardianName || null,
+            profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null
+          ]
+        );
+      }
     }
 
     for (const user of (store.users || []).filter(item => item.role === "student")) {
       const hasProfile = (store.studentProfiles || []).some(profile => profile.userId === user.id);
       if (!hasProfile) {
-        const profile: StudentProfile = {
-          id: generateId("profile"),
-          userId: user.id,
-          studentCode: `SV${new Date().getFullYear()}${user.id.slice(-4).toUpperCase()}`,
-          programId: "prog_se",
-          departmentId: "dept_cs",
-          academicYear: 1,
-          enrollmentDate: new Date().toISOString().slice(0, 10),
-          expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
-          status: "active",
-          gpa: 0,
-          totalCreditsEarned: 0
-        };
-        await client.query(
-          `INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-           ON CONFLICT (id) DO NOTHING`,
-          [profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId, profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status, profile.gpa, profile.totalCreditsEarned]
-        );
+        const hasDbProfile = dbProfilesRes.rows.some(r => r.user_id === user.id);
+        if (!hasDbProfile) {
+          const profile: StudentProfile = {
+            id: generateId("profile"),
+            userId: user.id,
+            studentCode: `SV${new Date().getFullYear()}${user.id.slice(-4).toUpperCase()}`,
+            programId: "prog_se",
+            departmentId: "dept_cs",
+            academicYear: 1,
+            enrollmentDate: new Date().toISOString().slice(0, 10),
+            expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
+            status: "active",
+            gpa: 0,
+            totalCreditsEarned: 0
+          };
+          await client.query(
+            `INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+             ON CONFLICT (id) DO NOTHING`,
+            [profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId, profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status, profile.gpa, profile.totalCreditsEarned]
+          );
+        }
       }
     }
 
+    // Fetch existing courses to skip identical updates
+    const dbCoursesRes = await client.query("SELECT id, status, rejection_reason FROM courses");
+    const dbCoursesMap = new Map<string, any>(dbCoursesRes.rows.map(r => [r.id, r]));
+
     for (const course of store.courses || []) {
-      await client.query(
-        `UPDATE courses SET status = $1, rejection_reason = $2 WHERE id = $3`,
-        [course.status, course.rejectionReason || null, course.id]
-      );
+      const dbCourse = dbCoursesMap.get(course.id);
+      const isDirty = !dbCourse ||
+        dbCourse.status !== course.status ||
+        dbCourse.rejection_reason !== (course.rejectionReason || null);
+
+      if (isDirty) {
+        await client.query(
+          `UPDATE courses SET status = $1, rejection_reason = $2 WHERE id = $3`,
+          [course.status, course.rejectionReason || null, course.id]
+        );
+      }
     }
 
     await client.query("COMMIT");
