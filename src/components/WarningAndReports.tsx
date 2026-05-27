@@ -71,7 +71,9 @@ export default function WarningAndReports({
         AppStore.log(currentUser.id, "resolve_warning", w.studentId, `Khắc phục thành công cảnh báo học tập phân loại: ${w.type}`);
         return {
           ...w,
-          isResolved: true
+          isResolved: true,
+          resolvedBy: currentUser.id,
+          resolvedAt: new Date().toISOString()
         };
       }
       return w;
