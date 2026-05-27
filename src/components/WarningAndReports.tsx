@@ -54,7 +54,12 @@ export default function WarningAndReports({
       studentCode: studentProf ? studentProf.studentCode : "SV-UNLINKED"
     };
   }).filter(w => {
-    const matchesType = filterWarningType === "all" || w.type === filterWarningType;
+    const matchesType = filterWarningType === "all" || 
+      w.type === filterWarningType ||
+      (filterWarningType === "low_gpa" && w.type === "low-gpa") ||
+      (filterWarningType === "low_attendance" && w.type === "attendance") ||
+      (filterWarningType === "unpaid_fee" && w.type === "unpaid-fee") ||
+      (filterWarningType === "overdue_assignment" && w.type === "overdue-assignment");
     return matchesType;
   });
 
@@ -209,10 +214,10 @@ export default function WarningAndReports({
                 className="px-2.5 py-1.5 bg-black/25 text-white/85 border border-white/10 rounded-xl"
               >
                 <option value="all" className="bg-slate-900">Mọi Cảnh báo</option>
-                <option value="low-gpa" className="bg-slate-900">GPA Thấp (Dưới 2.0)</option>
-                <option value="attendance" className="bg-slate-900">Nghỉ chuyên cần nhiều</option>
-                <option value="unpaid-fee" className="bg-slate-900">Trễ nợ học phí</option>
-                <option value="overdue-assignment" className="bg-slate-900">Trễ deadline bài tập</option>
+                <option value="low_gpa" className="bg-slate-900">GPA Thấp (Dưới 2.0)</option>
+                <option value="low_attendance" className="bg-slate-900">Nghỉ chuyên cần nhiều</option>
+                <option value="unpaid_fee" className="bg-slate-900">Trễ nợ học phí</option>
+                <option value="overdue_assignment" className="bg-slate-900">Trễ deadline bài tập</option>
               </select>
             </div>
             
@@ -238,9 +243,9 @@ export default function WarningAndReports({
                       {w.studentCode} -- {w.studentName}
                     </span>
                     <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-white/5 text-slate-300 font-mono">
-                      {w.type === "low-gpa" ? "GPA kém" :
-                       w.type === "attendance" ? "Chuyên cần vắng" :
-                       w.type === "unpaid-fee" ? "Học phí trễ" : "Trễ deadline"}
+                      {w.type === "low_gpa" || w.type === "low-gpa" ? "GPA kém" :
+                       w.type === "low_attendance" || w.type === "attendance" ? "Chuyên cần vắng" :
+                       w.type === "unpaid_fee" || w.type === "unpaid-fee" ? "Học phí trễ" : "Trễ deadline"}
                     </span>
                   </div>
                   <p className="text-[11.5px] leading-relaxed pt-1.5 text-white/80">{w.message}</p>

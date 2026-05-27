@@ -155,7 +155,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
     // Auto sync warning resolution if paid off
     if (fee.status === "paid") {
       storeData.academicWarnings = storeData.academicWarnings.map(aw => {
-        if (aw.studentId === fee.studentId && aw.type === "unpaid-fee") {
+        if (aw.studentId === fee.studentId && (aw.type === "unpaid_fee" || aw.type === "unpaid-fee")) {
           return { ...aw, isResolved: true };
         }
         return aw;
@@ -176,10 +176,10 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
     storeData.tuitionFees.forEach(fee => {
       const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== "paid";
       if (isOverdue) {
-        // Issue unpaid-fee Warning if not exist
+        // Issue unpaid_fee Warning if not exist
         const exists = storeData.academicWarnings.some(w => 
           w.studentId === fee.studentId && 
-          w.type === "unpaid-fee" && 
+          (w.type === "unpaid_fee" || w.type === "unpaid-fee") && 
           !w.isResolved
         );
 
@@ -187,7 +187,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
           const warn: AcademicWarning = {
             id: generateId("warn"),
             studentId: fee.studentId,
-            type: "unpaid-fee",
+            type: "unpaid_fee",
             message: `Hệ hỏa hạn nộp học phí học kỳ này quá thời hạn quy định (${fee.dueDate}). Vui lòng hoàn tất học phí để bảo lưu điều kiện thi cử cuối khóa.`,
             isResolved: false,
             createdAt: new Date().toISOString()
