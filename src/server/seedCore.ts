@@ -341,8 +341,8 @@ export async function seedCoreLearningData(db: Queryable) {
   if (Number((await db.query("SELECT COUNT(*) AS count FROM attendance_sessions")).rows[0].count) === 0) {
     for (const session of store.attendanceSessions || []) {
       await db.query(
-        `INSERT INTO attendance_sessions (id, course_id, semester_id, teacher_id, session_date, date, topic)
-         VALUES ($1,$2,$3,$4,$5::date,$5::text,$6)
+        `INSERT INTO attendance_sessions (id, course_id, semester_id, teacher_id, date, topic)
+         VALUES ($1,$2,$3,$4,$5,$6)
          ON CONFLICT (id) DO NOTHING`,
         [session.id, session.courseId, session.semesterId, session.teacherId, session.date, session.topic]
       );
