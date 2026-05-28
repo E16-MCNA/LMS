@@ -20,7 +20,8 @@ import {
   Download,
   Fingerprint,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown
 } from "lucide-react";
 import { User, LMSDataStore } from "./types";
 import { AppStore } from "./store";
@@ -351,28 +352,11 @@ function AppShell() {
               </button>
             </div>
 
-            {/* Standalone Action button in the middle */}
-            <div className="pt-6 w-full flex justify-center">
-              <button
-                onClick={handleExportStandaloneHTMLFile}
-                className={`w-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition duration-150 rounded-xl flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
-                  isSidebarCollapsed ? "p-3 h-10 w-10 bg-indigo-600/80 hover:bg-indigo-600" : "py-2.5 px-3 text-[10px]"
-                }`}
-                title="Tải tệp tin Standalone HTML"
-              >
-                <Download className="h-4 w-4 shrink-0" />
-                {!isSidebarCollapsed && <span>Tải Standalone HTML</span>}
-              </button>
-            </div>
-
-            {/* Flex spacer to push user profile menu to the bottom */}
-            <div className="flex-1" />
-
             {/* USER PROFILE DROPDOWN MENU / POPOVER */}
-            <div className="relative w-full pt-4 border-t border-white/5">
+            <div className="relative w-full py-4 border-b border-white/5">
               {/* Dropdown Menu Popup */}
               {userDropdownOpen && (
-                <div className={`absolute bottom-full mb-3 z-50 bg-[#0f172a] border border-white/10 rounded-2xl p-2.5 shadow-2xl backdrop-blur-2xl w-60 animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+                <div className={`absolute top-full mt-3 z-50 bg-[#0f172a] border border-white/10 rounded-2xl p-2.5 shadow-2xl backdrop-blur-2xl w-60 animate-in fade-in slide-in-from-top-2 duration-150 ${
                   isSidebarCollapsed ? "left-0" : "left-0 right-0 w-full"
                 }`}>
                   {/* Scoped Profile Header Info */}
@@ -446,12 +430,29 @@ function AppShell() {
 
                 {/* Arrow indicator */}
                 {!isSidebarCollapsed && (
-                  <ChevronLeft className={`h-4 w-4 text-white/30 transform transition-transform duration-200 ${
-                    userDropdownOpen ? "-rotate-90" : ""
+                  <ChevronDown className={`h-4 w-4 text-white/30 transform transition-transform duration-200 ${
+                    userDropdownOpen ? "rotate-180" : ""
                   }`} />
                 )}
               </button>
             </div>
+
+            {/* Standalone Action button in the middle */}
+            <div className="pt-6 w-full flex justify-center">
+              <button
+                onClick={handleExportStandaloneHTMLFile}
+                className={`w-full text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition duration-150 rounded-xl flex items-center justify-center gap-1.5 shadow-md cursor-pointer ${
+                  isSidebarCollapsed ? "p-3 h-10 w-10 bg-indigo-600/80 hover:bg-indigo-600" : "py-2.5 px-3 text-[10px]"
+                }`}
+                title="Tải tệp tin Standalone HTML"
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                {!isSidebarCollapsed && <span>Tải Standalone HTML</span>}
+              </button>
+            </div>
+
+            {/* Flex spacer to push menu content down if needed */}
+            <div className="flex-1" />
           </aside>
 
           {/* MOBILE NAVIGATION SIDEBAR DRAWER */}
