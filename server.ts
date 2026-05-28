@@ -121,22 +121,26 @@ function extractCookie(req: express.Request, name: string): string | null {
 }
 
 async function rateLimitLogin(req: express.Request, res: express.Response, next: express.NextFunction) {
-  if (process.env.DISABLE_RATE_LIMIT === "true") return next();
-  const key = `ratelimit:login:${req.ip || req.socket.remoteAddress || "unknown"}`;
-  const max = 10;
-  const windowSec = 15 * 60;
-  const current = await safeRedis(async () => {
-    const count = await redis.incr(key);
-    if (count === 1) await redis.expire(key, windowSec);
-    return count;
-  }, 1);
+  try {
+    if (process.env.DISABLE_RATE_LIMIT === "true") return next();
+    const key = `ratelimit:login:${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const max = 10;
+    const windowSec = 15 * 60;
+    const current = await safeRedis(async () => {
+      const count = await redis.incr(key);
+      if (count === 1) await redis.expire(key, windowSec);
+      return count;
+    }, 1);
 
-  if (current > max) {
-    const ttl = await safeRedis(() => redis.ttl(key), windowSec);
-    res.setHeader("Retry-After", String(ttl));
-    return res.status(429).json({ error: "Too many login attempts. Please try again later." });
+    if (current > max) {
+      const ttl = await safeRedis(() => redis.ttl(key), windowSec);
+      res.setHeader("Retry-After", String(ttl));
+      return res.status(429).json({ error: "Too many login attempts. Please try again later." });
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 }
 
 function requireCsrf(req: AuthRequest, res: express.Response, next: express.NextFunction) {
@@ -173,10 +177,14 @@ function requireRole(roles: Array<User["role"]>) {
 }
 
 async function resolveLinkedStudent(req: AuthRequest, res: express.Response, next: express.NextFunction) {
-  const linkedStudentId = await parentRepository.getLinkedStudent(pool, req.user!.id);
-  if (!linkedStudentId) return res.status(403).json({ error: "No linked student found for this parent account." });
-  req.linkedStudentId = linkedStudentId;
-  next();
+  try {
+    const linkedStudentId = await parentRepository.getLinkedStudent(pool, req.user!.id);
+    if (!linkedStudentId) return res.status(403).json({ error: "No linked student found for this parent account." });
+    req.linkedStudentId = linkedStudentId;
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
 
 async function audit(req: AuthRequest, action: string, target: string, detail: string) {
