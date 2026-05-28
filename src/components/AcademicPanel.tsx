@@ -11,13 +11,15 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   BookOpen,
-  Filter
+  Filter,
+  Trash
 } from "lucide-react";
 import { User, Course, Enrollment, Lesson, LessonProgress } from "../types";
 import { AppStore } from "../store";
 import { useApiStore } from "../hooks/apiHooks";
 import AttendanceManager from "./AttendanceManager";
 import WarningAndReports from "./WarningAndReports";
+import { api } from "../api";
 
 interface AcademicPanelProps {
   currentUser: User;
@@ -35,6 +37,7 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
   const [selectedCourseId, setSelectedCourseId] = useState<string>("all");
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("all");
   const [searchStudentQuery, setSearchStudentQuery] = useState("");
+  const [courseSearch, setCourseSearch] = useState("");
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -43,6 +46,19 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteCourse = async (courseId: string, courseTitle: string) => {
+    if (!window.confirm(`⚠️ CẢNH BÁO CỰC KỲ QUAN TRỌNG ⚠️\n\nBạn có chắc chắn muốn XÓA VĨNH VIỄN khóa học "${courseTitle}" không?\nHành động này sẽ thực hiện xóa hàng loạt toàn bộ bài học, câu hỏi, bài thi, bài tập và điểm số liên quan đến môn học này.\n\nHành động này không thể hoàn tác!`)) {
+      return;
+    }
+    try {
+      await api.deleteCourse(courseId);
+      showToast(`✅ Đã xóa vĩnh viễn khóa học "${courseTitle}" thành công!`);
+      onRefreshData();
+    } catch (err: any) {
+      showToast(`❌ Không thể xóa khóa học: ${err.message}`);
+    }
   };
 
   // Base Data Queries
@@ -611,8 +627,18 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
               <p className="text-xs text-white/50">Tỷ lệ hoàn thành trung bình, sĩ số đăng ký và kết quả thi trắc nghiệm giữa các đầu mục giảng dạy.</p>
             </div>
 
+            <div className="flex gap-3 bg-white/3 border border-white/5 p-3 rounded-xl text-xs mb-4">
+              <input
+                type="text"
+                placeholder="Tìm kiếm khóa học hoặc giảng viên..."
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                className="w-full md:w-64 px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
+              />
+            </div>
+
             <div className="overflow-x-auto rounded-xl border border-white/5">
-              <table className="w-full text-xs text-left border-collapse">
+              <table className="w-full text-xs text-left border-collapse font-sans">
                 <thead>
                   <tr className="bg-white/5 border-b border-white/10 text-white/50 uppercase font-mono tracking-wider font-bold">
                     <th className="p-4">Khóa học</th>
@@ -620,18 +646,45 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
                     <th className="p-4">Tổng số học viên</th>
                     <th className="p-4">Tiến độ hoàn thành trung bình</th>
                     <th className="p-4">Điểm thi quiz trung bình</th>
+                    {["admin", "super_admin", "academic_admin"].includes(currentUser.role) && (
+                      <th className="p-4 text-right">Thao tác</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {courseComparisonDataset.map((item, idx) => (
+                  {courseComparisonDataset.filter(item => {
+                    return !courseSearch || 
+                      item.course.title.toLowerCase().includes(courseSearch.toLowerCase()) ||
+                      item.teacherName.toLowerCase().includes(courseSearch.toLowerCase());
+                  }).map((item, idx) => (
                     <tr key={idx} className="hover:bg-white/5 transition duration-150">
                       <td className="p-4 font-bold text-white text-sm">{item.course.title}</td>
                       <td className="p-4 text-white/60 font-medium">{item.teacherName}</td>
                       <td className="p-4 font-mono font-bold text-sky-400">{item.enrollmentCount} học viên</td>
                       <td className="p-4 font-mono font-bold text-emerald-400">{item.avgCompletion}%</td>
                       <td className="p-4 font-mono font-bold text-indigo-400">{item.avgQuizScore}%</td>
+                      {["admin", "super_admin", "academic_admin"].includes(currentUser.role) && (
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => handleDeleteCourse(item.course.id, item.course.title)}
+                            className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/35 rounded-lg font-bold transition flex items-center gap-1 ml-auto cursor-pointer text-[10.5px]"
+                          >
+                            <Trash className="h-3.5 w-3.5" /> Xóa
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
+
+                  {courseComparisonDataset.filter(item => {
+                    return !courseSearch || 
+                      item.course.title.toLowerCase().includes(courseSearch.toLowerCase()) ||
+                      item.teacherName.toLowerCase().includes(courseSearch.toLowerCase());
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-10 text-white/30 italic">Không tìm thấy khóa học nào phù hợp.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

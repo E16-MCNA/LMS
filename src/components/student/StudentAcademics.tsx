@@ -120,24 +120,27 @@ export default function StudentAcademics(props: ComponentProps) {
     );
 
     let finalGradeNum = 0;
-    let compCount = 0;
 
-    if (quizScores.length > 0) {
-      finalGradeNum += quizScores.reduce((sum: number, s: number) => sum + s, 0) / quizScores.length;
-      compCount++;
-    }
+    let midtermVal = null;
     if (assignmentSubmissions.length > 0) {
-      const avgAssignmentScore = assignmentSubmissions.reduce((sum: number, s: any) => {
+      midtermVal = Math.round(assignmentSubmissions.reduce((sum: number, s: any) => {
         const chal = store.assignments.find((a: any) => a.id === s.assignmentId);
         const maxS = chal ? chal.maxScore : 100;
         return sum + ((s.score || 0) / maxS) * 100;
-      }, 0) / assignmentSubmissions.length;
-      finalGradeNum += avgAssignmentScore;
-      compCount++;
+      }, 0) / assignmentSubmissions.length);
     }
 
-    if (compCount > 0) {
-      finalGradeNum = Math.round(finalGradeNum / compCount);
+    let finalVal = null;
+    if (quizScores.length > 0) {
+      finalVal = Math.round(quizScores.reduce((sum: number, s: number) => sum + s, 0) / quizScores.length);
+    }
+
+    if (midtermVal !== null && finalVal !== null) {
+      finalGradeNum = Math.round(midtermVal * 0.3 + finalVal * 0.7);
+    } else if (midtermVal !== null) {
+      finalGradeNum = midtermVal;
+    } else if (finalVal !== null) {
+      finalGradeNum = finalVal;
     } else {
       const hasCompletedEnrollment = enrolls.some((e: any) => e.status === "completed");
       if (hasCompletedEnrollment) {
@@ -167,7 +170,9 @@ export default function StudentAcademics(props: ComponentProps) {
       scale4Val,
       letterGrade,
       isCompleted,
-      credits
+      credits,
+      midtermGrade: midtermVal,
+      finalExamGrade: finalVal
     };
   }).filter(Boolean) as Array<{
     courseId: string;
@@ -177,6 +182,8 @@ export default function StudentAcademics(props: ComponentProps) {
     letterGrade: string;
     isCompleted: boolean;
     credits: number;
+    midtermGrade: number | null;
+    finalExamGrade: number | null;
   }>;
 
   const calculatedCredits = uniqueCourseGrades.reduce((sum, c) => {
@@ -480,7 +487,7 @@ export default function StudentAcademics(props: ComponentProps) {
           <div className="space-y-6">
             <div className="border-b border-white/10 pb-3">
               <h4 className="text-base font-display font-bold text-white flex items-center gap-1.5">
-                <Bookmark className="h-5 w-5 text-indigo-400" /> Kết quả Học tập niên khóa
+                <Bookmark className="h-5 w-5 text-indigo-400" /> Trạng thái Học tập niên khóa
               </h4>
               <p className="text-xs text-white/50">Cơ chế quản điểm 4.0 và phân chia tiến trình theo Tín chỉ đợt học phần.</p>
             </div>
@@ -638,9 +645,11 @@ export default function StudentAcademics(props: ComponentProps) {
 
                       <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider font-mono self-start sm:self-auto ${
                         fee.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                        fee.status === "partial" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
                         "bg-red-500/10 text-red-500 border border-red-500/15"
                       }`}>
-                        {fee.status === "paid" ? "Đã quy hóa đơn" : "Đang nợ phí"}
+                        {fee.status === "paid" ? "Đã đóng đủ" :
+                         fee.status === "partial" ? "Trả góp / Một phần" : "Chưa thanh toán"}
                       </span>
                     </div>
 
@@ -678,9 +687,20 @@ export default function StudentAcademics(props: ComponentProps) {
                           <p className="leading-relaxed font-sans text-[11.5px]">Quét mã VietQR nộp trực tuyến dưới đây, kế toán sẽ đối soát và cập nhật tình trạng phê duyệt học viện tự động.</p>
                           <button
                             onClick={async () => {
+                              const customAmountStr = window.prompt(`Tổng số dư nợ học phí còn lại là: ${remaining.toLocaleString()} VND.\nNhập số tiền bạn đã chuyển khoản để gửi xác nhận (VND):`, remaining.toString());
+                              if (customAmountStr === null) return; // Người dùng ấn Hủy
+                              const customAmount = Number(customAmountStr.replace(/[^0-9]/g, ""));
+                              if (isNaN(customAmount) || customAmount <= 0) {
+                                triggerToast("❗ Số tiền nhập không hợp lệ.");
+                                return;
+                              }
+                              if (customAmount > remaining) {
+                                triggerToast(`❗ Số tiền nộp không được lớn hơn dư nợ học phí còn lại (${remaining.toLocaleString()} VND).`);
+                                return;
+                              }
                               try {
-                                await api.confirmTransfer({ feeId: fee.id, amount: remaining });
-                                triggerToast("✅ Gửi xác nhận chuyển khoản thành công! Giao dịch đang chờ phòng kế toán đối soát phê duyệt.");
+                                await api.confirmTransfer({ feeId: fee.id, amount: customAmount });
+                                triggerToast(`✅ Gửi xác nhận chuyển khoản ${customAmount.toLocaleString()} VND thành công! Giao dịch đang chờ phòng kế toán đối soát.`);
                                 await onRefreshData();
                               } catch (err: any) {
                                 console.error(err);
@@ -709,6 +729,65 @@ export default function StudentAcademics(props: ComponentProps) {
               {(store.tuitionFees || []).filter(f => f.studentId === currentUser.id).length === 0 && (
                 <div className="text-center py-12 text-white/40">Chưa ghi nhận bất kỳ chứng từ nợ học vị nào quy định.</div>
               )}
+
+              {/* Bảng Lịch sử giao dịch đóng tiền (Double check) */}
+              <div className="space-y-4 pt-6 border-t border-white/10">
+                <div className="space-y-1">
+                  <h5 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="h-4 w-4 text-indigo-400" /> Nhật ký nộp học phí trực tuyến (Double check)
+                  </h5>
+                  <p className="text-[11px] text-white/50 leading-relaxed font-sans">
+                    Danh sách các giao dịch đóng tiền bạn đã gửi lên hệ thống. Giao dịch ở trạng thái "Chờ kế toán duyệt" đang được phòng tài vụ đối soát ngân hàng tự động.
+                  </p>
+                </div>
+                
+                <div className="overflow-x-auto rounded-xl border border-white/5 bg-black/15">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-white/5 border-b border-white/10 text-white/50 font-mono tracking-wider font-bold">
+                        <th className="p-3 text-[10.5px]">Mã Giao dịch</th>
+                        <th className="p-3 text-[10.5px]">Nội dung học phí</th>
+                        <th className="p-3 text-right text-[10.5px]">Số tiền nộp</th>
+                        <th className="p-3 text-[10.5px]">Phương thức</th>
+                        <th className="p-3 text-[10.5px]">Thời gian nộp</th>
+                        <th className="p-3 text-right text-[10.5px]">Trạng thái duyệt</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-white/85">
+                      {(store.transactions || []).filter(t => t.studentId === currentUser.id).map(tx => {
+                        const course = store.courses.find(c => c.id === tx.courseId);
+                        return (
+                          <tr key={tx.id} className="hover:bg-white/3 transition duration-150">
+                            <td className="p-3 font-mono font-bold text-cyan-400">{tx.id}</td>
+                            <td className="p-3 font-medium text-white">
+                              {tx.notes && tx.notes.startsWith("tuition_fee_pay:") ? "Học phí học kỳ" : (course ? course.title : "Học phí")}
+                            </td>
+                            <td className="p-3 text-right font-mono font-bold text-emerald-400">{tx.amount.toLocaleString()} VND</td>
+                            <td className="p-3 text-white/60">{tx.paymentMethod}</td>
+                            <td className="p-3 text-white/50">{new Date(tx.createdAt).toLocaleString()}</td>
+                            <td className="p-3 text-right font-mono">
+                              {tx.status === "approved" && (
+                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Thành công ✅</span>
+                              )}
+                              {tx.status === "pending" && (
+                                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">Chờ kế toán duyệt ⏳</span>
+                              )}
+                              {tx.status === "rejected" && (
+                                <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Từ chối ❌</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {(store.transactions || []).filter(t => t.studentId === currentUser.id).length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="text-center py-8 text-white/30 italic">Bạn chưa thực hiện giao dịch nộp học phí trực tuyến nào trên hệ thống.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -719,9 +798,9 @@ export default function StudentAcademics(props: ComponentProps) {
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <div>
                 <h4 className="text-base font-display font-bold text-white flex items-center gap-1.5">
-                  <FileText className="h-5 w-5 text-indigo-400" /> Bảng điểm & Học bạ Học thuật (Official Transcript)
+                  <FileText className="h-5 w-5 text-indigo-400" /> Bảng điểm & Kết quả Học tập Học thuật (Official Transcript)
                 </h4>
-                <p className="text-xs text-white/50">Học bạ chính thức được chứng nhận dấu đỏ số hóa của E16.</p>
+                <p className="text-xs text-white/50">Kết quả học tập được chứng nhận dấu đỏ số hóa của E16.</p>
               </div>
               <button
                 onClick={() => setShowPrintTranscript(true)}
@@ -744,7 +823,9 @@ export default function StudentAcademics(props: ComponentProps) {
                     <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
                       <th className="py-2.5">Tên môn học giảng dạy</th>
                       <th className="py-2.5 text-center">Tín chỉ</th>
-                      <th className="py-2.5 text-center">Điểm số tự luận (100)</th>
+                      <th className="py-2.5 text-center">Điểm thành phần (30%)</th>
+                      <th className="py-2.5 text-center">Điểm thi final (70%)</th>
+                      <th className="py-2.5 text-center">Điểm tổng kết (100)</th>
                       <th className="py-2.5 text-center">Hệ số GPA (4.0)</th>
                       <th className="py-2.5 text-right">Học bạ xếp loại</th>
                     </tr>
@@ -754,7 +835,13 @@ export default function StudentAcademics(props: ComponentProps) {
                       <tr key={g.courseId}>
                         <td className="py-3 font-bold text-white">{g.course.title}</td>
                         <td className="py-3 text-center font-mono font-bold text-indigo-300">{g.credits} Tín</td>
-                        <td className="py-3 text-center font-mono font-bold text-white/70">{g.grade}</td>
+                        <td className="py-3 text-center font-mono font-bold text-sky-400">
+                          {g.midtermGrade !== null ? g.midtermGrade : "-"}
+                        </td>
+                        <td className="py-3 text-center font-mono font-bold text-cyan-400">
+                          {g.finalExamGrade !== null ? g.finalExamGrade : "-"}
+                        </td>
+                        <td className="py-3 text-center font-mono font-bold text-white font-sans">{g.grade}</td>
                         <td className="py-3 text-center font-mono font-bold text-amber-400">{g.scale4Val.toFixed(1)}</td>
                         <td className="py-3 text-right font-black font-mono">
                           <span className={`px-2.5 py-0.5 rounded text-[10px] ${

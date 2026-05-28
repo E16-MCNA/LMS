@@ -64,6 +64,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   const [currCredits, setCurrCredits] = useState<number>(3);
   const [currRequired, setCurrRequired] = useState(true);
   const [currSemester, setCurrSemester] = useState<number>(1);
+  const [academicSearch, setAcademicSearch] = useState("");
 
   // Filter lists safely
   const teachers = store.users.filter(u => u.role === "teacher");
@@ -299,6 +300,24 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
         </button>
       </div>
 
+      {/* Reactive list search input */}
+      {!selectedProgramId && (
+        <div className="bg-white/3 border border-white/5 p-3 rounded-xl text-xs max-w-md">
+          <input
+            type="text"
+            placeholder={`Tìm kiếm trong danh sách ${
+              activeTab === "years" ? "năm học" :
+              activeTab === "semesters" ? "học kỳ" :
+              activeTab === "departments" ? "khoa" :
+              "chương trình / ngành"
+            }...`}
+            value={academicSearch}
+            onChange={(e) => setAcademicSearch(e.target.value)}
+            className="w-full px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
+          />
+        </div>
+      )}
+
       {activeTab === "years" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
@@ -315,7 +334,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {years.map(y => (
+                  {years.filter(y => y.name.toLowerCase().includes(academicSearch.toLowerCase())).map(y => (
                     <tr key={y.id} className="hover:bg-white/5 transition">
                       <td className="py-3 px-3 font-semibold text-white">{y.name}</td>
                       <td className="py-3 px-3 text-white/70">{y.startDate}</td>
@@ -344,9 +363,9 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                       </td>
                     </tr>
                   ))}
-                  {years.length === 0 && (
+                  {years.filter(y => y.name.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-white/40">Chưa ghi nhận năm học trong cơ sở dữ liệu.</td>
+                      <td colSpan={5} className="py-8 text-center text-white/40 italic">Không tìm thấy năm học nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -416,7 +435,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {semesters.map(s => {
+                  {semesters.filter(s => s.name.toLowerCase().includes(academicSearch.toLowerCase())).map(s => {
                     const linkedY = years.find(y => y.id === s.academicYearId);
                     return (
                       <tr key={s.id} className="hover:bg-white/5 transition">
@@ -440,9 +459,9 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                       </tr>
                     );
                   })}
-                  {semesters.length === 0 && (
+                  {semesters.filter(s => s.name.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-white/40">Chưa ghi nhận học kỳ nào trên hệ thống.</td>
+                      <td colSpan={6} className="py-8 text-center text-white/40 italic">Không tìm thấy học kỳ nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -560,7 +579,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {departments.map(d => {
+                  {departments.filter(d => d.name.toLowerCase().includes(academicSearch.toLowerCase()) || d.code.toLowerCase().includes(academicSearch.toLowerCase())).map(d => {
                     const head = teachers.find(t => t.id === d.headTeacherId);
                     const progsCount = programs.filter(p => p.departmentId === d.id).length;
                     return (
@@ -575,9 +594,9 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                       </tr>
                     );
                   })}
-                  {departments.length === 0 && (
+                  {departments.filter(d => d.name.toLowerCase().includes(academicSearch.toLowerCase()) || d.code.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-white/40">Chưa ghi nhận khoa phòng nào.</td>
+                      <td colSpan={4} className="py-8 text-center text-white/40 italic">Không tìm thấy khoa nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -650,7 +669,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             <h4 className="text-sm font-bold text-white">Quản lý Ngành & Khung Đào tạo</h4>
             
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-              {programs.map(p => {
+              {programs.filter(p => p.name.toLowerCase().includes(academicSearch.toLowerCase()) || p.code.toLowerCase().includes(academicSearch.toLowerCase())).map(p => {
                 const linkedDept = departments.find(d => d.id === p.departmentId);
                 const isSelected = selectedProgramId === p.id;
                 return (
@@ -674,6 +693,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   </div>
                 );
               })}
+
+              {programs.filter(p => p.name.toLowerCase().includes(academicSearch.toLowerCase()) || p.code.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
+                <div className="py-12 text-center text-white/30 italic font-sans text-xs">Không tìm thấy ngành học nào.</div>
+              )}
             </div>
 
             <div className="border-t border-white/10 pt-4 space-y-3">

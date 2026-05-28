@@ -108,6 +108,9 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   };
 
   const handleResetPassword = async (studentId: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn đặt lại mật khẩu cho học viên này về mặc định (studente16) không?")) {
+      return;
+    }
     try {
       const res = await api.resetPassword(studentId) as { message?: string };
       showToast(res.message || "Mật khẩu đã được đặt lại thành công về mặc định: studente16!");

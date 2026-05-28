@@ -86,10 +86,10 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       setShowCreateSession(false);
       setActiveSessionId(result.session.id);
       onRefreshData();
-      triggerToast("ÄÃ£ khá»Ÿi táº¡o buá»•i Ä‘iá»ƒm danh mÃ´n há»c má»›i thÃ nh cÃ´ng.");
+      triggerToast("Đã khởi tạo buổi điểm danh môn học mới thành công.");
       return;
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ táº¡o buá»•i Ä‘iá»ƒm danh.");
+      triggerToast(err.message || "Không thể tạo buổi điểm danh.");
       return;
     }
 
@@ -138,7 +138,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       onRefreshData();
       return;
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ cáº­p nháº­t Ä‘iá»ƒm danh.");
+      triggerToast(err.message || "Không thể cập nhật điểm danh.");
       return;
     }
     const storeData = AppStore.get();
@@ -237,8 +237,84 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
     return Math.round((presentRecords / sessionsCount) * 100);
   };
 
+  // Compliance checking: courses with zero attendance sessions
+  const nonCompliantCourses = courses.filter(c => {
+    const courseSessions = (store.attendanceSessions || []).filter(s => s.courseId === c.id);
+    return courseSessions.length === 0;
+  });
+
   return (
     <div className="space-y-6">
+
+      {/* Giám sát tuân thủ điểm danh giảng viên (Học vụ & Admin) */}
+      {(currentUser.role === "academic_admin" || currentUser.role === "admin" || currentUser.role === "super_admin") && (
+        <div className="bg-white/4 border border-white/5 p-5 rounded-2xl space-y-4">
+          <div className="flex justify-between items-center pb-2 border-b border-white/10">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldAlert className="h-4 w-4 text-rose-400" /> Giám sát tuân thủ điểm danh giảng viên
+            </h4>
+            <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold font-mono">
+              Phát hiện {nonCompliantCourses.length} môn chưa điểm danh
+            </span>
+          </div>
+
+          {nonCompliantCourses.length > 0 ? (
+            <div className="overflow-x-auto text-xs">
+              <table className="w-full text-left border-collapse font-sans">
+                <thead>
+                  <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
+                    <th className="py-2.5">Tên môn học</th>
+                    <th className="py-2.5">Giảng viên phụ trách</th>
+                    <th className="py-2.5 text-center">Trạng thái</th>
+                    <th className="py-2.5 text-right">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-xs text-white/85">
+                  {nonCompliantCourses.map(course => {
+                    const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công", email: "" };
+                    return (
+                      <tr key={course.id}>
+                        <td className="py-3 font-bold text-white">{course.title} ({course.id})</td>
+                        <td className="py-3">
+                          <div className="font-semibold text-white/95">{teacher.name}</div>
+                          <div className="text-[10px] text-white/40">{teacher.email || "N/A"}</div>
+                        </td>
+                        <td className="py-3 text-center">
+                          <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                            Chưa Điểm Danh ❌
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          <button
+                            onClick={async () => {
+                              if (!course.teacherId) {
+                                triggerToast("Môn học này chưa được phân công giảng viên!");
+                                return;
+                              }
+                              try {
+                                await api.warnTeacher({ courseId: course.id, teacherId: course.teacherId });
+                                triggerToast(`Đã bắn mail và hệ thống cảnh cáo tới giảng viên ${teacher.name}! 📧`);
+                                onRefreshData();
+                              } catch (err: any) {
+                                triggerToast(err.message || "Không thể gửi cảnh cáo.");
+                              }
+                            }}
+                            className="px-3 py-1 bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/30 text-rose-300 font-bold rounded-lg transition cursor-pointer text-[11px]"
+                          >
+                            Bắn mail Cảnh cáo 📧
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-emerald-400 font-semibold italic">100% Giảng viên đã thực hiện điểm danh đầy đủ cho các lớp học phần! 🎉</p>
+          )}
+        </div>
+      )}
       
       {/* Course & Session selectors */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/4 border border-white/5 p-4 rounded-2xl text-xs">

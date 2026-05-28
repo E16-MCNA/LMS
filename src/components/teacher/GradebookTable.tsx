@@ -6,6 +6,7 @@ interface ComponentProps {
 }
 
 export default function GradebookTable(props: ComponentProps) {
+  const [searchTerm, setSearchTerm] = React.useState("");
   const {
     activeSubTab,
     setActiveSubTab,
@@ -98,6 +99,15 @@ export default function GradebookTable(props: ComponentProps) {
     studentSubmissionsRaw
   } = props;
 
+  const enrolledStudents = store.enrollments.filter((e: any) => myCourseIds.includes(e.courseId));
+  const filteredStudents = enrolledStudents.filter((enroll: any) => {
+    const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
+    if (!studentUser) return false;
+    return !searchTerm ||
+      studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      studentUser.email.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
   return (
     <>
         {/* Tab 4: Student gradebook matrix table & CSV Export */}
@@ -118,8 +128,18 @@ export default function GradebookTable(props: ComponentProps) {
               </button>
             </div>
 
+            <div className="flex gap-3 bg-white/3 border border-white/5 p-3 rounded-xl text-xs">
+              <input
+                type="text"
+                placeholder="Tìm kiếm học viên theo tên hoặc email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full md:w-64 px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
+              />
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-white/80">
+              <table className="w-full text-left text-xs text-white/80 font-sans">
                 <thead className="bg-white/5 border-b border-white/10 text-white uppercase text-[10px] tracking-wider sticky top-0">
                   <tr>
                     <th className="p-4 font-semibold">Tên Học sinh</th>
@@ -129,10 +149,10 @@ export default function GradebookTable(props: ComponentProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {store.enrollments.filter(e => myCourseIds.includes(e.courseId)).map((enroll, i) => {
-                    const studentUser = store.users.find(u => u.id === enroll.studentId);
-                    const completedLessons = store.lessonProgress.filter(p => p.enrollmentId === enroll.id && p.completed).length;
-                    const totalLessons = store.lessons.filter(l => l.courseId === enroll.courseId).length;
+                  {filteredStudents.map((enroll, i) => {
+                    const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
+                    const completedLessons = store.lessonProgress.filter((p: any) => p.enrollmentId === enroll.id && p.completed).length;
+                    const totalLessons = store.lessons.filter((l: any) => l.courseId === enroll.courseId).length;
 
                     return (
                       <tr key={i} className="hover:bg-white/5 transition-colors">
@@ -148,10 +168,10 @@ export default function GradebookTable(props: ComponentProps) {
                     );
                   })}
 
-                  {store.enrollments.filter(e => myCourseIds.includes(e.courseId)).length === 0 && (
+                  {filteredStudents.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center py-12 text-white/40">
-                        Chưa có học sinh đăng ký các khóa học này.
+                      <td colSpan={4} className="text-center py-12 text-white/40 italic">
+                        {enrolledStudents.length === 0 ? "Chưa có học sinh đăng ký các khóa học này." : "Không tìm thấy học sinh nào phù hợp."}
                       </td>
                     </tr>
                   )}

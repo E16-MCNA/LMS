@@ -90,6 +90,8 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [userDirTab, setUserDirTab] = useState<"student" | "teacher" | "other">("student");
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditFilterAction, setAuditFilterAction] = useState("all");
   const [userPage, setUserPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -837,8 +839,43 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
                 <p className="text-xs text-white/50">Nhật ký theo dõi các bút toán an ninh, sửa đổi kết cấu điểm số, học bạ chính xác theo thời gian thực.</p>
               </div>
 
+              {/* Reactive filter inputs */}
+              <div className="flex flex-col md:flex-row gap-3 bg-white/3 border border-white/5 p-3.5 rounded-xl text-xs">
+                <div className="flex-1 space-y-1">
+                  <span className="text-[10px] text-white/50 block">Tìm kiếm nhật ký</span>
+                  <input
+                    type="text"
+                    placeholder="Tìm theo hành động, user ID, target, hoặc nội dung..."
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div className="w-full md:w-48 space-y-1">
+                  <span className="text-[10px] text-white/50 block">Lọc theo hành động</span>
+                  <select
+                    value={auditFilterAction}
+                    onChange={(e) => setAuditFilterAction(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-black/25 text-white/80 border border-white/10 rounded-lg focus:outline-none font-sans"
+                  >
+                    <option value="all" className="bg-slate-900">Tất cả hành động</option>
+                    {Array.from(new Set((store?.auditLogs || []).map(l => l.action))).map(act => (
+                      <option key={act} value={act} className="bg-slate-900">{act}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="bg-black/40 border border-white/10 rounded-2xl p-4 font-mono text-[10.5px] leading-relaxed max-h-96 overflow-y-auto space-y-2 text-white/90">
-                {store.auditLogs.map((log, i) => (
+                {((store?.auditLogs || []).filter(log => {
+                  const matchesSearch = !auditSearch || 
+                    log.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                    log.userId.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                    log.target.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                    log.detail.toLowerCase().includes(auditSearch.toLowerCase());
+                  const matchesAction = auditFilterAction === "all" || log.action === auditFilterAction;
+                  return matchesSearch && matchesAction;
+                })).map((log, i) => (
                   <div key={log.id || i} className="border-b border-white/5 pb-2">
                     <span className="text-indigo-400">[{log.createdAt.slice(11, 19)}]</span>{" "}
                     <span className="text-cyan-300 font-bold">{log.action.toUpperCase()}</span>{" "}
@@ -847,6 +884,17 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
                     <span className="text-white/80">{log.detail}</span>
                   </div>
                 ))}
+                {((store?.auditLogs || []).filter(log => {
+                  const matchesSearch = !auditSearch || 
+                    log.action.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                    log.userId.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                    log.target.toLowerCase().includes(auditSearch.toLowerCase()) ||
+                    log.detail.toLowerCase().includes(auditSearch.toLowerCase());
+                  const matchesAction = auditFilterAction === "all" || log.action === auditFilterAction;
+                  return matchesSearch && matchesAction;
+                })).length === 0 && (
+                  <div className="text-center text-white/30 italic py-6">Không tìm thấy bản ghi nhật ký phù hợp.</div>
+                )}
               </div>
             </div>
           )}

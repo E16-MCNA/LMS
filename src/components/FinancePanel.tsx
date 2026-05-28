@@ -88,10 +88,10 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
           status: "approved",
           notes: "Payment matched and enrollment activated."
         });
-        showToast("PhÃª duyá»‡t vÃ  kÃ­ch hoáº¡t quyá»n há»c thÃ nh cÃ´ng!");
+        showToast("Phê duyệt và kích hoạt quyền học thành công!");
         onRefreshData();
       } catch (err: any) {
-        showToast(err.message || "KhÃ´ng thá»ƒ phÃª duyá»‡t giao dá»‹ch.");
+        showToast(err.message || "Không thể phê duyệt giao dịch.");
       }
       return;
     }
@@ -143,10 +143,10 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
       });
       setRejectingTxId(null);
       setRejectionNotes("");
-      showToast("Tá»« chá»‘i giao dá»‹ch thÃ nh cÃ´ng.");
+      showToast("Từ chối giao dịch thành công.");
       onRefreshData();
     } catch (err: any) {
-      showToast(err.message || "KhÃ´ng thá»ƒ tá»« chá»‘i giao dá»‹ch.");
+      showToast(err.message || "Không thể từ chối giao dịch.");
     }
     return;
 

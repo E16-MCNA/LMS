@@ -68,6 +68,10 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
   const totalCollected = semesterFees.reduce((sum, f) => sum + f.paidAmount, 0);
   const collectionRate = totalBilled > 0 ? Math.round((totalCollected / totalBilled) * 100) : 0;
 
+  const paidCount = semesterFees.filter(f => f.status === "paid").length;
+  const partialCount = semesterFees.filter(f => f.status === "partial").length;
+  const unpaidCount = semesterFees.filter(f => f.status === "unpaid").length;
+
   // Bulk issue tuition fees
   const handleBulkIssueTuition = () => {
     if (!selectedSemesterId) {
@@ -283,6 +287,45 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
           </div>
         </div>
 
+      </div>
+
+      {/* Phân nhóm học viên đóng học phí (Dashboard Kế toán) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+        <div className="bg-emerald-950/25 border border-emerald-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+          <div className="space-y-1">
+            <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-black flex items-center gap-1">
+              <CheckCircle className="h-3.5 w-3.5" /> Học viên Đóng đủ (100%)
+            </span>
+            <h3 className="text-2xl font-mono font-black text-white mt-1">{paidCount} <span className="text-xs text-white/40">sinh viên</span></h3>
+          </div>
+          <div className="p-2.5 bg-emerald-500/10 rounded-xl text-emerald-400">
+            <CheckCircle className="h-6 w-6" />
+          </div>
+        </div>
+
+        <div className="bg-sky-950/25 border border-sky-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+          <div className="space-y-1">
+            <span className="text-[10px] text-sky-400 uppercase tracking-widest font-black flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" /> Học viên Trả góp / Một phần
+            </span>
+            <h3 className="text-2xl font-mono font-black text-white mt-1">{partialCount} <span className="text-xs text-white/40">sinh viên</span></h3>
+          </div>
+          <div className="p-2.5 bg-sky-500/10 rounded-xl text-sky-400">
+            <Clock className="h-6 w-6" />
+          </div>
+        </div>
+
+        <div className="bg-red-950/25 border border-red-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+          <div className="space-y-1">
+            <span className="text-[10px] text-red-400 uppercase tracking-widest font-black flex items-center gap-1">
+              <AlertTriangle className="h-3.5 w-3.5" /> Học viên Chưa thanh toán
+            </span>
+            <h3 className="text-2xl font-mono font-black text-white mt-1">{unpaidCount} <span className="text-xs text-white/40">sinh viên</span></h3>
+          </div>
+          <div className="p-2.5 bg-red-500/10 rounded-xl text-red-400">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+        </div>
       </div>
 
       {/* Main filter bars */}
