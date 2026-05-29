@@ -180,10 +180,10 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
       await api.payTuition({ feeId: activePaymentFeeId, paidAmount: Number(paymentAmount) });
       setActivePaymentFeeId(null);
       onRefreshData();
-      triggerToast("Ghi nháº­n bÃºt toÃ¡n thanh toÃ¡n há»c vá»‹ thÃ nh cÃ´ng.");
+      triggerToast("Ghi nhận bút toán thanh toán học phí thành công.");
       return;
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ ghi nháº­n thanh toÃ¡n.");
+      triggerToast(err.message || "Không thể ghi nhận thanh toán.");
       return;
     }
     if (paymentAmount < 0) {

@@ -609,46 +609,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       }
     }
 
-    // Sync academic_warnings
-    if (store.academicWarnings !== undefined) {
-      const clientWarnings = store.academicWarnings || [];
-      const clientWarningIds = clientWarnings.map(w => w.id);
-      if (clientWarningIds.length > 0) {
-        await client.query(
-          "DELETE FROM academic_warnings WHERE id NOT IN (" +
-          clientWarningIds.map((_, i) => `$${i + 1}`).join(",") + ")",
-          clientWarningIds
-        );
-      } else {
-        await client.query("DELETE FROM academic_warnings");
-      }
-      for (const w of clientWarnings) {
-        await client.query(
-          `INSERT INTO academic_warnings (id, student_id, type, course_id, message, is_resolved, resolved_by, resolved_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (id) DO UPDATE SET
-             student_id = EXCLUDED.student_id,
-             type = EXCLUDED.type,
-             course_id = EXCLUDED.course_id,
-             message = EXCLUDED.message,
-             is_resolved = EXCLUDED.is_resolved,
-             resolved_by = EXCLUDED.resolved_by,
-             resolved_at = EXCLUDED.resolved_at,
-             created_at = EXCLUDED.created_at`,
-          [
-            w.id,
-            w.studentId,
-            w.type,
-            w.courseId || null,
-            w.message,
-            Boolean(w.isResolved),
-            w.resolvedBy || null,
-            w.resolvedAt || null,
-            w.createdAt
-          ]
-        );
-      }
-    }
+    // Sync academic_warnings bypassed (server-managed only)
 
     // Sync audit_logs
     if (store.auditLogs !== undefined) {
@@ -678,117 +639,11 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       }
     }
 
-    // Sync enrollments
-    if (store.enrollments !== undefined) {
-      const clientEnrollments = store.enrollments || [];
-      const clientEnrollmentIds = clientEnrollments.map(e => e.id);
-      if (clientEnrollmentIds.length > 0) {
-        await client.query(
-          "DELETE FROM enrollments WHERE id NOT IN (" +
-          clientEnrollmentIds.map((_, i) => `$${i + 1}`).join(",") + ")",
-          clientEnrollmentIds
-        );
-      } else {
-        await client.query("DELETE FROM enrollments");
-      }
-      for (const e of clientEnrollments) {
-        await client.query(
-          `INSERT INTO enrollments (id, course_id, student_id, status, enrolled_at, completed_at)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id) DO UPDATE SET
-             course_id = EXCLUDED.course_id,
-             student_id = EXCLUDED.student_id,
-             status = EXCLUDED.status,
-             enrolled_at = EXCLUDED.enrolled_at,
-             completed_at = EXCLUDED.completed_at`,
-          [e.id, e.courseId, e.studentId, e.status, e.enrolledAt, e.completedAt || null]
-        );
-      }
-    }
+    // Sync enrollments bypassed (server-managed only)
 
-    // Sync transactions
-    if (store.transactions !== undefined) {
-      const clientTransactions = store.transactions || [];
-      const clientTxIds = clientTransactions.map(t => t.id);
-      if (clientTxIds.length > 0) {
-        await client.query(
-          "DELETE FROM transactions WHERE id NOT IN (" +
-          clientTxIds.map((_, i) => `$${i + 1}`).join(",") + ")",
-          clientTxIds
-        );
-      } else {
-        await client.query("DELETE FROM transactions");
-      }
-      for (const t of clientTransactions) {
-        await client.query(
-          `INSERT INTO transactions (id, student_id, course_id, amount, status, payment_method, created_at, processed_at, processed_by, notes)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-           ON CONFLICT (id) DO UPDATE SET
-             student_id = EXCLUDED.student_id,
-             course_id = EXCLUDED.course_id,
-             amount = EXCLUDED.amount,
-             status = EXCLUDED.status,
-             payment_method = EXCLUDED.payment_method,
-             created_at = EXCLUDED.created_at,
-             processed_at = EXCLUDED.processed_at,
-             processed_by = EXCLUDED.processed_by,
-             notes = EXCLUDED.notes`,
-          [
-            t.id,
-            t.studentId,
-            t.courseId,
-            Number(t.amount) || 0,
-            t.status,
-            t.paymentMethod,
-            t.createdAt,
-            t.processedAt || null,
-            t.processedBy || null,
-            t.notes || null
-          ]
-        );
-      }
-    }
+    // Sync transactions bypassed (server-managed only)
 
-    // Sync tuitionFees
-    if (store.tuitionFees !== undefined) {
-      const clientTuition = store.tuitionFees || [];
-      const clientTuitionIds = clientTuition.map(tf => tf.id);
-      if (clientTuitionIds.length > 0) {
-        await client.query(
-          "DELETE FROM tuition_fees WHERE id NOT IN (" +
-          clientTuitionIds.map((_, i) => `$${i + 1}`).join(",") + ")",
-          clientTuitionIds
-        );
-      } else {
-        await client.query("DELETE FROM tuition_fees");
-      }
-      for (const tf of clientTuition) {
-        await client.query(
-          `INSERT INTO tuition_fees (id, student_id, semester_id, amount, due_date, status, paid_amount, paid_at, receipt_code)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (id) DO UPDATE SET
-             student_id = EXCLUDED.student_id,
-             semester_id = EXCLUDED.semester_id,
-             amount = EXCLUDED.amount,
-             due_date = EXCLUDED.due_date,
-             status = EXCLUDED.status,
-             paid_amount = EXCLUDED.paid_amount,
-             paid_at = EXCLUDED.paid_at,
-             receipt_code = EXCLUDED.receipt_code`,
-          [
-            tf.id,
-            tf.studentId,
-            tf.semesterId || null,
-            Number(tf.amount) || 0,
-            tf.dueDate,
-            tf.status,
-            Number(tf.paidAmount) || 0,
-            tf.paidAt || null,
-            tf.receiptCode || null
-          ]
-        );
-      }
-    }
+    // Sync tuitionFees bypassed (server-managed only)
 
     // Sync advisorNotes
     if (store.advisorNotes !== undefined) {
@@ -1650,7 +1505,7 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["fin
   res.json(result);
 }));
 
-app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "academic_admin", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
+app.post("/api/attendance/sessions", requireAuth, requireRole(["academic_admin", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });
   if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
@@ -1674,7 +1529,7 @@ app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "acade
   res.status(201).json({ session, records });
 }));
 
-app.patch("/api/attendance/records", requireAuth, requireRole(["teacher", "academic_admin", "admin", "super_admin"]), validateBody(schemas.attendanceRecord), asyncHandler(async (req, res) => {
+app.patch("/api/attendance/records", requireAuth, requireRole(["academic_admin", "admin", "super_admin"]), validateBody(schemas.attendanceRecord), asyncHandler(async (req, res) => {
   const session = (await pool.query("SELECT * FROM attendance_sessions WHERE id = $1", [req.body.sessionId])).rows[0];
   if (!session) return res.status(404).json({ error: "Attendance session not found." });
   if (req.user!.role === "teacher" && session.teacher_id !== req.user!.id) return res.status(403).json({ error: "Permission denied." });

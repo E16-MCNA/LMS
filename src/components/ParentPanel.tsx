@@ -15,7 +15,9 @@ import {
   Bell, 
   CheckCircle, 
   XCircle, 
-  Info 
+  Info,
+  Award,
+  Activity
 } from "lucide-react";
 import { User, StudentProfile, AdvisorNote, AcademicWarning, TuitionFee, Course, Enrollment, AttendanceSession, AttendanceRecord, QuizAttempt } from "../types";
 import { AppStore } from "../store";
@@ -56,6 +58,59 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
   // Attendance metrics
   const courseEnrollments = store.enrollments.filter(e => e.studentId === childId && e.status !== "cancelled");
 
+  const calculateEnrollmentGrades = (enroll: any, studentId: string) => {
+    const courseId = enroll.courseId;
+    const courseQuizzes = store.quizzes.filter((q: any) => q.courseId === courseId);
+    const quizAttempts = store.quizAttempts.filter((qa: any) => qa.studentId === studentId && courseQuizzes.some((q: any) => q.id === qa.quizId));
+    const quizScores = courseQuizzes.map((q: any) => {
+      const attempts = quizAttempts.filter((qa: any) => qa.quizId === q.id);
+      return attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score)) : null;
+    }).filter((s: any): s is number => s !== null);
+
+    const courseAssignments = store.assignments.filter((a: any) => a.courseId === courseId);
+    const assignmentSubmissions = store.submissions.filter((s: any) =>
+      s.studentId === studentId &&
+      courseAssignments.some((ea: any) => ea.id === s.assignmentId) &&
+      s.score !== undefined
+    );
+
+    let midtermVal = null;
+    if (assignmentSubmissions.length > 0) {
+      midtermVal = Math.round(assignmentSubmissions.reduce((sum: number, s: any) => {
+        const chal = store.assignments.find((a: any) => a.id === s.assignmentId);
+        const maxS = chal ? chal.maxScore : 100;
+        return sum + ((s.score || 0) / maxS) * 100;
+      }, 0) / assignmentSubmissions.length);
+    }
+
+    let finalVal = null;
+    if (quizScores.length > 0) {
+      finalVal = Math.round(quizScores.reduce((sum: number, s: number) => sum + s, 0) / quizScores.length);
+    }
+
+    let finalGradeNum = 0;
+    let hasGrades = false;
+
+    if (midtermVal !== null && finalVal !== null) {
+      finalGradeNum = Math.round(midtermVal * 0.3 + finalVal * 0.7);
+      hasGrades = true;
+    } else if (midtermVal !== null) {
+      finalGradeNum = midtermVal;
+      hasGrades = true;
+    } else if (finalVal !== null) {
+      finalGradeNum = finalVal;
+      hasGrades = true;
+    } else {
+      const hasCompletedEnrollment = enroll.status === "completed";
+      if (hasCompletedEnrollment) {
+        finalGradeNum = 85;
+        hasGrades = true;
+      }
+    }
+
+    return { midtermVal, finalVal, finalGradeNum, hasGrades };
+  };
+
   // Filtered grades enrollment
   const filteredEnrollments = courseEnrollments.filter(enroll => {
     if (!gradesSearch.trim()) return true;
@@ -83,10 +138,10 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
       valA = courseA?.category || "";
       valB = courseB?.category || "";
     } else if (gradesSortField === "maxScore") {
-      const attemptsA = store.quizAttempts.filter(qa => qa.studentId === childId && store.quizzes.filter(q => q.courseId === a.courseId).some(q => q.id === qa.quizId));
-      const attemptsB = store.quizAttempts.filter(qa => qa.studentId === childId && store.quizzes.filter(q => q.courseId === b.courseId).some(q => q.id === qa.quizId));
-      valA = attemptsA.length > 0 ? Math.max(...attemptsA.map(qa => qa.score)) : 78;
-      valB = attemptsB.length > 0 ? Math.max(...attemptsB.map(qa => qa.score)) : 78;
+      const gradeA = calculateEnrollmentGrades(a, childId);
+      const gradeB = calculateEnrollmentGrades(b, childId);
+      valA = gradeA.hasGrades ? gradeA.finalGradeNum : 0;
+      valB = gradeB.hasGrades ? gradeB.finalGradeNum : 0;
     }
 
     if (typeof valA === "string" && typeof valB === "string") {
@@ -285,8 +340,44 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
               
               <div className="border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Học bạ & Biểu điểm khóa học</h3>
-                <p className="text-[10px] text-white/40 mt-0.5">Tổng kết điểm thi đánh giá thường kì từ các Giáo sư phụ trách bộ môn.</p>
+                <p className="text-[10px] text-white/40 mt-0.5">Tổng kết điểm thi đánh giá lý thuyết và thực hành từ các Giảng viên phụ trách bộ môn.</p>
               </div>
+
+              {/* Dynamic Coursework Average Stat Card */}
+              {(() => {
+                const gradeInfoList = courseEnrollments.map(e => calculateEnrollmentGrades(e, childId)).filter(g => g.hasGrades);
+                const avgGrade = gradeInfoList.length > 0 
+                  ? Math.round(gradeInfoList.reduce((sum, g) => sum + g.finalGradeNum, 0) / gradeInfoList.length) 
+                  : null;
+                
+                return avgGrade !== null ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white/3 border border-white/5 p-4 rounded-2xl font-sans">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl">
+                        <Award className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/40 uppercase font-mono block">Điểm TB học phần thực tế</span>
+                        <strong className="text-sm text-white font-sans">{avgGrade}%</strong>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                        <Activity className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-white/40 uppercase font-mono block">Xếp loại học lực</span>
+                        <strong className="text-sm text-emerald-400 font-sans">
+                          {avgGrade >= 90 ? "Xuất sắc (A+)" :
+                           avgGrade >= 80 ? "Giỏi (A)" :
+                           avgGrade >= 70 ? "Khá (B)" :
+                           avgGrade >= 50 ? "Trung bình (C)" : "Yếu (D)"}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Grades Search Input */}
               <div className="relative max-w-md">
@@ -314,8 +405,14 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
                         <th className="py-2 cursor-pointer select-none hover:text-white transition" onClick={() => handleGradesSort("category")}>
                           Kỳ Đăng Ký {gradesSortField === "category" ? (gradesSortOrder === "asc" ? "▲" : "▼") : "↕"}
                         </th>
+                        <th className="py-2 text-center">
+                          Tự Luận (Lý thuyết)
+                        </th>
+                        <th className="py-2 text-center">
+                          Trắc Nghiệm (Thực hành)
+                        </th>
                         <th className="py-2 text-right cursor-pointer select-none hover:text-white transition" onClick={() => handleGradesSort("maxScore")}>
-                          Mức Điểm Đạt {gradesSortField === "maxScore" ? (gradesSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                          Điểm Tổng Kết {gradesSortField === "maxScore" ? (gradesSortOrder === "asc" ? "▲" : "▼") : "↕"}
                         </th>
                       </tr>
                     </thead>
@@ -324,9 +421,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
                         const course = store.courses.find(c => c.id === enroll.courseId);
                         const teacher = store.users.find(u => u.id === course?.teacherId);
 
-                        // Find any attempts
-                        const attempts = store.quizAttempts.filter(qa => qa.studentId === childId && store.quizzes.filter(q => q.courseId === enroll.courseId).some(q => q.id === qa.quizId));
-                        const maxQuizScore = attempts.length > 0 ? Math.max(...attempts.map(a => a.score)) : null;
+                        const { midtermVal, finalVal, finalGradeNum, hasGrades } = calculateEnrollmentGrades(enroll, childId);
 
                         return (
                           <tr key={enroll.id}>
@@ -345,8 +440,14 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
                             </td>
                             <td className="py-3 text-white/45">{teacher?.name || "Không xác định"}</td>
                             <td className="py-3 font-mono">Học kỳ {course?.category || "Lớp SIS"}</td>
+                            <td className="py-3 text-center font-mono text-white/60">
+                              {midtermVal !== null ? `${midtermVal}%` : "—"}
+                            </td>
+                            <td className="py-3 text-center font-mono text-white/60">
+                              {finalVal !== null ? `${finalVal}%` : "—"}
+                            </td>
                             <td className="py-3 text-right font-mono text-emerald-400 font-bold">
-                              {maxQuizScore ? `${maxQuizScore}% (Trắc nghiệm)` : "78% (Đánh giá chung)"}
+                              {hasGrades ? `${finalGradeNum}%` : "—"}
                             </td>
                           </tr>
                         );

@@ -904,6 +904,27 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
             </div>
           )}
 
+          {/* SYSTEM ACADEMIC WARNINGS AND REPORTS STATS */}
+          {activeSubTab === "warnings" && (
+            <div className="space-y-6">
+              <div className="border-b border-white/5 pb-4">
+                <h4 className="text-base font-display font-semibold text-white">Quản lý Cảnh báo Học thuật & Thống kê</h4>
+                <p className="text-xs text-white/50">Xem và giải quyết các cảnh báo chuyên môn, GPA hoặc học phí chậm trong toàn hệ thống.</p>
+              </div>
+              <WarningAndReports 
+                store={store} 
+                currentUser={currentUser} 
+                onRefreshData={onRefreshData} 
+                triggerToast={triggerToast} 
+                onSelectStudentProfile={(userId) => {
+                  setRegistryLookupStudentId(userId);
+                  setActiveSubTab("students");
+                }}
+                defaultTab="warnings"
+              />
+            </div>
+          )}
+
           {/* SYSTEM SECURITY COMPLIANCE AUDIT LOGS */}
           {activeSubTab === "audit" && (
             <div className="space-y-6">
