@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   DollarSign, 
   Clock, 
@@ -38,6 +38,11 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
   const [rejectingTxId, setRejectingTxId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"transactions" | "salaries" | "tuition">("transactions");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
+
   const [salarySearch, setSalarySearch] = useState("");
   const [courseDetailId, setCourseDetailId] = useState<string | null>(null);
 

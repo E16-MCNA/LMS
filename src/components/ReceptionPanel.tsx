@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   UserPlus,
   Search,
@@ -37,6 +37,10 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
 
   // Tab states
   const [activeTab, setActiveTab] = useState<"search" | "register" | "courses">("search");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
 
   // Student registration states
   const [regName, setRegName] = useState("");

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Users, 
   AlertTriangle, 
@@ -35,6 +35,10 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
   // States
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(store.studentProfiles[0]?.userId || null);
   const [activeTab, setActiveTab] = useState<"students" | "warnings" | "notes">("students");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
   const [noteType, setNoteType] = useState<"academic" | "behavioral" | "financial">("academic");
   const [noteContent, setNoteContent] = useState("");
   const [shareWithParent, setShareWithParent] = useState(true);

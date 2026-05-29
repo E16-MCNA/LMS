@@ -14,3 +14,9 @@ html, body, button, input, select, textarea, #root {
   -moz-osx-font-smoothing: grayscale;
   font-synthesis: none;
 }
+
+html {
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+

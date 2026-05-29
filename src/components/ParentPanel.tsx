@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   User as UserIcon, 
   MapPin, 
@@ -35,6 +35,10 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
   
   // States
   const [activeTab, setActiveTab] = useState<"overview" | "grades" | "attendance" | "warnings" | "financial" | "notifications">("overview");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
   const [gradesSearch, setGradesSearch] = useState("");
   const [courseDetailId, setCourseDetailId] = useState<string | null>(null);
 

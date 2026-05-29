@@ -143,10 +143,12 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // On mobile: scroll to content area when activeSubTab changes
+  // Scroll-to-top or content area when activeSubTab changes
   useEffect(() => {
     if (window.innerWidth < 1024 && contentRef.current) {
       setTimeout(() => contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    } else {
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
   }, [activeSubTab]);
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   GraduationCap, 
   Users, 
@@ -33,6 +33,10 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
 
   // Active sub tab navigation
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts" | "attendance" | "warnings" | "reports">("overview");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeSubTab]);
 
   // Filters state
   const [selectedCourseId, setSelectedCourseId] = useState<string>("all");

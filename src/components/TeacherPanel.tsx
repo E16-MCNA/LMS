@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BookOpen,
   HelpCircle,
@@ -45,6 +45,10 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
 
   // Local active sub-module state
   const [activeSubTab, setActiveSubTab] = useState<"courses" | "quizzes" | "assignments" | "gradebook" | "analytics">("courses");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeSubTab]);
 
   // Selection states
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);

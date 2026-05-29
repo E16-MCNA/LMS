@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Users, 
   BookOpen, 
@@ -69,6 +69,10 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData }: Adm
     | "reports"
     | "audit"
   >("students");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeSubTab]);
 
   // Keep student selection state for quick lookup redirection from other tabs
   const [registryLookupStudentId, setRegistryLookupStudentId] = useState<string | null>(null);
