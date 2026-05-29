@@ -1,106 +1,205 @@
-# TÀI LIỆU YÊU CẦU NGHIỆP VỤ (BUSINESS REQUIREMENTS DOCUMENT - BRD)
-## HỆ THỐNG QUẢN LÝ ĐÀO TẠO TOÀN DIỆN (E16 LMS PLATFORM)
+# TÀI LIỆU YÊU CẦU NGHIỆP VỤ HỢP NHẤT (MASTER BUSINESS REQUIREMENTS DOCUMENT)
+## HỆ THỐNG QUẢN LÝ ĐÀO TẠO E16 LMS (PRODUCTION VERSION 1.2)
+*Hợp nhất Tiêu chuẩn BRD v1.1 (2026-05-22) và các Cải tiến Thực tế Hệ thống (2026-05-29)*
 
 ---
 
-## 1. TỔNG QUAN HỆ THỐNG (SYSTEM OVERVIEW)
-Hệ thống **E16 LMS** là một nền tảng quản lý đào tạo (Learning Management System) toàn diện, được thiết kế để kết nối chặt chẽ tất cả các bên tham gia vào quá trình giáo dục bao gồm: Ban giám đốc/Admin, Học vụ, Giảng viên, Lễ tân, Sinh viên, Phụ huynh và Cố vấn học tập. Nền tảng không chỉ quản lý giáo trình và đánh giá học thuật, mà còn tự động hóa các quy trình giám sát chuyên cần, phát hành và thu hồi học phí, cùng với các cảnh báo học tập thông minh nhằm tối ưu hóa chất lượng giảng dạy và quản trị vận hành.
+## 1. TÓM TẮT ĐIỀU HÀNH (EXECUTIVE SUMMARY)
+**E16 LMS** là nền tảng quản lý học tập (Learning Management System) doanh nghiệp được thiết kế tối ưu hóa cho các cơ sở giáo dục, trường học và trung tâm đào tạo chuyên nghiệp. 
+
+Hệ thống kế thừa cấu trúc phân quyền cốt lõi của phiên bản **BRD v1.1** và được nâng cấp lên **phiên bản 1.2** nhằm phản ánh đầy đủ các cải tiến thực tế trên môi trường production, bao gồm sự bổ sung của vai trò **Phụ huynh (Parent)**, **Cố vấn học tập (Advisor)** và hệ thống quản trị chuyên cần độc lập.
+
+**Quy tắc xác thực cốt lõi**:
+- Tài khoản người dùng **không được tự đăng ký** trên môi trường production. Mọi tài khoản phải được khởi tạo bởi **Admin** (hàng loạt qua CSV) hoặc **Lễ tân** (từng học sinh).
+- Quyền học của Sinh viên chỉ được kích hoạt sau khi **Kế toán** phê duyệt giao dịch thanh toán học phí hợp lệ trên sổ thu chi.
 
 ---
 
-## 2. CƠ CẤU VAI TRÒ & PHÂN QUYỀN (ROLES & PERMISSIONS)
-
-Hệ thống phân quyền nghiêm ngặt dựa trên 7 vai trò cốt lõi:
-
-| Vai trò | Phân hệ (Panel) | Quyền hạn & Trách nhiệm chính |
-| :--- | :--- | :--- |
-| **Super Admin / Admin** | `AdminPanel.tsx` | - Cấu hình hệ thống, quản trị niên khóa và học kỳ đào tạo.<br>- Tạo mới, khóa/mở khóa tài khoản, cấp lại mật khẩu cho tất cả nhân sự.<br>- Phê duyệt/từ chối xuất bản khóa học mới của giảng viên (yêu cầu điền lý do từ chối).<br>- Giám sát hệ thống qua Audit Logs và bảng theo dõi cảnh báo học thuật toàn trường. |
-| **Học vụ (Academic Admin)** | `AcademicPanel.tsx` | - **Chịu trách nhiệm điểm danh chính**: Khởi tạo và chốt danh sách điểm danh hàng ngày.<br>- Giám sát sự tuân thủ điểm danh của giảng viên phụ trách môn học.<br>- Gửi email cảnh cáo giảng viên trễ hạn nộp chuyên cần.<br>- Quản lý và xử lý các cảnh báo học tập của sinh viên trễ đóng học phí hoặc chuyên cần kém (<80%). |
-| **Giảng viên (Teacher)** | `TeacherPanel.tsx` | - Soạn thảo và xây dựng giáo trình bài giảng (Lessons) theo từng chương mục.<br>- Thiết lập các đề thi đánh giá học lực: Đề thi trắc nghiệm (Quizzes) và Đề tự luận thực hành (Assignments).<br>- Tiến hành chấm điểm sản phẩm tự luận của sinh viên, cung cấp điểm số cùng nhận xét/phản hồi chi tiết (Feedback). |
-| **Lễ tân (Receptionist)** | `ReceptionPanel.tsx` | - Tiếp nhận thông tin, tư vấn chương trình và đăng ký nhập học cho sinh viên mới.<br>- Quản trị thông tin và hỗ trợ cấp lại mật khẩu tức thì cho học viên khi gặp sự cố. |
-| **Học viên / Sinh viên (Student)** | `StudentPanel.tsx` | - Xem danh mục khóa học, đăng ký môn học trực tuyến.<br>- Học tập qua video, tài liệu bài giảng và tham gia thảo luận trên diễn đàn khóa học.<br>- Làm bài trắc nghiệm tính giờ (QuizConsole - tự động nộp bài khi hết giờ) & nộp sản phẩm tự luận có đính kèm tệp tin đa định dạng.<br>- Xem tiến độ học tập, chuyên cần, tra cứu bảng điểm và tạo đơn phúc khảo điểm số.<br>- Thanh toán học phí thông qua quét mã QR ngân hàng (tự động hóa giao dịch sang trạng thái chờ duyệt). |
-| **Phụ huynh (Parent)** | `ParentPanel.tsx` | - Giám sát trực tiếp quá trình chuyên cần học tập hàng tuần của con.<br>- Xem các cảnh báo đỏ học tập phát ra từ hệ thống hoặc cố vấn học tập.<br>- Tra cứu bảng điểm thành phần chi tiết của con (Tự luận thuyết 30% & Trắc nghiệm thực hành 70%) cùng kết quả học lực.<br>- Nhận thông báo đóng học phí và theo dõi tiến trình hoàn tất nghĩa vụ tài chính của con. |
-| **Cố vấn học tập (Advisor)** | `AdvisorPanel.tsx` | - Theo dõi sát sao hồ sơ học tập chi tiết của danh sách sinh viên được phân công phụ trách.<br>- Viết ghi chú cố vấn học tập (Advisor Notes) thường niên hoặc khẩn cấp khi phát hiện sinh viên sa sút học lực hoặc dính cảnh báo. |
+## 2. MỤC TIÊU KINH DOANH (BUSINESS OBJECTIVES)
+1. Cung cấp nền tảng quản trị đào tạo ổn định, có khả năng sao lưu, khôi phục và bảo mật cao cấp trên dữ liệu thật.
+2. Tự động hóa tối đa các quy trình vận hành: tạo tài khoản, gửi mail kích hoạt, điểm danh, chấm quiz trắc nghiệm, khóa/mở bài tập, tự động cấp chứng chỉ và quản lý sổ thu chi kế toán.
+3. Hỗ trợ sự đồng hành của **Phụ huynh** và **Cố vấn học tập** để giảm tỉ lệ sinh viên bỏ học thông qua cơ chế cảnh báo sớm tự động.
 
 ---
 
-## 3. CÁC LUỒNG NGHIỆP VỤ CỐT LÕI (CORE BUSINESS WORKFLOWS)
+## 3. PHẠM VI SẢN PHẨM (PRODUCT SCOPE)
 
-### 3.1. Luồng Phê duyệt & Đào tạo Khóa học (Academic & Course Approval Workflow)
-1. **Soạn thảo**: Giảng viên khởi tạo khóa học mới, nhập đầy đủ thông tin (Tên môn, mô tả, phân loại, học phí, cấp trình độ, từ khóa tìm kiếm) và thiết lập giáo trình chi tiết. Khóa học được lưu ở trạng thái nháp (`pending`).
-2. **Yêu cầu duyệt**: Giảng viên gửi yêu cầu xuất bản khóa học lên Ban giám đốc.
-3. **Phê duyệt**: Admin xem xét nội dung khóa học:
-   - Nếu đạt chuẩn: Admin bấm **Phê duyệt** -> Khóa học chuyển sang trạng thái hoạt động (`published`), sinh viên có thể nhìn thấy trên danh mục để đăng ký.
-   - Nếu chưa đạt chuẩn: Admin bấm **Từ chối** -> Hệ thống hiển thị hộp thoại bắt buộc nhập lý do từ chối. Lý do này được ghi nhận và gửi thẳng tới giảng viên để chỉnh sửa lại.
+### 3.1. Trong phạm vi hoạt động (In-Scope - Phiên bản 1.2)
+* **Xác thực & Bảo mật**: Đăng nhập email/mật khẩu bảo vệ CSRF; cơ chế Link kích hoạt (24 giờ, dùng 1 lần) và Link reset mật khẩu (1 giờ, dùng 1 lần); quản lý phiên làm việc active.
+* **Phân quyền 8 vai trò chính**: Admin, Giảng viên (Teacher), Học viên (Student), Kế Toán (Finance), Lễ Tân (Receptionist), Quản Lý Học Vụ (Academic Admin), Phụ huynh (Parent) [Cải tiến], Cố vấn học tập (Advisor) [Cải tiến].
+* **Vòng đời khóa học**: Quy trình duyệt khóa học nghiêm ngặt (Nháp $\rightarrow$ Gửi duyệt $\rightarrow$ Duyệt/Từ chối có lý do từ Admin).
+* **Đánh giá học thuật**:
+  - Quiz tự động chấm điểm (Một đáp án, nhiều đáp án, điền từ tự do) có bộ đếm ngược tự động khóa đề khi hết giờ.
+  - Bài tập tự luận (Assignments) hỗ trợ nộp văn bản hoặc tệp tin đính kèm; bộ lọc Regex chống phình to văn bản; visual emerald giữ tệp cũ thông minh.
+* **Chuyên cần & Điểm danh độc lập [Cải tiến]**: Chuyển giao quyền điểm danh hoàn toàn sang cho **Học vụ**. Học vụ quét sự tuân thủ điểm danh của giảng viên và chốt danh sách chuyên cần.
+* **Cảnh báo học tập tự động [Cải tiến]**: Hệ thống tự động quét và phát cảnh báo học tập đỏ (chuyên cần dưới 80%, trễ hạn học phí) gửi thẳng tới học viên và phụ huynh.
+* **Tài chính & Sổ thu chi**: Phát nợ học phí tự động; Student thanh toán QR ngân hàng; Kế toán đối chiếu sao kê và phê duyệt giao dịch kích hoạt khóa học tự động.
+* **Học bạ & Chứng chỉ**: Bảng điểm thành phần chi tiết (30% tự luận + 70% trắc nghiệm); cấp chứng chỉ tự động; trang xác thực chứng chỉ công khai bảo vệ quyền riêng tư học viên.
 
-### 3.2. Luồng Khảo sát & Đánh giá (Quizzes & Assignments)
-- **Đề trắc nghiệm (Quizzes)**:
-  - Giảng viên cấu hình: Tên đề thi, điểm đạt yêu cầu (%), thời gian làm bài giới hạn (phút), số lượt làm bài tối đa.
-  - Sinh viên bắt đầu làm bài: Hệ thống hiển thị màn hình làm bài tập trung (`QuizConsole.tsx`) có bộ đếm ngược thời gian thực.
-  - Hết giờ làm bài: Hệ thống tự động khóa bài làm và kích hoạt hàm nộp bài tự động (`handleAutoSubmitQuiz`) gửi kết quả về server để đối soát điểm.
-- **Đề tự luận / Thách thức thực hành (Assignments)**:
-  - Sinh viên thực hiện làm bài bằng cách nhập văn bản/mã nguồn hoặc tải lên tệp tin đính kèm (PDF, ZIP, ảnh...).
-  - **Quy tắc cập nhật bài nộp**: Khi cập nhật bài làm cũ, hệ thống tự động bóc tách loại bỏ các chuỗi định dạng đính kèm cũ (`[Tệp đính kèm: ...]`) để sinh viên tập trung chỉnh sửa văn bản gốc. Nếu sinh viên giữ nguyên tệp, hệ thống sẽ bảo toàn tệp cũ; nếu sinh viên chọn tải lên tệp mới, tệp mới sẽ thay thế hoàn toàn tệp cũ và giao diện sẽ hiển thị chỉ dẫn trực quan.
-
-### 3.3. Luồng Quản trị Chuyên cần & Điểm danh (Attendance Control Workflow)
-Để đảm bảo tính khách quan và kiểm soát chất lượng, **chức năng điểm danh đã được chuyển giao hoàn toàn từ Giảng viên sang phòng Học vụ**:
-1. **Giám sát sự tuân thủ**: Hệ thống tự động liệt kê các lớp học phần chưa được điểm danh buổi nào trong kỳ. Cán bộ Học vụ có thể bấm nút **"Bắn mail Cảnh cáo"** gửi cảnh báo kỷ luật trực tiếp đến email giảng viên phụ trách môn học đó.
-2. **Khởi tạo buổi học**: Học vụ thực hiện chọn môn học và bấm **"Bắt đầu buổi học mới"**, điền ngày học, giờ học và chủ đề bài học.
-3. **Chốt danh sách**: Học vụ tích chọn trạng thái điểm danh cho từng sinh viên (Đúng giờ, Đi muộn, Có phép, Vắng mặt) và bấm lưu. Hệ thống tự động ghi nhận dữ liệu chuyên cần thực tế vào cơ sở dữ liệu.
-
-### 3.4. Luồng Quản lý Tài chính & Thu học phí (Finance & Tuition Fee Payments)
-1. **Phát hành học phí hàng loạt**: Cán bộ Kế toán chọn học kỳ và bấm **"Phát nợ học phí hàng loạt"** -> Hệ thống tự động quét toàn bộ sinh viên đang hoạt động trong niên học khóa, tạo hóa đơn học phí mặc định (15.000.000 VND) kèm theo hạn đóng 30 ngày và gửi thông báo nhắc nhở tới sinh viên/phụ huynh.
-2. **Sinh viên thanh toán**: Sinh viên quét mã QR ngân hàng trên cổng thông tin để thực hiện chuyển khoản. Hệ thống tạo một giao dịch chờ duyệt (`pending`) gắn với mã hóa đơn học phí tương ứng.
-3. **Ghi thu & Biên lai**:
-   - Thủ quỹ thực hiện đối soát tài khoản và phê duyệt giao dịch chuyển khoản trên cổng kế toán, hoặc kế toán bấm **"Ghi thu"** trực tiếp trên danh sách học phí của sinh viên.
-   - Khi hoàn tất thanh toán, hệ thống tự động:
-     - Tạo mã biên lai giao dịch duy nhất (`RECEIPT-XXXXXX`).
-     - Tự động chuyển trạng thái hóa đơn sang `paid` (hoặc `partial` nếu nộp một phần).
-     - **Tự động mở khóa học tập**: Gỡ bỏ trạng thái tạm dừng học thuật do nợ phí (`feeHold = false`) trên hồ sơ sinh viên.
-     - **Tự động xóa cảnh báo**: Đánh dấu đã khắc phục xử lý (`isResolved = true`) cho cảnh báo nợ xấu trễ hạn học phí của sinh viên đó.
-
-### 3.5. Luồng Giám sát & Hỗ trợ Học tập (Academic Warnings & Academic Advising)
-- **Quét cảnh báo tự động**:
-  - **Quét trễ chuyên cần**: Hệ thống quét tỉ lệ chuyên cần thực tế của sinh viên trong từng môn học. Sinh viên có tỉ lệ có mặt dưới 80% sẽ bị hệ thống tự động phát ra Cảnh báo học tập mức độ Đỏ (Cảnh báo chuyên cần) và gửi cảnh báo tới sinh viên và phụ huynh.
-  - **Quét trễ học phí**: Hệ thống quét các hóa đơn học phí chưa thanh toán và đã quá hạn định mức nộp bài. Tự động phát Cảnh báo học phí trễ hạn.
-- **Hỗ trợ học tập từ Cố vấn**: Cố vấn học tập dựa trên danh sách cảnh báo đỏ của lớp phụ trách để thực hiện liên hệ, trao đổi và viết Ghi chú cố vấn học tập nhằm đưa ra lộ trình cải thiện và giải quyết cảnh báo cho sinh viên.
+### 3.2. Ngoài phạm vi hoạt động (Out-of-Scope)
+* Lớp học trực tuyến tương tác realtime (Zoom/Meet integration).
+* Ứng dụng di động Native (App iOS/Android).
+* Trợ lý ảo AI chấm bài tự động.
 
 ---
 
-## 4. CÁC QUY TẮC NGHIỆP VỤ QUAN TRỌNG (BUSINESS RULES & SYSTEM CONSTRAINTS)
-
-### 4.1. Quy tắc Tính Điểm môn học thực tế
-Điểm tổng kết của mỗi học phần được tính toán động dựa trên trọng số chuẩn của nhà trường:
-$$Điểm\ Tổng\ Kết = (Avg\ Assignment\ Score \times 30\%) + (Max\ Quiz\ Score \times 70\%)$$
-- **Tự luận lý thuyết (Assignments)**: Chiếm **30%** tổng số điểm, tính bằng điểm số trung bình của các bài tập tự luận đã được giảng viên chấm điểm thực tế.
-- **Trắc nghiệm thực hành (Quizzes)**: Chiếm **70%** tổng số điểm, tính bằng điểm số cao nhất đạt được trong số các lượt làm bài trắc nghiệm của sinh viên.
-- **Xếp loại Học lực của sinh viên**:
-  - Điểm Tổng Kết $\ge 90\%$: Học lực **Xuất sắc** (GPA 4.0).
-  - Điểm Tổng Kết $\ge 80\%$: Học lực **Giỏi** (GPA 3.0).
-  - Điểm Tổng Kết $\ge 70\%$: Học lực **Khá** (GPA 2.0).
-  - Điểm Tổng Kết $\ge 60\%$: Học lực **Trung bình** (GPA 1.0).
-  - Điểm Tổng Kết $< 60\%$: Học lực **Yếu / Không đạt** (GPA 0.0 - Cần học lại môn).
-
-### 4.2. Quy tắc Điều kiện Học thuật & Chuyên cần
-- **Điều kiện thi cử & Học bạ**: Sinh viên phải đảm bảo tỉ lệ chuyên cần tối thiểu từ **80% trở lên** trong suốt thời gian diễn ra môn học. Nếu chuyên cần dưới 80%, sinh viên sẽ bị khóa điều kiện thi cử cuối khóa và bị hệ thống tự động phát thông báo nhắc nhở khẩn cấp.
-- **Khóa hồ sơ do nợ học phí**: Sinh viên quá hạn đóng học phí sẽ bị gắn cờ giữ hồ sơ học phí (`feeHold = true`), tạm đình chỉ quyền đăng ký môn học mới và quyền thi học kỳ cho đến khi hoàn thành nghĩa vụ học phí.
-
-### 4.3. Quy tắc Giao diện & Trải nghiệm Người dùng (UI/UX Standards)
-- **Cơ chế Portal chống vỡ modal**: Tất cả các modal popup chỉnh sửa thông tin khóa học, cập nhật điểm, chấm điểm tự luận phải được render thông qua `ModalPortal.tsx` trực tiếp vào `document.body`. Quy tắc này ngăn chặn triệt để lỗi chứa khối (Containing Block) của CSS Tailwind làm modal bị lệch vị trí hoặc biến mất khi người dùng đang cuộn trang ở các phân hệ chính có sử dụng thuộc tính `filter` / `backdrop-blur`.
-- **Giới hạn an toàn dữ liệu SVG**: Biểu đồ tiến độ thu học phí SVG của bộ phận Kế toán bắt buộc phải giới hạn chiều rộng hiển thị tối đa của thanh tiến trình là 140px bằng hàm `Math.min(collectionRate, 100)` để ngăn ngừa vỡ giao diện trong các trường hợp số liệu thu vượt mức 100%.
-
-### 4.4. Quy tắc Bảo mật & Đồng bộ dữ liệu Kế toán
-- **An toàn luồng tài chính**: Luồng thanh toán học phí, cảnh báo tài chính và đăng ký môn học bắt buộc phải được xử lý trực tiếp và duy nhất thông qua cơ sở dữ liệu thực của backend (`server.ts` và `financeRepository`).
-- **Cơ chế chống đè dữ liệu**: Hàm đồng bộ hóa client store lên server `syncClientStoreToDb` bắt buộc phải **bỏ qua hoàn toàn** việc đồng bộ ngược từ dữ liệu client-side đè lên database đối với các bảng: `tuition_fees`, `transactions`, `academic_warnings`, và `enrollments` nhằm triệt tiêu hoàn toàn lỗi đè trạng thái học phí cũ của client lên trạng thái thanh toán mới của DB.
+## 4. STAKEHOLDERS (CÁC BÊN LIÊN QUAN)
+* **Chủ sản phẩm (Product Owner)**: Định hướng roadmap, phê duyệt điều kiện nghiệm thu.
+* **Dev / DevOps**: Triển khai hệ thống, tối ưu hóa P95 load time, thiết lập sao lưu tự động hàng ngày và chính sách rollback.
+* **Đội ngũ Vận hành (Admin, Học vụ, Lễ tân, Kế toán, Cố vấn)**: Thực thi công tác nghiệp vụ đào tạo và quản trị tài chính hàng ngày.
+* **Người dùng cuối (Student, Parent, Teacher)**: Đối tượng thụ hưởng dịch vụ học tập và tương tác đào tạo.
 
 ---
 
-## 5. TIÊU CHUẨN XÁC MINH VÀ NGHIỆM THU (VERIFICATION & ACCEPTANCE CRITERIA)
+## 5. PERSONA & NHU CẦU NGHIỆP VỤ CHI TIẾT
 
-Để hệ thống E16 LMS được coi là sẵn sàng vận hành thực tế, các tiêu chí sau phải được đáp ứng đầy đủ:
+### 5.1. Kế Toán (Finance)
+Chịu trách nhiệm đối soát tài chính, ngăn chặn thất thoát và phê duyệt kích hoạt quyền học của sinh viên.
+- **Nhu cầu cốt lõi**:
+  - Dashboard tổng doanh thu thực tế, số giao dịch chờ đối soát, biểu đồ xu hướng 30 ngày.
+  - Phê duyệt/từ chối giao dịch chuyển khoản (Student quét QR); tự động kích hoạt quyền học và đồng bộ cờ cảnh báo nợ khi duyệt.
+  - Quản lý sổ thu chi chi tiết và export báo cáo doanh thu CSV.
+  - **Quy tắc chặn**: Không có quyền can thiệp vào điểm số, bài học hoặc hồ sơ cá nhân của người dùng.
 
-1. **Biên dịch**: Mã nguồn biên dịch hoàn toàn thành công qua trình biên dịch TypeScript không có bất kỳ lỗi cảnh báo hoặc lỗi kiểu (`tsc --noEmit` trả về mã thoát 0).
-2. **An toàn Modal**: Khi cuộn trang xuống dưới cùng ở phân hệ Giảng viên, Học vụ, Lễ tân và bấm mở bất kỳ modal nào, modal đó phải luôn luôn hiển thị cân đối và tập trung ngay chính giữa màn hình (Viewport).
-3. **Đồng bộ hóa Học phí**: Khi kế toán ghi nhận thanh toán học phí thành công, hóa đơn tương ứng trên database phải chuyển sang `paid`, cảnh báo học tập liên quan phải chuyển thành `isResolved = true` và cờ khóa hồ sơ `feeHold` trên học viên phải tự động gỡ bỏ ngay lập tức sau khi refresh.
-4. **Phụ huynh xem điểm**: Tài khoản Phụ huynh đăng nhập vào hệ thống phải hiển thị chính xác bảng điểm chi tiết thành phần (30% Assignment, 70% Quiz) và điểm tổng kết được tính động theo thời gian thực thay vì hiển thị dữ liệu tĩnh (mock).
-5. **Đính kèm bài làm**: Khi học viên bấm cập nhật bài làm tự luận nhiều lần, nội dung trong ô soạn thảo không được xuất hiện chuỗi đính kèm file lặp lại gây phình to văn bản.
+### 5.2. Lễ Tân (Receptionist)
+Hỗ trợ onboarding học viên offline và xử lý các sự cố tài khoản ban đầu.
+- **Nhu cầu cốt lõi**:
+  - Khởi tạo tài khoản học viên mới (gắn role Student mặc định) và gửi link kích hoạt 24h.
+  - Kích hoạt gửi link đặt lại mật khẩu hộ học viên và tra cứu thông tin nhanh dưới 1 giây.
+  - Tra cứu danh sách môn học đang mở để tư vấn.
+  - **Quy tắc chặn**: Không có quyền sửa đổi điểm số, nội dung khóa học hay cấu hình hệ thống.
+
+### 5.3. Quản Lý Học Vụ (Academic Admin)
+Giám sát chất lượng đào tạo, chuyên cần toàn hệ thống và thực thi chế tài cảnh báo học thuật.
+- **Nhu cầu cốt lõi**:
+  - Quản lý buổi điểm danh lớp học, chốt danh sách chuyên cần thay cho giảng viên.
+  - Giám sát sự tuân thủ điểm danh của giảng viên phụ trách môn và gửi email cảnh cáo kỷ luật.
+  - Quản trị danh sách Cảnh báo học tập (Academic Warnings) đối với sinh viên có chuyên cần dưới 80% hoặc nợ học phí quá hạn.
+  - Xem dashboard tổng hợp đào tạo, so sánh hiệu quả và tỉ lệ bỏ dở bài học.
+  - **Quy tắc chặn**: Không có quyền chỉnh sửa nội dung bài giảng của giảng viên.
+
+### 5.4. Phụ huynh (Parent) [Cải tiến bổ sung]
+Đồng hành, giám sát chuyên cần và nghĩa vụ tài chính của sinh viên.
+- **Nhu cầu cốt lõi**:
+  - Xem bảng điểm chi tiết thành phần thực tế (30% Tự luận lý thuyết, 70% Trắc nghiệm thực hành) cùng điểm tổng kết môn bôi màu trực quan thay vì hiển thị dữ liệu tĩnh (mock).
+  - Giám sát chuyên cần thực tế hàng tuần của con và xem học lực phân loại tự động.
+  - Theo dõi cờ cảnh báo học thuật (Cảnh báo chuyên cần, cảnh báo trễ học phí) để kịp thời đôn đốc.
+
+### 5.5. Cố Vấn Học Tập (Advisor) [Cải tiến bổ sung]
+Hỗ trợ sâu sát học vụ và đưa ra biện pháp cải thiện học lực cho sinh viên được phân công.
+- **Nhu cầu cốt lõi**:
+  - Quản lý chi tiết học bạ, cảnh báo đỏ của lớp phụ trách.
+  - Soạn thảo Ghi chú cố vấn học tập (Advisor Notes) định kỳ để gửi cho nhà trường và phụ huynh phối hợp giải quyết.
+
+---
+
+## 6. QUY TRÌNH NGHIỆP VỤ & WORKFLOWS (CHI TIẾT CHUẨN HOÁ)
+
+### 6.1. Quy trình Điểm danh Chuyên cần độc lập (Học vụ)
+```mermaid
+graph TD
+    A[Học vụ kiểm tra dashboard tuân thủ] --> B{Phát hiện môn chưa điểm danh?}
+    B -- Có --> C[Bấm "Bắn mail Cảnh cáo" gửi tới Giảng viên]
+    B -- Không --> D[Tiếp tục giám sát]
+    C --> E[Học vụ chọn lớp phần và bấm "Bắt đầu buổi học mới"]
+    E --> F[Điền ngày học, giờ học và đề tài bài dạy]
+    F --> G[Hệ thống tạo sẵn danh sách sinh viên]
+    G --> H[Học vụ tích chọn trạng thái chuyên cần cho từng SV]
+    H --> I[Chốt lưu dữ liệu chuyên cần thực tế vào DB]
+```
+
+### 6.2. Quy trình Ghi thu Học phí & Đồng bộ Chống đè dữ liệu
+```mermaid
+graph TD
+    A[Sinh viên quét QR thanh toán học phí] --> B[Giao dịch chờ duyệt ở trạng thái pending]
+    B --> C{Kế toán đối soát sao kê ngân hàng}
+    C -- Không khớp --> D[Từ chối giao dịch & Ghi nhật ký hệ thống]
+    C -- Khớp chuẩn --> E[Bấm Phê duyệt trên sổ thu chi]
+    E --> F[Kích hoạt quyền học ngay lập tức]
+    F --> G[Ghi nhận sổ thu chi & Sinh mã biên lai RECEIPT-XXXXXX]
+    G --> H[Tự động xóa cờ cảnh báo trễ học phí]
+    H --> I[Gỡ bỏ trạng thái tạm đình chỉ cờ feeHold trên hồ sơ học viên]
+```
+
+---
+
+## 7. YÊU CẦU CHỨC NĂNG & TIÊU CHÍ NGHIỆM THU (FUNCTIONAL REQUIREMENTS)
+
+### 7.1. Xác thực và Phân quyền (Authentication & Authorization)
+* **AUTH-001 [Must]**: Không có trang tự đăng ký công khai. Toàn bộ tài khoản do Admin hoặc Lễ tân tạo qua console quản trị.
+* **AUTH-002 [Must]**: Đăng nhập bằng email/mật khẩu. Nhập sai trả thông báo lỗi chung chung (không tiết lộ sự tồn tại của email).
+* **AUTH-003 [Must]**: Tài khoản bị khóa (trạng thái `isActive = false`) phải bị chặn đăng nhập ngay lập tức.
+* **AUTH-004 [Must]**: Link kích hoạt tài khoản có hiệu lực trong 24 giờ. Link reset mật khẩu có hiệu lực trong 1 giờ. Cả hai link chỉ sử dụng được 1 lần duy nhất.
+* **AUTH-005 [Must]**: Sau khi đổi hoặc reset mật khẩu thành công, toàn bộ phiên làm việc (sessions) active trên các thiết bị khác phải bị vô hiệu hóa bắt buộc.
+* **AUTH-006 [Must]**: Bảo vệ chống tấn công CSRF trên toàn bộ các form chỉnh sửa/ghi dữ liệu.
+
+### 7.2. Quản trị hệ thống (Admin)
+* **ADM-001 [Must]**: Xem danh sách người dùng đầy đủ, sắp xếp theo tài khoản mới nhất lên trước.
+* **ADM-002 [Must]**: Admin import danh sách người dùng bằng tệp CSV (tối đa 5MB, tối đa 5000 dòng). Các dòng lỗi bị bỏ qua và ghi log lỗi chi tiết, không dừng toàn bộ tiến trình import của các dòng hợp lệ.
+* **ADM-003 [Must]**: Admin không thể tự đổi vai trò, tự khóa hoặc tự xóa tài khoản của chính mình.
+* **ADM-004 [Must]**: Tự động ghi nhật ký hệ thống (Audit Logs) cho tất cả các thao tác nhạy cảm của Admin, Lễ tân và Kế toán.
+
+### 7.3. Đánh giá Học thuật & Chấm điểm (Teacher & Student)
+* **TCH-001 [Must]**: Mỗi khóa học phải có ít nhất một bài học (Lesson) mới được quyền gửi duyệt xuất bản lên Admin.
+* **TCH-002 [Must]**: Điểm thi trắc nghiệm (Quizzes) tự động chấm điểm và hỗ trợ 3 loại câu hỏi: Một đáp án, nhiều đáp án, điền từ tự do.
+* **TCH-003 [Must]**: Bài trắc nghiệm có giới hạn thời gian phải tự động nộp bài ngay khi bộ đếm ngược về 0.
+* **TCH-004 [Must]**: Nộp bài tập tự luận (Assignments) hỗ trợ nộp văn bản gốc hoặc đính kèm tệp tin. Hệ thống tự động làm sạch chuỗi đính kèm cũ bằng Regex để tránh phình to văn bản bài làm khi SV cập nhật bài nộp nhiều lần.
+* **TCH-005 [Must]**: [Cải tiến UI/UX] Khi chấm điểm bài tập tự luận hoặc cập nhật thông tin khóa học, toàn bộ modal popup phải render qua `ModalPortal.tsx` để căn giữa Viewport hoàn hảo, chống lỗi Containing Block của CSS làm modal lệch vị trí khi cuộn trang.
+
+### 7.4. Tài chính và Ghi thu (Kế toán)
+* **KTO-001 [Must]**: Kế toán duyệt giao dịch quét QR ngân hàng thành công phải tự động kích hoạt quyền học và gỡ bỏ trạng thái khóa hồ sơ (`feeHold = false`) ngay lập tức mà không cần can thiệp thủ công.
+* **KTO-002 [Must]**: Giao dịch đã phê duyệt hoặc từ chối thành công không được phép xử lý lại lần hai để bảo toàn tính nhất quán của sổ thu chi.
+* **KTO-003 [Must]**: [Cải tiến An toàn Kế toán] Cấu hình hệ thống loại trừ đồng bộ ngược (chống ghi đè từ client-side) đối với các bảng tài chính cốt lõi: `tuition_fees`, `transactions`, `academic_warnings`, và `enrollments` để ngăn ngừa tuyệt đối lỗi đè dữ liệu kế toán cũ lên database.
+
+### 7.5. Chuyên cần và Cảnh báo Học tập (Học vụ)
+* **QLV-001 [Must]**: Quyền điểm danh và chỉnh sửa chuyên cần thuộc về cán bộ **Học vụ**. Cấm hoàn toàn vai trò giảng viên hoặc sinh viên tự ý ghi nhận chuyên cần trực tiếp.
+* **QLV-002 [Must]**: Hệ thống tự động phát cờ cảnh báo đỏ nếu tỉ lệ chuyên cần thực tế của sinh viên tại một lớp học phần dưới mốc **80%**.
+* **QLV-003 [Must]**: Tự động gỡ bỏ cờ cảnh báo nợ học phí quá hạn của sinh viên khi hóa đơn học phí tương ứng được chuyển sang trạng thái đã nộp đủ (`paid`).
+
+---
+
+## 8. YÊU CẦU DỮ LIỆU & BẢO MẬT (DATA & PRIVACY REQUIREMENTS)
+
+### 8.1. Quy tắc dữ liệu & Học thuật
+- **Công thức điểm tổng kết động**:
+  $$Điểm\ Tổng\ Kết = (Assignment\ Avg \times 30\%) + (Max\ Quiz\ Score \times 70\%)$$
+- **Quy tắc xếp loại học lực**:
+  - $\ge 90\%$: Học lực **Xuất sắc** (GPA 4.0).
+  - $\ge 80\%$: Học lực **Giỏi** (GPA 3.0).
+  - $\ge 70\%$: Học lực **Khá** (GPA 2.0).
+  - $\ge 60\%$: Học lực **Trung bình** (GPA 1.0).
+  - $< 60\%$: Học lực **Yếu / Không đạt** (Cần học lại).
+- **Quy tắc cấp chứng chỉ**: Chứng chỉ tốt nghiệp chỉ được cấp tự động một lần duy nhất cho mỗi học viên hoàn thành 100% bài học và đạt điểm tối thiểu bài thi cuối khóa. Trang công khai xác thực chứng chỉ chỉ hiển thị thông tin tối thiểu (Họ tên ẩn danh, ngày cấp, mã chứng chỉ) và bị vô hiệu hóa ngay nếu tài khoản hoặc khóa học bị khóa.
+
+### 8.2. Chính sách bảo mật thông tin & Xóa dữ liệu
+- **Xóa tài khoản**: Xóa tài khoản mặc định là vô hiệu hóa trạng thái (`isActive = false`). Xóa hoàn toàn khỏi cơ sở dữ liệu chỉ được thực hiện theo quy trình kiểm soát nội bộ nghiêm ngặt có phê duyệt của PO.
+- **Ẩn danh dữ liệu**: Tài khoản bị vô hiệu hóa phải được tự động ẩn danh thông tin cá nhân trên tất cả các màn hình hiển thị báo cáo.
+- **Thời hạn lưu trữ dữ liệu pháp lý**:
+  - Lịch sử học tập: Tối thiểu 24 tháng.
+  - Lịch sử kiểm duyệt diễn đàn: Tối thiểu 12 tháng.
+  - Sổ thu chi kế toán / Giao dịch tài chính: Tối thiểu 60 tháng (5 năm) theo luật kế toán hiện hành.
+
+---
+
+## 9. YÊU CẦU PHI CHỨC NĂNG (NON-FUNCTIONAL REQUIREMENTS)
+
+* **Mã hóa truyền tải**: Toàn bộ lưu lượng mạng giữa người dùng và máy chủ bắt buộc phải mã hóa qua giao thức HTTPS bảo mật.
+* **Thời gian đáp ứng (Latency)**:
+  - Thời gian tải trang chính: $\le 800$ms ở mức P95.
+  - Thời gian kết xuất và export báo cáo CSV dưới 10.000 dòng: $\le 5$ giây ở mức P95.
+  - Thời gian gửi link kích hoạt/reset mật khẩu qua email: $\le 60$ giây ở mức P95.
+* **Khả năng chịu tải (Capacity)**: Hệ thống đáp ứng tối thiểu 5.000 người dùng đăng ký, 500 người dùng hoạt động đồng thời và 1.000 khóa học hoạt động liên tục không trễ lag.
+* **Độ khả dụng (Availability)**: Cam kết thời gian hoạt động ổn định tối thiểu 99.5% mỗi tháng. Cơ chế sao lưu tự động hàng ngày và chính sách khôi phục nhanh (Rollback) ngay khi phát hiện sự cố sau khi cập nhật phiên bản mới.
+
+---
+
+## 10. ĐIỀU KIỆN SẴN SÀNG PRODUCTION (READY FOR PRODUCTION)
+1. Toàn bộ các yêu cầu **Must** quy định trong tài liệu BRD này đã được code và vượt qua các bài kiểm thử biên dịch thành công (`tsc --noEmit` trả về mã 0).
+2. Xóa bỏ hoặc vô hiệu hóa hoàn toàn trang tự đăng ký tài khoản công khai trên production.
+3. Luồng kế toán đối soát $\rightarrow$ phê duyệt $\rightarrow$ kích hoạt tự động $\rightarrow$ xóa cảnh báo học tập đã được kiểm thử đầu cuối (End-to-End) thành công tuyệt đối.
+4. Giao diện modal hiển thị cân đối 100% tại trung tâm màn hình dưới mọi mức cuộn trang của người dùng.
+5. Sổ thu chi kế toán và biểu đồ SVG thu học phí vận hành chuẩn xác, chống méo mó giao diện.
+6. Toàn bộ tài liệu vận hành và chính sách rollback đã được cấu hình sẵn sàng bàn giao cho ban quản trị.
+
+---
+*Tài liệu được phê duyệt chính thức cho giai đoạn Production.*
