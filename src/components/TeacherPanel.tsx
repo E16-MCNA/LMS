@@ -566,7 +566,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           </button>
         </div>
       ) : (
-        <div className="flex border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
+        <div className="flex flex-wrap border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
           <button
             onClick={() => setActiveSubTab("teacher_guide")}
             className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
@@ -615,6 +615,14 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           >
             Báo cáo Hiệu suất
           </button>
+          <button
+            onClick={() => setActiveSubTab("timetable")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "timetable" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Thời khóa biểu
+          </button>
         </div>
       )}
 
@@ -640,7 +648,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           <UserGuide
             role="teacher"
             activeSystem={activeSystem}
-            onClose={() => setActiveSubTab("courses")}
+            onClose={() => setActiveSubTab(activeSystem === "SIS" ? "timetable" : "courses")}
           />
         )}
 
