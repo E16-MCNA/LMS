@@ -342,7 +342,14 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     setShowModal(true);
   };
 
-  const handleDropSection = (sectionId: string, day: string, slot: typeof STANDARD_SLOTS[0]) => {
+  const handleDropSection = (
+    sectionId: string,
+    day: string,
+    slot: typeof STANDARD_SLOTS[0],
+    draggedDay?: string | null,
+    draggedStartTime?: string | null,
+    draggedEndTime?: string | null
+  ) => {
     if (role !== "admin") return;
     if (!sectionId) return;
 
@@ -355,8 +362,26 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
       return;
     }
 
-    // Set the proposed slot with A101 as the smart default room
-    const newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101" }];
+    let newSlots = [];
+    if (draggedDay && draggedStartTime && draggedEndTime) {
+      // Dragging an existing scheduled slot from the timetable grid.
+      // Update only the specific slot being dragged, preserving other slots in the weekly schedule!
+      newSlots = sec.schedule.map((s: any) => {
+        if (s.dayOfWeek === draggedDay && s.startTime === draggedStartTime && s.endTime === draggedEndTime) {
+          return {
+            ...s,
+            dayOfWeek: day,
+            startTime: slot.start,
+            endTime: slot.end
+          };
+        }
+        return s;
+      });
+    } else {
+      // Dragging a pending slot from the left queue sidebar.
+      // Overwrite the schedule since it wasn't active on the timetable.
+      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101" }];
+    }
 
     // Run overlap logic against other active sections
     const conflicts = checkConflicts(sec.id, sec.teacherId, newSlots, sec.semesterId);
@@ -689,7 +714,10 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                               e.preventDefault();
                               setDragOverCell(null);
                               const sectionId = e.dataTransfer.getData("sectionId");
-                              handleDropSection(sectionId, day, slot);
+                              const draggedDay = e.dataTransfer.getData("draggedDay");
+                              const draggedStartTime = e.dataTransfer.getData("draggedStartTime");
+                              const draggedEndTime = e.dataTransfer.getData("draggedEndTime");
+                              handleDropSection(sectionId, day, slot, draggedDay, draggedStartTime, draggedEndTime);
                             }
                           }}
                         >
@@ -701,6 +729,9 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                 onDragStart={(e) => {
                                   if (role === "admin") {
                                     e.dataTransfer.setData("sectionId", item.section.id);
+                                    e.dataTransfer.setData("draggedDay", item.dayOfWeek);
+                                    e.dataTransfer.setData("draggedStartTime", item.startTime);
+                                    e.dataTransfer.setData("draggedEndTime", item.endTime);
                                   }
                                 }}
                                 className={`p-2.5 rounded-2xl border text-[11px] leading-tight space-y-1.5 transition-all shadow-md backdrop-blur-sm relative overflow-hidden group ${
