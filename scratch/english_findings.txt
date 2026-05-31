@@ -1,0 +1,1416 @@
+
+--- api.ts ---
+  Line 43 (matched '\bDelete\b'): deleteCourse: (courseId: string) => apiFetch(`/api/courses/${courseId}`, { method: "DELETE" }),
+  Line 51 (matched '\bDelete\b'): deleteQuestion: (questionId: string) => apiFetch(`/api/questions/${questionId}`, { method: "DELETE" }),
+  Line 63 (matched '\bAmount\b'): confirmTransfer: (payload: { feeId: string; amount: number }) => apiFetch<{ ok: boolean; transactionId: string }>("/api/tuition/confirm-transfer", { method: "POST", body: JSON.stringify(payload) }),
+  Line 64 (matched '\bStatus\b'): reviewTransaction: (transactionId: string, payload: { status: "approved" | "rejected"; notes?: string }) => apiFetch(`/api/finance/transactions/${transactionId}/review`, { method: "PATCH", body: JSON.stringify(payload) }),
+
+--- App.tsx ---
+  Line 96 (matched '\bRole\b'): const roleLabel = (role: User["role"]) => {
+  Line 101 (matched '\bTeacher\b'): if (role === "teacher") return "Giảng Viên";
+  Line 102 (matched '\bStudent\b'): if (role === "student") return "Học Viên";
+  Line 103 (matched '\bFinance\b'): if (role === "finance") return "Phòng Tài Chính";
+  Line 104 (matched '\bAdvisor\b'): if (role === "advisor") return "Cố Vấn Học Tập";
+  Line 105 (matched '\bParent\b'): if (role === "parent") return "Trang Phụ Huynh";
+  Line 189 (matched '\bEmail\b'): const submittedEmail = String(formData.get("email") || loginEmail);
+  Line 197 (matched '\bEmail\b'): body: JSON.stringify({ email: emailClean, password: submittedPassword })
+  Line 214 (matched '\bRole\b'): AppStore.log(data.user.id, "authentication_login", "security", `Successfully authenticated into profile desk role: ${data.user.role}`);
+  Line 318 (matched '\bTeacher\b'): <div class="py-1.5 flex justify-between"><span>Teacher</span><span class="text-white">teacher@mcna.local / teachere16</span></div>
+  Line 319 (matched '\bStudent\b'): <div class="py-1.5 flex justify-between"><span>Student</span><span class="text-white">student@mcna.local / studente16</span></div>
+  Line 398 (matched '\bProfile\b'): {/* USER PROFILE DROPDOWN MENU / POPOVER */}
+  Line 405 (matched '\bProfile\b'): {/* Scoped Profile Header Info */}
+  Line 414 (matched '\bAction\b'): {/* Action Buttons */}
+  Line 451 (matched '\bProfile\b'): {/* Main Profile Trigger Button */}
+  Line 464 (matched '\bDetails\b'): {/* User Details */}
+  Line 483 (matched '\bAction\b'): {/* Standalone Action button in the middle */}
+  Line 594 (matched '\bTeacher\b'): {currentUser.role === "teacher" && (
+  Line 602 (matched '\bStudent\b'): {currentUser.role === "student" && (
+  Line 610 (matched '\bFinance\b'): {(currentUser.role === "finance") && (
+  Line 626 (matched '\bAdvisor\b'): {currentUser.role === "advisor" && (
+  Line 634 (matched '\bParent\b'): {currentUser.role === "parent" && (
+  Line 668 (matched '\bCourse\b'): Experience a high-fidelity learning playground. Manage course catalog requests, append dynamic checkbox lesson syllabuses, evaluate student deliverables, and download standalone files instantly.
+  Line 703 (matched '\bSubmit\b'): {/* Login submit form */}
+  Line 708 (matched '\bEmail\b'): name="email"
+  Line 709 (matched '\bEmail\b'): type="email"
+  Line 732 (matched '\bSubmit\b'): type="submit"
+  Line 827 (matched '\bProfile\b'): {/* 1. VIEW PROFILE MODAL */}
+  Line 1000 (matched '\bSubmit\b'): type="submit"
+
+--- authHash.ts ---
+  Line 7 (matched '\bAmount\b'): function rightRotate(value: number, amount: number) {
+
+--- dbMigrations.ts ---
+  Line 19 (matched '\bName\b'): name: file,
+  Line 29 (matched '\bCreate\b'): CREATE TABLE IF NOT EXISTS schema_migrations (
+  Line 31 (matched '\bName\b'): name TEXT NOT NULL,
+
+--- gradeUtils.ts ---
+  Line 14 (matched '\bAttendance\b'): attendance: "low_attendance",
+  Line 121 (matched '\bQuiz\b'): const courseQuizzes = store.quizzes.filter((quiz: Quiz) => quiz.courseId === courseId);
+  Line 125 (matched '\bQuiz\b'): (attempt: QuizAttempt) => attempt.studentId === studentId && attempt.quizId === quiz.id
+  Line 131 (matched '\bAssignment\b'): const courseAssignments = store.assignments.filter((assignment: Assignment) => assignment.courseId === courseId);
+  Line 136 (matched '\bAssignment\b'): courseAssignments.some((assignment) => assignment.id === submission.assignmentId) &&
+  Line 140 (matched '\bAssignment\b'): const assignment = store.assignments.find((item) => item.id === submission.assignmentId);
+  Line 141 (matched '\bAssignment\b'): const maxScore = assignment?.maxScore || 100;
+
+--- mockSeeds.ts ---
+  Line 8 (matched '\bStudent\b'): const currentStudentsCount = store.users.filter(u => u.role === "student").length;
+  Line 31 (matched '\bEmail\b'): email: "superadmin@e16.local",
+  Line 34 (matched '\bName\b'): name: "Trần Anh Khoa (Super Admin)",
+  Line 35 (matched '\bRole\b'): role: "super_admin",
+  Line 42 (matched '\bTeacher\b'): const teachersCountToGen = 20 - store.users.filter(u => u.role === "teacher").length;
+  Line 45 (matched '\bName\b'): const name = "Thầy/Cô " + generateName();
+  Line 49 (matched '\bEmail\b'): email: `teacher_${i}@e16.local`,
+  Line 53 (matched '\bRole\b'): role: "teacher",
+  Line 60 (matched '\bTeacher\b'): const allTeachers = store.users.filter(u => u.role === "teacher");
+  Line 104 (matched '\bFinance\b'): const categories = ["Web Development", "Software Engineering", "Data Science", "System Administration", "Artificial Intelligence", "Business Management", "Finance"];
+  Line 118 (matched '\bDescription\b'): description: `Khóa học toàn diện về ${title}, trang bị kỹ năng chuyên ngành và thực hành qua hệ thống Lab SIS hiện đại. Thích hợp cho cả sinh viên học lại và nghiên cứu nâng cao.`,
+  Line 120 (matched '\bStatus\b'): status: "published",
+  Line 135 (matched '\bCourse\b'): const hasLesson = store.lessons.some(l => l.courseId === course.id);
+  Line 139 (matched '\bCourse\b'): courseId: course.id,
+  Line 147 (matched '\bCourse\b'): courseId: course.id,
+  Line 155 (matched '\bCourse\b'): const hasQuiz = store.quizzes.some(q => q.courseId === course.id);
+  Line 160 (matched '\bCourse\b'): courseId: course.id,
+  Line 185 (matched '\bCourse\b'): const hasAssignment = store.assignments.some(a => a.courseId === course.id);
+  Line 189 (matched '\bCourse\b'): courseId: course.id,
+  Line 191 (matched '\bDescription\b'): description: "Sinh viên hoàn thành báo cáo mã nguồn, đẩy lên GitHub cá nhân và viết mô tả giải pháp chi tiết vào ô nộp bài.",
+  Line 199 (matched '\bStudent\b'): const studentsToGen = 300 - store.users.filter(u => u.role === "student").length;
+  Line 220 (matched '\bName\b'): const name = generateName();
+  Line 224 (matched '\bEmail\b'): email: `st_${i}@e16.local`,
+  Line 228 (matched '\bRole\b'): role: "student",
+  Line 231 (matched '\bPhone\b'): phone: "09" + Math.floor(10000000 + Math.random() * 90000000)
+  Line 249 (matched '\bStatus\b'): status: Math.random() > 0.08 ? "active" : Math.random() > 0.5 ? "suspended" : "on-leave",
+  Line 252 (matched '\bAddress\b'): address: addresses[Math.floor(Math.random() * addresses.length)],
+  Line 253 (matched '\bPhone\b'): phone: "09" + Math.floor(10000000 + Math.random() * 90000000),
+  Line 287 (matched '\bProfile\b'): const profile = store.studentProfiles.find(pf => pf.userId === sId);
+  Line 288 (matched '\bProfile\b'): if (profile && profile.gpa < 2.3) {
+  Line 306 (matched '\bStatus\b'): status: "active",
+  Line 332 (matched '\bUnpaid\b'): const isPending = !isPaid && Math.random() > 0.3; // 30% of unpaid fees are pending bank transfers
+  Line 334 (matched '\bPaid\b'): let feeStatus: "paid" | "unpaid" = "unpaid";
+  Line 340 (matched '\bPaid\b'): feeStatus = "paid";
+  Line 342 (matched '\bDate\b'): paidAt = new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(); // random past date
+  Line 350 (matched '\bAmount\b'): amount: paidAmount,
+  Line 351 (matched '\bStatus\b'): status: "approved",
+  Line 365 (matched '\bAmount\b'): amount: crs.price || 2000000,
+  Line 366 (matched '\bStatus\b'): status: "pending",
+  Line 376 (matched '\bAmount\b'): amount: crs.price || 2000000,
+  Line 378 (matched '\bStatus\b'): status: feeStatus,
+
+--- store.ts ---
+  Line 33 (matched '\bRole\b'): if (legacyRole === "ke_toan") return { ...user, role: "finance" };
+  Line 34 (matched '\bRole\b'): if (legacyRole === "quan_ly_hoc_vu" || legacyRole === "academic" || legacyRole === "academic_admin") return { ...user, role: "admin" };
+  Line 35 (matched '\bRole\b'): if (legacyRole === "le_tan") return { ...user, role: "sale" };
+  Line 68 (matched '\bEmail\b'): email: "admin@mcna.local",
+  Line 71 (matched '\bName\b'): name: "Arthur Pendragon",
+  Line 72 (matched '\bRole\b'): role: "manager",
+  Line 78 (matched '\bEmail\b'): email: "teacher@mcna.local",
+  Line 81 (matched '\bName\b'): name: "Prof. Linus Torvalds",
+  Line 82 (matched '\bRole\b'): role: "teacher",
+  Line 88 (matched '\bEmail\b'): email: "student@mcna.local",
+  Line 91 (matched '\bName\b'): name: "Ada Lovelace",
+  Line 92 (matched '\bRole\b'): role: "student",
+  Line 98 (matched '\bEmail\b'): email: "finance@mcna.local",
+  Line 101 (matched '\bName\b'): name: "Nguyễn Văn Kế Toán",
+  Line 102 (matched '\bRole\b'): role: "finance",
+  Line 108 (matched '\bEmail\b'): email: "le_tan@mcna.local",
+  Line 111 (matched '\bName\b'): name: "Lê Thị Lễ Tân",
+  Line 112 (matched '\bRole\b'): role: "sale",
+  Line 118 (matched '\bEmail\b'): email: "academic@mcna.local",
+  Line 121 (matched '\bName\b'): name: "Trần Văn Học Vụ",
+  Line 122 (matched '\bRole\b'): role: "admin",
+  Line 128 (matched '\bEmail\b'): email: "advisor@mcna.local",
+  Line 131 (matched '\bName\b'): name: "Phạm Cố Vấn (Cố vấn Học tập)",
+  Line 132 (matched '\bRole\b'): role: "advisor",
+  Line 141 (matched '\bDescription\b'): description: "Learn building highly responsive full-stack applications with Express, Vite, and database persistence. Includes production architectures.",
+  Line 143 (matched '\bStatus\b'): status: "published",
+  Line 153 (matched '\bAnalytics\b'): title: "Introduction to Python Analytics",
+  Line 154 (matched '\bDescription\b'): description: "Learn pandas, NumPy, and data visualizing. We will step into practical micro-analytics, data science pipelines, and database tracking.",
+  Line 156 (matched '\bStatus\b'): status: "published",
+  Line 160 (matched '\bAnalytics\b'): tags: ["Python", "Pandas", "Analytics"],
+  Line 167 (matched '\bDescription\b'): description: "Deep dive into solid principles, microservice patterns, and message broker backbones. Explore scale-ready structures.",
+  Line 169 (matched '\bStatus\b'): status: "pending", // Pending admin approval demo!
+  Line 180 (matched '\bDescription\b'): description: "Learn building scale-ready system design using Docker, Kubernetes, gRPC, and Kafka. Essential for DevOps and modern software engineers.",
+  Line 182 (matched '\bStatus\b'): status: "published",
+  Line 192 (matched '\bAnalytics\b'): title: "Data Engineering & Real-Time Analytics Pipeline",
+  Line 193 (matched '\bDescription\b'): description: "Master Spark streaming, Kafka events processing, and data warehouse patterns. Build high throughput data pipelines.",
+  Line 195 (matched '\bStatus\b'): status: "published",
+  Line 210 (matched '\bAddress\b'): content: "We will demystify standard TCP/IP binding interfaces, reverse proxy configurations, and why host address '0.0.0.0' matters in cloud infrastructure.\n\n### Ingress Configuration\nAll requests traverse a virtual network dispatcher. Ensure you design port structures intelligently to support modern reverse proxy layers correctly.",
+  Line 249 (matched '\bStatus\b'): status: "active",
+  Line 275 (matched '\bQuiz\b'): title: "Full-Stack Final Graduation Quiz",
+  Line 294 (matched '\bAddress\b'): text: "What internal host address mapping exposes a microservice container universally to all incoming reverse proxies?",
+  Line 346 (matched '\bDescription\b'): description: "Create a modular assignment submission outlining how standard JSON router handles errors properly during storage failures.",
+  Line 356 (matched '\bStatus\b'): content: "My submission introduces an async express route with a clean try-catch wrapper loading status payloads, guarding dynamic values cleanly and logging server errors. This prevents workspace crashes during server startup.",
+  Line 367 (matched '\bActive\b'): message: "Welcome to Arthur's executive portal. System diagnostic traces indicate 100% active state.",
+  Line 375 (matched '\bActive\b'): message: "You are currently active in: Full-Stack Web Development Bootcamp.",
+  Line 385 (matched '\bWelcome\b'): title: "Welcome to the Full-Stack Developer Forum!",
+  Line 403 (matched '\bAction\b'): action: "initialize_system",
+  Line 414 (matched '\bAmount\b'): amount: 2500000,
+  Line 415 (matched '\bStatus\b'): status: "approved",
+  Line 426 (matched '\bAmount\b'): amount: 1800000,
+  Line 427 (matched '\bStatus\b'): status: "pending",
+  Line 435 (matched '\bName\b'): name: "2024–2025",
+  Line 445 (matched '\bName\b'): name: "Fall 2024",
+  Line 455 (matched '\bName\b'): name: "Spring 2025",
+  Line 466 (matched '\bName\b'): name: "Computer Science",
+  Line 469 (matched '\bDescription\b'): description: "Khoa Khoa học Máy tính"
+  Line 473 (matched '\bName\b'): name: "Business Administration",
+  Line 476 (matched '\bDescription\b'): description: "Khoa Quản trị Kinh doanh"
+  Line 483 (matched '\bName\b'): name: "Software Engineering",
+  Line 487 (matched '\bDescription\b'): description: "Nhánh đào tạo Kỹ sư Phần mềm ứng dụng chuyên sâu."
+  Line 492 (matched '\bName\b'): name: "Business Management",
+  Line 496 (matched '\bDescription\b'): description: "Đào tạo kỹ năng quản trị, khởi nghiệp và điều hành doanh nghiệp."
+  Line 527 (matched '\bStatus\b'): status: "active",
+  Line 530 (matched '\bAddress\b'): address: "Số 1 Đại Cồ Việt, Hai Bà Trưng, Hà Nội",
+  Line 531 (matched '\bPhone\b'): phone: "0912345678",
+  Line 546 (matched '\bDate\b'): date: "2025-02-15",
+  Line 554 (matched '\bDate\b'): date: "2025-02-22",
+  Line 562 (matched '\bDate\b'): date: "2025-03-01",
+  Line 567 (matched '\bStatus\b'): { id: "ar_1", sessionId: "session_cs1", studentId: "user_student", status: "present" },
+  Line 568 (matched '\bStatus\b'): { id: "ar_2", sessionId: "session_cs2", studentId: "user_student", status: "absent" },
+  Line 569 (matched '\bStatus\b'): { id: "ar_3", sessionId: "session_cs3", studentId: "user_student", status: "absent" }
+  Line 576 (matched '\bAmount\b'): amount: 15000000,
+  Line 578 (matched '\bUnpaid\b'): status: "unpaid",
+  Line 611 (matched '\bSchedule\b'): schedule: [
+  Line 615 (matched '\bStatus\b'): status: "open"
+  Line 624 (matched '\bSchedule\b'): schedule: [
+  Line 628 (matched '\bStatus\b'): status: "open"
+  Line 635 (matched '\bName\b'): name: "Đăng ký học kỳ Mùa Xuân 2025",
+  Line 648 (matched '\bStatus\b'): status: "registered",
+  Line 656 (matched '\bName\b'): name: "Học bổng Khuyến khích Học tập 2025",
+  Line 670 (matched '\bStatus\b'): status: "pending",
+  Line 705 (matched '\bGrade\b'): const grade = calculateCourseGradePercent(collectCourseGradeInputs(store, studentId, courseId));
+  Line 707 (matched '\bGrade\b'): if (grade.hasGrades && grade.gradePoint !== null) {
+  Line 708 (matched '\bGrade\b'): totalGradeWeightedPoints += grade.gradePoint * credits;
+  Line 735 (matched '\bProfile\b'): const { gpa, earnedCredits } = calculateStudentGpa(store, profile.userId);
+  Line 738 (matched '\bProfile\b'): const progCourses = store.programCourses.filter(pc => pc.programId === profile.programId);
+  Line 743 (matched '\bProfile\b'): const enrollment = store.enrollments.find(e => e.studentId === profile.userId && e.courseId === pc.courseId && e.status !== "cancelled");
+  Line 749 (matched '\bGrade\b'): const grade = calculateCourseGradePercent(collectCourseGradeInputs(store, profile.userId, pc.courseId));
+  Line 759 (matched '\bStatus\b'): let status = profile.status;
+  Line 760 (matched '\bActive\b'): if (allCompletedAndPassed && profile.status === "active") {
+  Line 761 (matched '\bStatus\b'): status = "graduated";
+  Line 768 (matched '\bStatus\b'): status
+  Line 773 (matched '\bClass\b'): export class AppStore {
+  Line 831 (matched '\bParent\b'): const rolesToBackfill = ["le_tan", "academic_admin", "finance", "advisor", "parent"];
+  Line 876 (matched '\bRole\b'): const role = sessionStorage.getItem("e16_lms_role");
+  Line 877 (matched '\bFinance\b'): if (role && !["admin", "super_admin", "academic_admin", "finance"].includes(role)) {
+  Line 905 (matched '\bAction\b'): public static log(userId: string, action: string, target: string, detail: string): void {
+  Line 915 (matched '\bAdd\b'): store.auditLogs.unshift(logItem); // Add to beginning of log
+  Line 921 (matched '\bNotification\b'): const notification: Notification = {
+
+--- types.ts ---
+  Line 5 (matched '\bFinance\b'): | "finance"
+  Line 6 (matched '\bAdvisor\b'): | "advisor"
+  Line 7 (matched '\bTeacher\b'): | "teacher"
+  Line 8 (matched '\bStudent\b'): | "student"
+  Line 9 (matched '\bParent\b'): | "parent"
+  Line 14 (matched '\bEmail\b'): email: string;
+  Line 17 (matched '\bName\b'): name: string;
+  Line 18 (matched '\bRole\b'): role: UserRole;
+  Line 20 (matched '\bPhone\b'): phone?: string;
+  Line 22 (matched '\bStudent\b'): linkedStudentId?: string; // parent account links to student
+  Line 25 (matched '\bCourse\b'): export interface Course {
+  Line 28 (matched '\bDescription\b'): description: string;
+  Line 30 (matched '\bStatus\b'): status: "draft" | "pending" | "published" | "rejected";
+  Line 54 (matched '\bStatus\b'): status: "active" | "completed" | "cancelled" | "pending_payment";
+  Line 67 (matched '\bQuiz\b'): export interface Quiz {
+  Line 70 (matched '\bCourse\b'): lessonId?: string; // or linked to course directly
+  Line 97 (matched '\bAssignment\b'): export interface Assignment {
+  Line 101 (matched '\bDescription\b'): description: string;
+  Line 126 (matched '\bNotification\b'): export interface Notification {
+  Line 129 (matched '\bWarning\b'): type: string; // e.g., "info", "success", "warning", "danger"
+  Line 156 (matched '\bAction\b'): action: string;
+  Line 166 (matched '\bAmount\b'): amount: number;
+  Line 167 (matched '\bStatus\b'): status: "pending" | "approved" | "rejected";
+  Line 177 (matched '\bName\b'): name: string;
+  Line 186 (matched '\bName\b'): name: string;
+  Line 196 (matched '\bName\b'): name: string;
+  Line 199 (matched '\bDescription\b'): description: string;
+  Line 205 (matched '\bName\b'): name: string;
+  Line 209 (matched '\bDescription\b'): description: string;
+  Line 230 (matched '\bStatus\b'): status: "active" | "on-leave" | "suspended" | "graduated" | "withdrawn";
+  Line 233 (matched '\bAddress\b'): address?: string;
+  Line 234 (matched '\bPhone\b'): phone?: string;
+  Line 250 (matched '\bDate\b'): date: string;
+  Line 258 (matched '\bStatus\b'): status: "present" | "absent" | "late" | "excused";
+  Line 266 (matched '\bAmount\b'): amount: number;
+  Line 268 (matched '\bPaid\b'): status: "unpaid" | "partial" | "paid";
+  Line 277 (matched '\bAttendance\b'): type: "low_gpa" | "low_attendance" | "unpaid_fee" | "exam_ban" | "overdue_assignment" | "low-gpa" | "attendance" | "unpaid-fee" | "overdue-assignment";
+  Line 290 (matched '\bGrade\b'): grade: number;
+  Line 321 (matched '\bSchedule\b'): schedule: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>;
+  Line 322 (matched '\bStatus\b'): status: "pending" | "open" | "closed" | "cancelled";
+  Line 328 (matched '\bName\b'): name: string;
+  Line 340 (matched '\bStatus\b'): status: "registered" | "waitlisted" | "dropped" | "withdrawn" | "completed" | "failed";
+  Line 343 (matched '\bGrade\b'): grade?: string;
+  Line 347 (matched '\bCourse\b'): isRetake?: boolean;                // true if student previously failed this course
+  Line 354 (matched '\bName\b'): name: string;
+  Line 356 (matched '\bAmount\b'): amount?: number;                 // fixed amount OR
+  Line 357 (matched '\bTuition\b'): discountPercent?: number;        // percentage off tuition
+  Line 359 (matched '\bDescription\b'): conditions: string;      // description of eligibility
+  Line 367 (matched '\bStatus\b'): status: "pending" | "approved" | "rejected";
+  Line 378 (matched '\bStatus\b'): status: "pending" | "under_review" | "approved" | "rejected";
+  Line 401 (matched '\bStatus\b'): status: "pending" | "approved" | "rejected";
+  Line 411 (matched '\bStatus\b'): status: "pending" | "eligible" | "approved" | "rejected";
+
+--- components\AcademicManager.tsx ---
+  Line 77 (matched '\bName\b'): const [yearsSortField, setYearsSortField] = useState<string>("name");
+  Line 80 (matched '\bName\b'): const [semsSortField, setSemsSortField] = useState<string>("name");
+  Line 126 (matched '\bTeacher\b'): const teachers = store.users.filter(u => u.role === "teacher");
+  Line 143 (matched '\bName\b'): name: yearName.trim(),
+  Line 192 (matched '\bName\b'): name: semName.trim(),
+  Line 227 (matched '\bName\b'): name: deptName.trim(),
+  Line 230 (matched '\bDescription\b'): description: deptDesc.trim()
+  Line 253 (matched '\bName\b'): name: progName.trim(),
+  Line 257 (matched '\bDescription\b'): description: progDesc.trim()
+  Line 345 (matched '\bSearch\b'): {/* Reactive list search input */}
+  Line 372 (matched '\bName\b'): Tên năm học {yearsSortField === "name" ? (yearsSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 465 (matched '\bDate\b'): type="date"
+  Line 475 (matched '\bDate\b'): type="date"
+  Line 483 (matched '\bSubmit\b'): type="submit"
+  Line 503 (matched '\bName\b'): Tên Học Kỳ {semsSortField === "name" ? (semsSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 620 (matched '\bDate\b'): type="date"
+  Line 630 (matched '\bDate\b'): type="date"
+  Line 642 (matched '\bDate\b'): type="date"
+  Line 652 (matched '\bDate\b'): type="date"
+  Line 661 (matched '\bSubmit\b'): type="submit"
+  Line 684 (matched '\bName\b'): Tên Gọi {deptsSortField === "name" ? (deptsSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 791 (matched '\bSubmit\b'): type="submit"
+  Line 903 (matched '\bSubmit\b'): type="submit"
+  Line 1080 (matched '\bSubmit\b'): type="submit"
+
+--- components\AcademicPanel.tsx ---
+  Line 36 (matched '\bOverview\b'): const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts" | "attendance" | "warnings" | "reports">(
+  Line 37 (matched '\bOverview\b'): activeSystem === "LMS" ? "overview" : "attendance"
+  Line 46 (matched '\bOverview\b'): if (!["overview", "students", "compare", "dropouts"].includes(activeSubTab)) setActiveSubTab("overview");
+  Line 48 (matched '\bAttendance\b'): if (!["attendance", "warnings", "reports"].includes(activeSubTab)) setActiveSubTab("attendance");
+  Line 109 (matched '\bStudent\b'): const totalStudents = store.users.filter(u => u.role === "student").length;
+  Line 119 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === e.courseId);
+  Line 120 (matched '\bCourse\b'): if (!course || course.status !== "published") return false;
+  Line 123 (matched '\bCourse\b'): const matchesTeacher = selectedTeacherId === "all" || course.teacherId === selectedTeacherId;
+  Line 152 (matched '\bStudent\b'): student: studentUser,
+  Line 153 (matched '\bCourse\b'): course: courseObj,
+  Line 185 (matched '\bCourse\b'): course: c,
+  Line 379 (matched '\bFilter\b'): {/* Course & Teacher Filter bar */}
+  Line 392 (matched '\bCourse\b'): setSelectedCourseId("all"); // Reset course selection
+  Line 397 (matched '\bTeacher\b'): {store.users.filter(u => u.role === "teacher").map(teach => (
+  Line 431 (matched '\bOverview\b'): onClick={() => setActiveSubTab("overview")}
+  Line 433 (matched '\bOverview\b'): activeSubTab === "overview" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+  Line 468 (matched '\bAttendance\b'): onClick={() => setActiveSubTab("attendance")}
+  Line 470 (matched '\bAttendance\b'): activeSubTab === "attendance" ? "bg-indigo-600 text-white border border-indigo-500" : "text-white/60 hover:text-white"
+  Line 498 (matched '\bOverview\b'): {activeSubTab === "overview" && (() => {
+  Line 527 (matched '\bCourse\b'): {/* Visual SVG Card 1: Course completion comparison */}
+  Line 611 (matched '\bWarning\b'): {/* Stats overview data and Academic Warning alerts list */}
+  Line 661 (matched '\bEmail\b'): placeholder="Tìm học viên bằng tên hoặc email..."
+  Line 782 (matched '\bQuiz\b'): Điểm thi quiz trung bình {compareSortField === "avgQuizScore" ? (compareSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 897 (matched '\bAttendance\b'): {activeSubTab === "attendance" && (
+  Line 950 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 952 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 954 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 955 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 956 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 957 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\AdminPanel.tsx ---
+  Line 70 (matched '\bAttendance\b'): | "attendance"
+  Line 71 (matched '\bTuition\b'): | "tuition"
+  Line 97 (matched '\bAttendance\b'): allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable");
+  Line 99 (matched '\bTuition\b'): allowedSisTabs.push("tuition");
+  Line 117 (matched '\bStudent\b'): const [newUserRole, setNewUserRole] = useState<"student" | "teacher" | "manager" | "admin" | "finance" | "sale" | "advisor">("student");
+  Line 128 (matched '\bStudent\b'): const [userDirTab, setUserDirTab] = useState<"student" | "teacher" | "other">("student");
+  Line 132 (matched '\bName\b'): const [sortField, setSortField] = useState<string>("name");
+  Line 166 (matched '\bEmail\b'): triggerToast("Email đăng ký này tài khoản đã tồn tại.");
+  Line 172 (matched '\bEmail\b'): email: newUserEmail.toLowerCase().trim(),
+  Line 174 (matched '\bName\b'): name: newUserName.trim(),
+  Line 175 (matched '\bRole\b'): role: newUserRole
+  Line 202 (matched '\bName\b'): if (index === 0 && (row.toLowerCase().includes("name") || row.toLowerCase().includes("email"))) {
+  Line 213 (matched '\bRole\b'): const cleanRole = role.toLowerCase() as any;
+  Line 214 (matched '\bStudent\b'): const roleValidated = ["student", "teacher", "manager", "admin", "finance", "sale", "advisor"].includes(cleanRole);
+  Line 215 (matched '\bEmail\b'): const emailUnique = !storeData.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  Line 217 (matched '\bEmail\b'): if (name && email.includes("@") && roleValidated && emailUnique) {
+  Line 222 (matched '\bEmail\b'): email: email.toLowerCase(),
+  Line 225 (matched '\bRole\b'): role: cleanRole,
+  Line 233 (matched '\bStudent\b'): if (cleanRole === "student") {
+  Line 237 (matched '\bProfile\b'): id: generateId("profile"),
+  Line 245 (matched '\bStatus\b'): status: "active",
+  Line 271 (matched '\bEmail\b'): text: `Nhập dữ liệu đồng loạt thất bại. Toàn bộ ${errorCount} dòng có lỗi schema cấu trúc cấu trúc hoặc đã bị trùng email.`
+  Line 291 (matched '\bProfile\b'): if (storeData.studentProfiles.some(profile => profile.userId === userId)) return;
+  Line 294 (matched '\bProfile\b'): id: generateId("profile"),
+  Line 302 (matched '\bStatus\b'): status: "active",
+  Line 308 (matched '\bRole\b'): const handleUpdateUserRole = (userId: string, newRole: User["role"]) => {
+  Line 309 (matched '\bRole\b'): const allowedRoles: User["role"][] = ["student", "teacher", "manager", "admin", "finance", "sale", "advisor"];
+  Line 312 (matched '\bRole\b'): storeData.users = storeData.users.map(user => user.id === userId ? { ...user, role: newRole } : user);
+  Line 313 (matched '\bStudent\b'): if (newRole === "student") ensureStudentProfile(storeData, userId);
+  Line 314 (matched '\bRole\b'): AppStore.log(currentUser.id, "update_user_role", userId, `Changed role to ${newRole}`);
+  Line 374 (matched '\bActive\b'): (filterStatus === "active" && u.isActive) ||
+  Line 375 (matched '\bInactive\b'): (filterStatus === "inactive" && !u.isActive);
+  Line 377 (matched '\bStudent\b'): userDirTab === "student" ? u.role === "student" :
+  Line 378 (matched '\bTeacher\b'): userDirTab === "teacher" ? u.role === "teacher" :
+  Line 379 (matched '\bStudent\b'): !["student", "teacher", "parent"].includes(u.role)
+  Line 417 (matched '\bPending\b'): const pendingCourses = store.courses.filter(c => c.status === "pending");
+  Line 553 (matched '\bAttendance\b'): onClick={() => { setActiveSubTab("attendance"); setRegistryLookupStudentId(null); }}
+  Line 555 (matched '\bAttendance\b'): activeSubTab === "attendance" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+  Line 563 (matched '\bTuition\b'): onClick={() => { setActiveSubTab("tuition"); setRegistryLookupStudentId(null); }}
+  Line 565 (matched '\bTuition\b'): activeSubTab === "tuition" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+  Line 706 (matched '\bAttendance\b'): {/* ATTENDANCE GROUP */}
+  Line 707 (matched '\bAttendance\b'): {activeSubTab === "attendance" && (
+  Line 716 (matched '\bTuition\b'): {/* TUITION BILLINGS GROUP */}
+  Line 717 (matched '\bTuition\b'): {activeSubTab === "tuition" && (
+  Line 726 (matched '\bTimetable\b'): {/* TIMETABLE MANAGEMENT GROUP */}
+  Line 736 (matched '\bTimetable\b'): {/* TEACHER TIMETABLE DIRECT VIEW */}
+  Line 743 (matched '\bTeacher\b'): defaultLookupType="teacher"
+  Line 747 (matched '\bClass\b'): {/* CLASS PLACEMENT GROUP */}
+  Line 780 (matched '\bFilter\b'): {/* Reactive filter inputs */}
+  Line 798 (matched '\bName\b'): const teacherUser = store.users.find(u => u.id === course.teacherId) || { name: "Giảng viên" };
+  Line 861 (matched '\bEmail\b'): placeholder="Tìm theo tên, email..."
+  Line 885 (matched '\bStudent\b'): { id: "student", label: "Sinh Viên" },
+  Line 886 (matched '\bTeacher\b'): { id: "teacher", label: "Giảng Viên" },
+  Line 891 (matched '\bStudent\b'): onClick={() => { setUserDirTab(tab.id as "student" | "teacher" | "other"); setUserPage(1); }}
+  Line 905 (matched '\bName\b'): Họ và Tên {sortField === "name" ? (sortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 908 (matched '\bEmail\b'): Email cá nhân {sortField === "email" ? (sortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 910 (matched '\bStudent\b'): {userDirTab === "student" && (
+  Line 916 (matched '\bRole\b'): Quyền hạn {sortField === "role" ? (sortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 926 (matched '\bProfile\b'): const profile = store.studentProfiles?.find(p => p.userId === usr.id);
+  Line 927 (matched '\bProfile\b'): const program = store.programs?.find(p => p.id === profile?.programId);
+  Line 932 (matched '\bStudent\b'): {userDirTab === "student" && (
+  Line 941 (matched '\bRole\b'): onChange={(e) => handleUpdateUserRole(usr.id, e.target.value as User["role"])}
+  Line 1041 (matched '\bFilter\b'): {/* Reactive filter inputs */}
+  Line 1105 (matched '\bRegistration\b'): {/* USER REGISTRATION POPUP MODAL */}
+  Line 1137 (matched '\bEmail\b'): type="email"
+  Line 1183 (matched '\bSubmit\b'): type="submit"
+  Line 1232 (matched '\bSubmit\b'): type="submit"
+  Line 1278 (matched '\bTeacher\b'): placeholder="name, email, role&#10;Gavin Belson, gavin@hooli.com, student&#10;Laurie Bream, laurie@raviga.com, teacher"
+  Line 1294 (matched '\bSubmit\b'): type="submit"
+  Line 1305 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 1307 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 1309 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 1310 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 1311 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 1312 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\AdvisorPanel.tsx ---
+  Line 65 (matched '\bProfile\b'): const u = store.users.find(usr => usr.id === profile.userId);
+  Line 69 (matched '\bProfile\b'): profile.studentCode?.toLowerCase().includes(searchLower)
+  Line 118 (matched '\bAction\b'): action: "add_advisor_note",
+  Line 136 (matched '\bParent\b'): const parentUser = freshStore.users.find(u => u.role === "parent" && u.linkedStudentId === selectedStudentId);
+  Line 154 (matched '\bAdd\b'): console.error("Failed to add advisor note:", err);
+  Line 164 (matched '\bProfile\b'): const profile = freshStore.studentProfiles.find(p => p.userId === selectedStudentId);
+  Line 171 (matched '\bProfile\b'): profile.notes = updatedNotes;
+  Line 176 (matched '\bAction\b'): action: "save_semester_plan",
+  Line 196 (matched '\bSave\b'): console.error("Failed to save suggested plan:", err);
+  Line 213 (matched '\bNotification\b'): {/* Toast Notification */}
+  Line 277 (matched '\bView\b'): {/* Roster & Tabs view split */}
+  Line 280 (matched '\bStudent\b'): {/* Left Side: assigned Student list */}
+  Line 287 (matched '\bSearch\b'): {/* Student Search Input */}
+  Line 301 (matched '\bStudent\b'): const u = store.users.find(usr => usr.id === student.userId);
+  Line 302 (matched '\bStudent\b'): const isSelected = selectedStudentId === student.userId;
+  Line 303 (matched '\bStudent\b'): const hasAlert = unresolvedWarnings.some(w => w.studentId === student.userId);
+  Line 339 (matched '\bAdvisor\b'): <UserGuide role="advisor" activeSystem="SIS" />
+  Line 344 (matched '\bProfile\b'): {/* Profile Card Header */}
+  Line 358 (matched '\bActive\b'): selectedProfile.status === "active" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+  Line 359 (matched '\bSuspended\b'): selectedProfile.status === "suspended" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-white/10 text-white/60"
+  Line 361 (matched '\bActive\b'): {selectedProfile.status === "active" ? "Đang Học" : "Bảo Lưu/Kỷ Luật"}
+  Line 402 (matched '\bCourse\b'): {/* TAB 1: Progress, Academic warnings resolving, Course sections Audit */}
+  Line 462 (matched '\bActive\b'): } else if (enrollment.status === "active") {
+  Line 501 (matched '\bAdvisor\b'): {/* Advisor Notes creation */}
+  Line 547 (matched '\bSubmit\b'): type="submit"
+  Line 573 (matched '\bSubmit\b'): type="submit"
+  Line 622 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 624 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 626 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 627 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 628 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 629 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\AttendanceManager.tsx ---
+  Line 80 (matched '\bName\b'): const usr = store.users.find(u => u.id === enroll.studentId) || { name: "Sinh viên", id: enroll.studentId };
+  Line 84 (matched '\bName\b'): name: usr.name,
+  Line 101 (matched '\bName\b'): } else if (studentSortField === "name") {
+  Line 134 (matched '\bDate\b'): date: combinedDate,
+  Line 136 (matched '\bStatus\b'): records: courseEnrollments.map(enroll => ({ studentId: enroll.studentId, status: "present" }))
+  Line 151 (matched '\bStatus\b'): const handleMarkStatusChange = async (studentId: string, status: "present" | "absent" | "late" | "excused") => {
+  Line 154 (matched '\bStatus\b'): await api.updateAttendanceRecord({ sessionId: activeSessionId, studentId, status });
+  Line 208 (matched '\bWarning\b'): api.createWarning({ studentId: warning.studentId, type: "low_attendance", message: warning.message })
+  Line 281 (matched '\bSearch\b'): {/* Search bar */}
+  Line 308 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công", email: "" };
+  Line 339 (matched '\bCourse\b'): await api.warnTeacher({ courseId: course.id, teacherId: course.teacherId });
+  Line 364 (matched '\bCourse\b'): {/* Course & Session selectors */}
+  Line 409 (matched '\bAttendance\b'): {/* Left / Middle Span: Attendance taking Grid */}
+  Line 440 (matched '\bSearch\b'): {/* Student search input */}
+  Line 460 (matched '\bName\b'): Tên Sinh Viên {studentSortField === "name" ? (studentSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 532 (matched '\bAttendance\b'): {/* Right Column: Attendance Statistics & alarms triggers */}
+  Line 586 (matched '\bCreate\b'): {/* CREATE SESSION MODAL CONTAINER */}
+  Line 611 (matched '\bDate\b'): type="date"
+  Line 653 (matched '\bSubmit\b'): type="submit"
+  Line 664 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 666 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 668 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 669 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 670 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 671 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\CertificateVerifier.tsx ---
+  Line 28 (matched '\bPending\b'): const [activeTab, setActiveTab] = useState<"pending" | "lookup" | "registry">("pending");
+  Line 72 (matched '\bStudent\b'): const student = store.users.find(u => u.id === enroll.studentId);
+  Line 73 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 89 (matched '\bQuiz\b'): if (!courseQuiz) return; // skip courses with no final quiz
+  Line 103 (matched '\bStudent\b'): studentName: student.name,
+  Line 104 (matched '\bStudent\b'): studentEmail: student.email,
+  Line 106 (matched '\bCourse\b'): courseTitle: course.title,
+  Line 125 (matched '\bStudent\b'): const student = store.users.find(u => u.id === cert.studentId);
+  Line 126 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === cert.courseId);
+  Line 129 (matched '\bStudent\b'): studentName: student?.name || "Không xác định",
+  Line 130 (matched '\bStudent\b'): studentEmail: student?.email || "—",
+  Line 131 (matched '\bCourse\b'): courseTitle: course?.title || "Không xác định"
+  Line 180 (matched '\bStatus\b'): status: "completed",
+  Line 210 (matched '\bName\b'): const handleRevokeCertificate = (id: string, code: string, name: string) => {
+  Line 276 (matched '\bFilter\b'): {/* Tab Select and filter bar */}
+  Line 280 (matched '\bPending\b'): onClick={() => setActiveTab("pending")}
+  Line 282 (matched '\bPending\b'): activeTab === "pending" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"
+  Line 342 (matched '\bSubmit\b'): type="submit"
+  Line 421 (matched '\bPending\b'): {/* TAB CONTENT: ELIGIBLE PENDING STUDENTS FOR CERTIFICATES */}
+  Line 422 (matched '\bPending\b'): {activeTab === "pending" && (
+
+--- components\ClassPlacement.tsx ---
+  Line 15 (matched '\bSearch\b'): Search
+  Line 54 (matched '\bActive\b'): const activeEnrollments = enrollments.filter(e => e.status === "active");
+  Line 57 (matched '\bStudent\b'): const student = store.users.find(u => u.id === e.studentId);
+  Line 58 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === e.courseId);
+  Line 75 (matched '\bStudent\b'): studentName: student.name,
+  Line 76 (matched '\bStudent\b'): studentEmail: student.email,
+  Line 78 (matched '\bCourse\b'): courseTitle: course.title,
+  Line 99 (matched '\bStudent\b'): const student = store.users.find(u => u.id === r.studentId);
+  Line 101 (matched '\bCourse\b'): const course = section ? store.courses.find(c => c.id === section.courseId) : null;
+  Line 108 (matched '\bStudent\b'): studentName: student.name,
+  Line 109 (matched '\bStudent\b'): studentEmail: student.email,
+  Line 112 (matched '\bCourse\b'): courseTitle: course.title,
+  Line 186 (matched '\bStatus\b'): status: "registered",
+  Line 208 (matched '\bName\b'): const handleApproveWaitlist = (id: string, name: string, code: string) => {
+  Line 214 (matched '\bStatus\b'): return { ...r, status: "registered" as any };
+  Line 287 (matched '\bSearch\b'): {/* Tab select and search input bar */}
+  Line 490 (matched '\bSubmit\b'): type="submit"
+
+--- components\FinancePanel.tsx ---
+  Line 35 (matched '\bPending\b'): const [selectedStatus, setSelectedStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  Line 41 (matched '\bTuition\b'): const [activeTab, setActiveTab] = useState<"transactions" | "salaries" | "tuition" | "finance_guide">("finance_guide");
+  Line 90 (matched '\bTeacher\b'): const teachers = store ? store.users.filter(u => u.role === "teacher") : [];
+  Line 93 (matched '\bCourse\b'): const totalBase = tCourses.length * 3000000; // 3M VND per course base
+  Line 99 (matched '\bActive\b'): const studentsCount = store.enrollments.filter(e => e.courseId === c.id && e.status === "active").length;
+  Line 105 (matched '\bCourse\b'): course: c,
+  Line 109 (matched '\bTotal\b'): total: baseSalary + commission
+  Line 114 (matched '\bTeacher\b'): teacher: t,
+  Line 133 (matched '\bPending\b'): if (tx.status === "pending") {
+  Line 136 (matched '\bStatus\b'): status: "approved",
+  Line 150 (matched '\bPending\b'): if (targetTx.status !== "pending") {
+  Line 156 (matched '\bApproved\b'): targetTx.status = "approved";
+  Line 164 (matched '\bActive\b'): enrollment.status = "active";
+  Line 170 (matched '\bStatus\b'): status: "active",
+  Line 189 (matched '\bStatus\b'): status: "rejected",
+  Line 190 (matched '\bRejected\b'): notes: rejectionNotes.trim() || "Payment rejected by finance."
+  Line 205 (matched '\bRejected\b'): targetTx.status = "rejected";
+  Line 218 (matched '\bWarning\b'): AppStore.notify(targetTx.studentId, "warning", `Yêu cầu thanh toán của bạn cho khóa học đã bị từ chối. Lý do: ${targetTx.notes}`);
+  Line 227 (matched '\bApproved\b'): const approvedTxList = store.transactions.filter(t => t.status === "approved");
+  Line 235 (matched '\bPaid\b'): const paidInvoiceCount = store.tuitionFees.filter(fee => fee.status === "paid").length;
+  Line 236 (matched '\bPaid\b'): const unpaidInvoiceCount = store.tuitionFees.filter(fee => fee.status !== "paid").length;
+  Line 238 (matched '\bPending\b'): const pendingCount = store.transactions.filter(t => t.status === "pending").length;
+  Line 246 (matched '\bStudent\b'): const student = store.users.find(u => u.id === t.studentId);
+  Line 247 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === t.courseId);
+  Line 249 (matched '\bStudent\b'): const studentName = student?.name || "";
+  Line 250 (matched '\bStudent\b'): const studentEmail = student?.email || "";
+  Line 251 (matched '\bCourse\b'): const courseTitle = course?.title || "";
+  Line 283 (matched '\bAmount\b'): } else if (txSortField === "amount") {
+  Line 289 (matched '\bStatus\b'): } else if (txSortField === "status") {
+  Line 347 (matched '\bTotal\b'): total: item.total
+  Line 370 (matched '\bTotal\b'): } else if (breakdownSortField === "total") {
+  Line 387 (matched '\bStudent\b'): const student = store.users.find(u => u.id === t.studentId);
+  Line 388 (matched '\bStudent\b'): const studentName = student?.name || "Không xác định";
+  Line 389 (matched '\bStudent\b'): const studentEmail = student?.email || "Không xác định";
+  Line 394 (matched '\bApproved\b'): if (t.status === "approved") statusViet = "Đã phê duyệt";
+  Line 395 (matched '\bRejected\b'): if (t.status === "rejected") statusViet = "Bị từ chối";
+  Line 435 (matched '\bDashboard\b'): {/* Stats Cards Dashboard */}
+  Line 575 (matched '\bTuition\b'): onClick={() => setActiveTab("tuition")}
+  Line 577 (matched '\bTuition\b'): activeTab === "tuition"
+  Line 588 (matched '\bFinance\b'): <UserGuide role="finance" activeSystem="SIS" />
+  Line 602 (matched '\bSearch\b'): {/* Sổ thu chi Filters and Search */}
+  Line 621 (matched '\bPending\b'): <option value="pending">Chờ đối soát</option>
+  Line 622 (matched '\bApproved\b'): <option value="approved">Đã phê duyệt</option>
+  Line 623 (matched '\bRejected\b'): <option value="rejected">Bị từ chối</option>
+  Line 628 (matched '\bDate\b'): {/* Date Range & CSV Export */}
+  Line 635 (matched '\bDate\b'): type="date"
+  Line 642 (matched '\bDate\b'): type="date"
+  Line 681 (matched '\bAmount\b'): Học phí (VND) {txSortField === "amount" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 688 (matched '\bStatus\b'): Trạng thái {txSortField === "status" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 725 (matched '\bPending\b'): {tx.status === "pending" && (
+  Line 730 (matched '\bApproved\b'): {tx.status === "approved" && (
+  Line 735 (matched '\bRejected\b'): {tx.status === "rejected" && (
+  Line 742 (matched '\bPending\b'): {tx.status === "pending" ? (
+  Line 817 (matched '\bSubmit\b'): type="submit"
+  Line 838 (matched '\bSearch\b'): {/* Salaries search bar */}
+  Line 842 (matched '\bEmail\b'): placeholder="Tìm kiếm giảng viên theo tên hoặc email..."
+  Line 912 (matched '\bTeacher\b'): Teacher {breakdownSortField === "teacherName" ? (breakdownSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 915 (matched '\bCourse\b'): Course {breakdownSortField === "courseTitle" ? (breakdownSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 918 (matched '\bActive\b'): Active enrollments {breakdownSortField === "studentsCount" ? (breakdownSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 927 (matched '\bTotal\b'): Course total {breakdownSortField === "total" ? (breakdownSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 945 (matched '\bTeacher\b'): No assigned teacher courses to break down.
+  Line 955 (matched '\bTuition\b'): {activeTab === "tuition" && (
+  Line 981 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 983 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 985 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 986 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 987 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 988 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\ParentPanel.tsx ---
+  Line 39 (matched '\bOverview\b'): const [activeTab, setActiveTab] = useState<"overview" | "grades" | "attendance" | "warnings" | "financial" | "notifications" | "parent_guide">(
+  Line 52 (matched '\bOverview\b'): if (activeTab === "grades") setActiveTab("overview");
+  Line 72 (matched '\bStudent\b'): const childId = currentUser.role === "student" ? currentUser.id : currentUser.linkedStudentId;
+  Line 74 (matched '\bParent\b'): if (currentUser.role === "parent" && !childId) {
+  Line 110 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 111 (matched '\bCourse\b'): return course?.title?.toLowerCase().includes(gradesSearch.toLowerCase());
+  Line 166 (matched '\bPaid\b'): const totalOutstanding = childFees.filter(f => f.status !== "paid").reduce((sum, f) => sum + (f.amount - f.paidAmount), 0);
+  Line 237 (matched '\bDashboard\b'): {/* Main navigation layouts Split of Parent Dashboard */}
+  Line 253 (matched '\bOverview\b'): onClick={() => setActiveTab("overview")}
+  Line 259 (matched '\bAttendance\b'): onClick={() => setActiveTab("attendance")}
+  Line 299 (matched '\bActive\b'): {/* Right Active pane details */}
+  Line 304 (matched '\bParent\b'): <UserGuide role="parent" activeSystem={activeSystem} />
+  Line 307 (matched '\bOverview\b'): {/* TAB 1: OVERVIEW */}
+  Line 308 (matched '\bOverview\b'): {activeTab === "overview" && (
+  Line 332 (matched '\bAdvisor\b'): {/* Shared Advisor Notes section */}
+  Line 404 (matched '\bSearch\b'): {/* Grades Search Input */}
+  Line 443 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 444 (matched '\bCourse\b'): const teacher = store.users.find(u => u.id === course?.teacherId);
+  Line 496 (matched '\bAttendance\b'): {/* TAB 3: ATTENDANCE */}
+  Line 497 (matched '\bAttendance\b'): {activeTab === "attendance" && (
+  Line 508 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 554 (matched '\bWarning\b'): warning.isResolved ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-400" : "bg-red-500/5 border-red-500/10 text-red-400"
+  Line 594 (matched '\bPaid\b'): fee.status === "paid" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+  Line 596 (matched '\bPaid\b'): {fee.status === "paid" ? "HOÀN TẤT" : fee.status === "partial" ? "THANH TOÁN THIẾU" : "NỢ CÒN THU"}
+  Line 619 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 621 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 623 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 624 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 625 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 626 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\ReceptionPanel.tsx ---
+  Line 40 (matched '\bSearch\b'): const [activeTab, setActiveTab] = useState<"search" | "register" | "courses" | "reception_guide">("reception_guide");
+  Line 109 (matched '\bEmail\b'): email: cleanEmail,
+  Line 111 (matched '\bName\b'): name: regName.trim(),
+  Line 112 (matched '\bRole\b'): role: "student",
+  Line 113 (matched '\bPhone\b'): phone: regPhone.trim() || undefined
+  Line 124 (matched '\bSearch\b'): setActiveTab("search");
+  Line 145 (matched '\bStudent\b'): if (u.role !== "student") return false;
+  Line 160 (matched '\bPhone\b'): } else if (studentSortField === "phone") {
+  Line 169 (matched '\bStatus\b'): } else if (studentSortField === "status") {
+  Line 218 (matched '\bSearch\b'): onClick={() => setActiveTab("search")}
+  Line 220 (matched '\bSearch\b'): activeTab === "search" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+  Line 255 (matched '\bSearch\b'): {activeTab === "search" && (
+  Line 267 (matched '\bEmail\b'): placeholder="Nhập tên, email hoặc số điện thoại..."
+  Line 284 (matched '\bPhone\b'): Số điện thoại {studentSortField === "phone" ? (studentSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 293 (matched '\bStatus\b'): Trạng thái hệ thống {studentSortField === "status" ? (studentSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 300 (matched '\bStudent\b'): const studentEnrollments = store.enrollments.filter(e => e.studentId === student.id);
+  Line 325 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === e.courseId);
+  Line 397 (matched '\bEmail\b'): type="email"
+  Line 429 (matched '\bSubmit\b'): type="submit"
+  Line 448 (matched '\bSearch\b'): {/* Course search bar */}
+  Line 468 (matched '\bCourse\b'): const enrollmentCount = store.enrollments.filter(e => e.courseId === course.id).length;
+  Line 469 (matched '\bCourse\b'): const teacherObj = store.users.find(u => u.id === course.teacherId);
+  Line 579 (matched '\bQuiz\b'): const questionCount = store.questions.filter(q => q.quizId === quiz.id).length;
+
+--- components\StudentPanel.tsx ---
+  Line 76 (matched '\bStatus\b'): status: "active",
+  Line 79 (matched '\bPhone\b'): phone: "",
+  Line 82 (matched '\bAddress\b'): address: "",
+  Line 108 (matched '\bProfile\b'): | "profile"
+  Line 120 (matched '\bProfile\b'): if (!["profile", "academics_record", "student_attendance", "student_tuition", "student_transcript", "parent_view", "student_guide", "student_timetable"].includes(activeSubTab)) {
+  Line 189 (matched '\bTotal\b'): total: number;
+  Line 269 (matched '\bStatus\b'): status: "pending_payment",
+  Line 278 (matched '\bAmount\b'): amount: price,
+  Line 279 (matched '\bStatus\b'): status: "pending",
+  Line 301 (matched '\bStatus\b'): status: "active",
+  Line 327 (matched '\bQuiz\b'): qa => qa.quizId === quiz.id && qa.studentId === currentUser.id
+  Line 330 (matched '\bQuiz\b'): if (studentAttemptsCount >= quiz.maxAttempts) {
+  Line 331 (matched '\bProfile\b'): triggerToast("Evaluation attempts exhausted on this profile directory!");
+  Line 354 (matched '\bQuiz\b'): const quiz = storeData.quizzes.find(q => q.id === activeQuizId)!;
+  Line 374 (matched '\bQuiz\b'): const passed = finalScore >= quiz.passingScore;
+  Line 381 (matched '\bTotal\b'): total: result.total
+  Line 401 (matched '\bQuiz\b'): AppStore.log(currentUser.id, "submit_quiz_attempt", quiz.title, `Score obtained: ${finalScore}% (${passed ? "PASSED" : "FAILED"}).`);
+  Line 404 (matched '\bQuiz\b'): const enrollment = storeData.enrollments.find(e => e.courseId === quiz.courseId && e.studentId === currentUser.id);
+  Line 407 (matched '\bQuiz\b'): const lessonsCount = storeData.lessons.filter(l => l.courseId === quiz.courseId).length;
+  Line 422 (matched '\bQuiz\b'): courseId: quiz.courseId,
+  Line 437 (matched '\bTotal\b'): total: questions.length
+  Line 679 (matched '\bActive\b'): Active Student Desk
+  Line 687 (matched '\bDashboard\b'): {/* Side-by-side dashboard layout: sidebar navigation on the left, workspace canvas on the right */}
+  Line 704 (matched '\bProfile\b'): profile: "Lý lịch cá nhân",
+  Line 819 (matched '\bProfile\b'): onClick={() => { setActiveSubTab("profile"); setShowSidebar(false); }}
+  Line 821 (matched '\bProfile\b'): activeSubTab === "profile"
+  Line 914 (matched '\bClass\b'): const cTitle = store.courses.find(cr => cr.id === cert.courseId)?.title || "Curriculum Master Class";
+  Line 919 (matched '\bDetails\b'): {/* Background glows details */}
+  Line 977 (matched '\bNotification\b'): {/* Paginated notification list */}
+  Line 1034 (matched '\bProfile\b'): {/* Tab SIS 1: My Profile Section */}
+  Line 1040 (matched '\bStudent\b'): role="student"
+  Line 1047 (matched '\bStudent\b'): role="student"
+
+--- components\StudentRegistry.tsx ---
+  Line 88 (matched '\bName\b'): const usr = store.users.find(u => u.id === p.userId) || { name: "Người học", email: "" };
+  Line 91 (matched '\bName\b'): name: usr.name,
+  Line 92 (matched '\bEmail\b'): email: usr.email
+  Line 128 (matched '\bName\b'): } else if (studentSortField === "name") {
+  Line 147 (matched '\bStatus\b'): } else if (studentSortField === "status") {
+  Line 239 (matched '\bCourse\b'): const course = courses.find(c => c.id === enroll.courseId);
+  Line 242 (matched '\bCourse\b'): const sessionsForCourse = attendanceSessions.filter(s => s.courseId === course.id);
+  Line 253 (matched '\bCourse\b'): courseName: course.title,
+  Line 340 (matched '\bView\b'): {/* Roster Table Data view */}
+  Line 350 (matched '\bName\b'): Học sinh Sinh viên {studentSortField === "name" ? (studentSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 365 (matched '\bStatus\b'): Trạng thái {studentSortField === "status" ? (studentSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 377 (matched '\bActive\b'): if (st.status === "active") statusClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+  Line 379 (matched '\bSuspended\b'): if (st.status === "suspended") statusClass = "bg-red-500/10 text-red-500 border border-red-500/15";
+  Line 395 (matched '\bActive\b'): {st.status === "active" ? "Đang học" :
+  Line 397 (matched '\bSuspended\b'): st.status === "suspended" ? "Đình chỉ" :
+  Line 422 (matched '\bAdvisor\b'): {/* COMPREHENSIVE VIEW & ADVISOR PROFILE MODAL CONTAINER */}
+  Line 459 (matched '\bProfile\b'): {/* General Profile section info Grid */}
+  Line 505 (matched '\bSearch\b'): {/* Enrollment Search Input */}
+  Line 517 (matched '\bCourse\b'): const course = courses.find(c => c.id === enroll.courseId);
+  Line 540 (matched '\bStatus\b'): } else if (enrollSortField === "status") {
+  Line 568 (matched '\bStatus\b'): Trạng thái lớp {enrollSortField === "status" ? (enrollSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 574 (matched '\bCourse\b'): const course = courses.find(c => c.id === enroll.courseId);
+  Line 579 (matched '\bCourse\b'): <span>{course ? course.title : "Không xác định"}</span>
+  Line 594 (matched '\bActive\b'): enroll.status === "active" ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "bg-emerald-500/10 text-emerald-400"
+  Line 596 (matched '\bActive\b'): {enroll.status === "active" ? "Đang học" : "Đã xong"}
+  Line 614 (matched '\bStatus\b'): {/* Attendance detail status box */}
+  Line 642 (matched '\bTuition\b'): {/* Tuition fees profile section info */}
+  Line 656 (matched '\bPaid\b'): {fee.status === "paid" && (
+  Line 659 (matched '\bUnpaid\b'): {fee.status === "unpaid" && (
+  Line 671 (matched '\bActive\b'): {/* Active Warnings alarms logs */}
+  Line 698 (matched '\bAdvisor\b'): {/* Right col: Advisor notes timeline logs */}
+  Line 731 (matched '\bSubmit\b'): type="submit"
+  Line 738 (matched '\bView\b'): {/* Sidebar notes list view timeline */}
+  Line 774 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 776 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === courseDetailId);
+  Line 778 (matched '\bName\b'): const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 779 (matched '\bCourse\b'): const lessons = store.lessons.filter(l => l.courseId === course.id).sort((a,b) => a.order - b.order);
+  Line 780 (matched '\bCourse\b'): const quizzes = store.quizzes.filter(q => q.courseId === course.id);
+  Line 781 (matched '\bCourse\b'): const assignments = store.assignments.filter(a => a.courseId === course.id);
+
+--- components\TeacherPanel.tsx ---
+  Line 58 (matched '\bTimetable\b'): setActiveSubTab("timetable");
+  Line 70 (matched '\bEdit\b'): const [courseModalMode, setCourseModalMode] = useState<"create" | "edit">("create");
+  Line 130 (matched '\bCreate\b'): setCourseModalMode("create");
+  Line 142 (matched '\bEdit\b'): setCourseModalMode("edit");
+  Line 150 (matched '\bCourse\b'): setCourseTags(course.tags ? course.tags.join(", ") : "");
+  Line 166 (matched '\bCreate\b'): if (courseModalMode === "create") {
+  Line 167 (matched '\bCourse\b'): const newCourse: Course = {
+  Line 168 (matched '\bCourse\b'): id: generateId("course"),
+  Line 170 (matched '\bDescription\b'): description: courseDesc,
+  Line 172 (matched '\bStatus\b'): status: "draft",
+  Line 184 (matched '\bDescription\b'): description: courseDesc,
+  Line 191 (matched '\bCreate\b'): }).catch(err => console.warn("Failed to create course on server:", err));
+  Line 193 (matched '\bCourse\b'): AppStore.log(currentUser.id, "create_course_draft", newCourse.title, "Saved course outline draft successfully.");
+  Line 198 (matched '\bCourse\b'): AppStore.log(currentUser.id, "edit_course_details", c.title, "Updated course detailed descriptors.");
+  Line 202 (matched '\bDescription\b'): description: courseDesc,
+  Line 224 (matched '\bStatus\b'): AppStore.log(currentUser.id, "submit_course_approval", c.title, "Changed status from draft/returned to pending approval queue.");
+  Line 225 (matched '\bStatus\b'): return { ...c, status: "pending" };
+  Line 230 (matched '\bSubmit\b'): api.submitCourse(courseId).catch(err => console.warn("Failed to submit course for approval on server:", err));
+  Line 234 (matched '\bCourse\b'): triggerToast("Course submitted into administrative review queue.");
+  Line 242 (matched '\bDetails\b'): triggerToast("Please enter title and tutorial details.");
+  Line 269 (matched '\bAdd\b'): }).catch(err => console.warn("Failed to add lesson on server:", err));
+  Line 271 (matched '\bCourse\b'): AppStore.log(currentUser.id, "add_lesson", newLesson.title, `Added learning module inside course: ${selectedCourseId}`);
+  Line 281 (matched '\bCourse\b'): triggerToast("Module successfully published inside course.");
+  Line 308 (matched '\bCourse\b'): triggerToast("Course final assessment criteria mapped successfully.");
+  Line 311 (matched '\bCreate\b'): triggerToast(err.message || "Failed to create quiz on server.");
+  Line 316 (matched '\bQuiz\b'): const newQuiz: Quiz = {
+  Line 317 (matched '\bQuiz\b'): id: generateId("quiz"),
+  Line 333 (matched '\bCreate\b'): }).catch(err => console.warn("Failed to create quiz on server:", err));
+  Line 335 (matched '\bCourse\b'): AppStore.log(currentUser.id, "create_quiz", newQuiz.title, `Added assessment linked to course: ${selectedCourseId}`);
+  Line 344 (matched '\bCourse\b'): triggerToast("Course final assessment criteria mapped successfully.");
+  Line 375 (matched '\bAdd\b'): }).catch(err => console.warn("Failed to add question on server:", err));
+  Line 377 (matched '\bQuiz\b'): AppStore.log(currentUser.id, "add_quiz_question", newQuestion.text, `Added question mapping inside quiz ID: ${selectedQuizId}`);
+  Line 401 (matched '\bDescription\b'): description: assignDesc,
+  Line 406 (matched '\bCourse\b'): AppStore.log(currentUser.id, "create_assignment", assignTitle, `Added task outline inside course: ${selectedCourseId}`);
+  Line 414 (matched '\bAssignment\b'): triggerToast("Course Assignment challenge configured.");
+  Line 416 (matched '\bCreate\b'): triggerToast(err.message || "Failed to create assignment on server.");
+  Line 447 (matched '\bGrade\b'): console.error("Failed to grade assignment on server:", err);
+  Line 458 (matched '\bAssignment\b'): const assignment = storeData.assignments.find(a => a.id === sub.assignmentId);
+  Line 459 (matched '\bAssignment\b'): return assignment && myCourseIds.includes(assignment.courseId);
+  Line 463 (matched '\bStudent\b'): const student = storeData.users.find(u => u.id === sub.studentId);
+  Line 464 (matched '\bAssignment\b'): const assignment = storeData.assignments.find(a => a.id === sub.assignmentId);
+  Line 465 (matched '\bAssignment\b'): const course = storeData.courses.find(c => c.id === assignment?.courseId);
+  Line 560 (matched '\bTimetable\b'): onClick={() => setActiveSubTab("timetable")}
+  Line 562 (matched '\bTimetable\b'): activeSubTab === "timetable" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+  Line 611 (matched '\bAnalytics\b'): onClick={() => setActiveSubTab("analytics")}
+  Line 613 (matched '\bAnalytics\b'): activeSubTab === "analytics" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+  Line 621 (matched '\bActive\b'): {/* Active Panel View Canvas */}
+  Line 630 (matched '\bTimetable\b'): {activeSubTab === "timetable" && (
+  Line 632 (matched '\bTeacher\b'): role="teacher"
+  Line 641 (matched '\bTeacher\b'): role="teacher"
+
+--- components\Timetable.tsx ---
+  Line 26 (matched '\bRole\b'): role: "student" | "teacher" | "admin";
+  Line 30 (matched '\bStudent\b'): defaultLookupType?: "student" | "teacher" | "all";
+  Line 49 (matched '\bStudent\b'): const [lookupType, setLookupType] = useState<"student" | "teacher" | "all">(defaultLookupType || "all");
+  Line 51 (matched '\bTeacher\b'): if (defaultLookupType === "teacher") {
+  Line 52 (matched '\bTeacher\b'): return store.users.find(u => u.role === "teacher")?.id || "";
+  Line 60 (matched '\bEdit\b'): const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  Line 160 (matched '\bStudent\b'): if (role === "student") {
+  Line 167 (matched '\bTeacher\b'): if (role === "teacher") {
+  Line 172 (matched '\bStudent\b'): if (lookupType === "student" && lookupUserId) {
+  Line 179 (matched '\bTeacher\b'): if (lookupType === "teacher" && lookupUserId) {
+  Line 265 (matched '\bCreate\b'): if (modalMode === "create") {
+  Line 273 (matched '\bSchedule\b'): schedule: formSlots,
+  Line 274 (matched '\bStatus\b'): status: formStatus
+  Line 292 (matched '\bSchedule\b'): schedule: formSlots,
+  Line 293 (matched '\bStatus\b'): status: formStatus
+  Line 308 (matched '\bEdit\b'): setModalMode("edit");
+  Line 323 (matched '\bRole\b'): const allowedCourses = role === "teacher"
+  Line 327 (matched '\bTeacher\b'): if (role === "teacher" && allowedCourses.length === 0) {
+  Line 332 (matched '\bCreate\b'): setModalMode("create");
+  Line 336 (matched '\bTeacher\b'): setFormTeacherId(role === "teacher" ? currentUser.id : (store.users.find(u => u.role === "teacher")?.id || ""));
+  Line 339 (matched '\bPending\b'): setFormStatus(role === "teacher" ? "pending" : "open");
+  Line 340 (matched '\bTeacher\b'): setFormSlots(role === "teacher" ? [] : [{ dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "Phòng A101" }]);
+  Line 379 (matched '\bSchedule\b'): schedule: newSlots,
+  Line 380 (matched '\bStatus\b'): status: "open"
+  Line 436 (matched '\bStudent\b'): {role === "student" && "Thời khóa biểu cá nhân của bạn"}
+  Line 437 (matched '\bTeacher\b'): {role === "teacher" && "Lịch giảng dạy Học thuật"}
+  Line 441 (matched '\bStudent\b'): {role === "student" && "Theo dõi cụ thể phòng học, giờ học và giáo sư phụ trách từng môn học."}
+  Line 442 (matched '\bTeacher\b'): {role === "teacher" && "Kiểm tra giờ đứng lớp, danh sách ca và cập nhật phòng dạy học trực quan."}
+  Line 447 (matched '\bView\b'): {/* View Mode Switching & Semester controls */}
+  Line 478 (matched '\bRole\b'): {(role === "admin" || role === "teacher") && (
+  Line 505 (matched '\bStudent\b'): <option value="student">Lịch học của Học sinh</option>
+  Line 506 (matched '\bTeacher\b'): <option value="teacher">Lịch dạy của Giảng viên</option>
+  Line 513 (matched '\bStudent\b'): Chọn {lookupType === "student" ? "Học sinh" : "Giảng viên"}
+  Line 575 (matched '\bPending\b'): (s: any) => s.status === "pending" && s.semesterId === activeSemesterId
+  Line 586 (matched '\bPending\b'): .filter((s: any) => s.status === "pending" && s.semesterId === activeSemesterId)
+  Line 629 (matched '\bPending\b'): {(store.courseSections || []).filter((s: any) => s.status === "pending" && s.semesterId === activeSemesterId).length === 0 && (
+  Line 707 (matched '\bActive\b'): role === "admin" ? "cursor-grab active:cursor-grabbing hover:border-indigo-400" : ""
+  Line 709 (matched '\bRole\b'): role === "student"
+  Line 711 (matched '\bRole\b'): : role === "teacher"
+  Line 718 (matched '\bTeacher\b'): {(role === "admin" || (role === "teacher" && item.section.teacherId === currentUser.id)) && (
+  Line 747 (matched '\bTeacher\b'): {role !== "teacher" && (
+  Line 754 (matched '\bTeacher\b'): {role === "teacher" && (
+  Line 808 (matched '\bTeacher\b'): {role !== "teacher" && (
+  Line 819 (matched '\bTeacher\b'): {(role === "admin" || (role === "teacher" && slot.section.teacherId === currentUser.id)) && (
+  Line 854 (matched '\bCreate\b'): {modalMode === "create" ? "Khởi tạo Lớp học phần & Lập thời khóa biểu mới" : `Điều chỉnh lớp học phần ${formSectionCode}`}
+  Line 888 (matched '\bRole\b'): .filter(c => role !== "teacher" || c.teacherId === currentUser.id)
+  Line 913 (matched '\bTeacher\b'): disabled={role === "teacher"}
+  Line 917 (matched '\bTeacher\b'): .filter(u => u.role === "teacher")
+  Line 948 (matched '\bTeacher\b'): {role === "teacher" ? (
+  Line 1063 (matched '\bSubmit\b'): type="submit"
+
+--- components\TuitionManager.tsx ---
+  Line 62 (matched '\bName\b'): const usr = store.users.find(u => u.id === fee.studentId) || { name: "Người học" };
+  Line 67 (matched '\bPaid\b'): isOverdue: new Date(fee.dueDate) < new Date() && fee.status !== "paid"
+  Line 93 (matched '\bAmount\b'): } else if (tuitionSortField === "amount") {
+  Line 102 (matched '\bStatus\b'): } else if (tuitionSortField === "status") {
+  Line 121 (matched '\bPaid\b'): const paidCount = semesterFees.filter(f => f.status === "paid").length;
+  Line 123 (matched '\bUnpaid\b'): const unpaidCount = semesterFees.filter(f => f.status === "unpaid").length;
+  Line 133 (matched '\bActive\b'): const activeProfiles = storeData.studentProfiles.filter(p => p.status === "active");
+  Line 151 (matched '\bTuition\b'): amount: 15000000, // 15M standard tuition
+  Line 153 (matched '\bUnpaid\b'): status: "unpaid",
+  Line 177 (matched '\bAmount\b'): setPaymentAmount(fee.amount - fee.paidAmount); // default remaining amount
+  Line 214 (matched '\bPaid\b'): const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== "paid";
+  Line 256 (matched '\bDashboard\b'): {/* Visual collected statistics dashboard SVGs */}
+  Line 293 (matched '\bTotal\b'): {/* Total Billed Bar */}
+  Line 347 (matched '\bFilter\b'): {/* Main filter bars */}
+  Line 399 (matched '\bAction\b'): {/* Action triggers */}
+  Line 431 (matched '\bAmount\b'): Tổng Định Phí {tuitionSortField === "amount" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 440 (matched '\bStatus\b'): Tình Trạng {tuitionSortField === "status" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 459 (matched '\bPaid\b'): {fee.status === "paid" && (
+  Line 465 (matched '\bUnpaid\b'): {fee.status === "unpaid" && (
+  Line 472 (matched '\bPaid\b'): {fee.status !== "paid" ? (
+  Line 551 (matched '\bSubmit\b'): type="submit"
+
+--- components\UserGuide.tsx ---
+  Line 33 (matched '\bRole\b'): role: "student" | "teacher" | "admin" | "manager" | "finance" | "advisor" | "parent" | "sale" | string;
+  Line 48 (matched '\bDescription\b'): description: string;
+  Line 56 (matched '\bStudent\b'): if (role === "student") {
+  Line 61 (matched '\bDescription\b'): description: "Tìm kiếm các bài giảng, chương trình đào tạo công khai và đăng ký học trực tuyến.",
+  Line 73 (matched '\bDescription\b'): description: "Xem nội dung bài giảng, video hướng dẫn, đánh dấu hoàn thành bài và thi sát hạch.",
+  Line 86 (matched '\bDescription\b'): description: "Thực hiện nộp mã nguồn, bài luận, nhận điểm số và phản hồi chi tiết từ Giảng viên.",
+  Line 98 (matched '\bDescription\b'): description: "Nộp đơn kháng cáo điểm số tự luận hoặc trắc nghiệm trực tiếp đến Giảng viên phụ trách.",
+  Line 110 (matched '\bDescription\b'): description: "Hướng dẫn kích hoạt và tải về bằng tốt nghiệp số hóa MCNA.",
+  Line 126 (matched '\bDescription\b'): description: "Xem thời gian biểu các lớp học phần tuần hiện tại và nắm lịch đứng lớp.",
+  Line 138 (matched '\bDescription\b'): description: "Quản lý thông tin liên hệ thường trú và thiết lập cổng liên lạc cho bố mẹ.",
+  Line 150 (matched '\bDescription\b'): description: "Theo dõi tỷ lệ đi học thực tế và thực hiện kết toán biên lai học phí đúng thời hạn.",
+  Line 162 (matched '\bDescription\b'): description: "Kiểm tra điểm thành phần (30%), điểm thi (70%) và GPA chuẩn hóa hệ 4.0 tích lũy.",
+  Line 177 (matched '\bTeacher\b'): if (role === "teacher") {
+  Line 182 (matched '\bDescription\b'): description: "Hướng dẫn tạo khung chương trình đào tạo, đăng tải bài giảng, video và đề cương.",
+  Line 195 (matched '\bDescription\b'): description: "Thiết lập các bài kiểm tra đánh giá tự động chấm điểm cho học viên kết môn.",
+  Line 208 (matched '\bDescription\b'): description: "Đánh giá các bài nộp viết mã nguồn, cho điểm số kèm nhận xét chi tiết.",
+  Line 220 (matched '\bDescription\b'): description: "Phân tích biểu đồ cột phân bố điểm số và rà soát tỷ lệ học viên có nguy cơ.",
+  Line 236 (matched '\bDescription\b'): description: "Tự tạo lớp học phần (lớp ca học) cho các khóa học do bạn sở hữu và thiết lập lịch biểu tuần.",
+  Line 250 (matched '\bDescription\b'): description: "Theo dõi thời gian biểu tuần, phòng học phân bổ và chuẩn bị bài giảng trước khi lên lớp.",
+  Line 262 (matched '\bDescription\b'): description: "Tạo phiên điểm danh số hóa, hiển thị mã QR Code hoặc tích chuyên cần thủ công.",
+  Line 282 (matched '\bDescription\b'): description: "Phân chia ca học lớp học phần, gán giảng viên đứng lớp, gán phòng học và kiểm tra xung đột.",
+  Line 295 (matched '\bDescription\b'): description: "Quét dữ liệu học viên chưa được gán lịch học, xếp lớp học phần hành chính nhanh gọn.",
+  Line 308 (matched '\bDescription\b'): description: "Phê duyệt điều kiện cấp chứng chỉ số hóa cho học sinh đã hoàn tất khóa học.",
+  Line 322 (matched '\bRole\b'): if (role === "manager" || role === "super_admin") {
+  Line 326 (matched '\bDescription\b'): description: "Quản trị các tham số hệ thống tổng thể, tích hợp email server, sms brandname và phòng học trực tuyến.",
+  Line 332 (matched '\bEmail\b'): "Thiết lập email SMTP server phục vụ gửi mã 2FA, thông báo học phí, và gửi thư báo cấp chứng chỉ cho học viên tự động.",
+  Line 335 (matched '\bEmail\b'): tips: "💡 Cấu hình chính xác email server SMTP là cốt lõi để đảm bảo hệ thống gửi thông tin mã kích hoạt tài khoản an toàn cho học viên mới."
+  Line 339 (matched '\bDescription\b'): description: "Quản trị danh sách nhân sự học viện và đăng ký nhập liệu số học sinh đầu vào hàng loạt.",
+  Line 345 (matched '\bRole\b'): "Để phân quyền nhân sự hành chính, nhấp chọn người dùng, chỉnh sửa role (Manager, admin, finance, sale, teacher, advisor, student) để gán đúng quyền hạn trong SIS/LMS."
+  Line 351 (matched '\bDescription\b'): description: "Giám sát giáo án giảng dạy của giảng viên, phê duyệt xuất bản môn học lên cổng đào tạo công khai.",
+  Line 366 (matched '\bParent\b'): if (role === "parent") {
+  Line 370 (matched '\bDescription\b'): description: "Theo dõi học lực trực tuyến, xem nhận xét cố vấn và GPA học kỳ chuẩn hóa.",
+  Line 382 (matched '\bDescription\b'): description: "Giám sát tỷ lệ đi học thực tế trên lớp và các cờ đỏ kỷ luật.",
+  Line 393 (matched '\bDescription\b'): description: "Rà soát hóa đơn học kỳ và thực hiện thanh toán chuyển khoản ngân hàng bảo mật.",
+  Line 407 (matched '\bFinance\b'): if (role === "finance") {
+  Line 411 (matched '\bDescription\b'): description: "Rà soát yêu cầu chuyển khoản ngân hàng từ học viên và phê duyệt kích hoạt quyền học.",
+  Line 424 (matched '\bDescription\b'): description: "Lập học phí đồng loạt cho lớp học phần học kỳ và rà soát nợ xấu.",
+  Line 436 (matched '\bDescription\b'): description: "Tổng hợp tiền lương đứng lớp cơ bản và chiết khấu hoa hồng tuyển sinh giảng dạy.",
+  Line 454 (matched '\bDescription\b'): description: "Ghi danh học viên trực tiếp tại quầy và thiết lập tài khoản ban đầu.",
+  Line 458 (matched '\bEmail\b'): "Nhập chính xác Họ tên học viên, Email cá nhân (rất quan trọng để gửi kích hoạt) và Số điện thoại.",
+  Line 460 (matched '\bStudent\b'): "Ấn nút 'Tạo tài khoản học viên'. Hệ thống sẽ tự động lưu thông tin vào DB, cấp quyền 'student' và gửi thông báo kích hoạt hòm thư."
+  Line 466 (matched '\bDescription\b'): description: "Tìm kiếm thông tin nhanh, hỗ trợ reset mật khẩu cho học viên gặp sự cố đăng nhập.",
+  Line 478 (matched '\bDescription\b'): description: "Rà soát đề cương giáo án môn học để tư vấn chi tiết khung chương trình cho khách hàng tuyển sinh.",
+  Line 492 (matched '\bAdvisor\b'): if (role === "advisor") {
+  Line 496 (matched '\bDescription\b'): description: "Theo dõi hồ sơ sinh viên phụ trách và viết nhật ký tư vấn định hướng.",
+  Line 510 (matched '\bDescription\b'): description: "Đề xuất các lớp học phần học kỳ mới hiển thị trực tiếp lên cổng đăng ký của sinh viên.",
+  Line 523 (matched '\bDescription\b'): description: "Rà soát sinh viên có nguy cơ bỏ học (at-risk) và gỡ bỏ cờ đỏ cảnh báo.",
+  Line 561 (matched '\bSearch\b'): {/* Search bar inside guide */}
+  Line 574 (matched '\bStatus\b'): {/* Role banner status card */}
+  Line 584 (matched '\bStudent\b'): {role === "student" && "Học Viên (Student)"}
+  Line 585 (matched '\bTeacher\b'): {role === "teacher" && "Giảng Viên (Teacher)"}
+  Line 588 (matched '\bParent\b'): {role === "parent" && "Phụ Huynh Học Viên (Parent)"}
+  Line 589 (matched '\bFinance\b'): {role === "finance" && "Kế Toán Tài Chính (Finance)"}
+  Line 591 (matched '\bAdvisor\b'): {role === "advisor" && "Cố Vấn Học Tập (Academic Advisor)"}
+
+--- components\WarningAndReports.tsx ---
+  Line 27 (matched '\bStudent\b'): onSelectStudentProfile: (userId: string) => void; // allow linking directly to Student Detail in student registry!
+  Line 53 (matched '\bStudent\b'): const studentUsers = store.users.filter(u => u.role === "student");
+  Line 119 (matched '\bActive\b'): const studentCount = students.filter(st => st.programId === p.id && st.status === "active").length;
+  Line 121 (matched '\bName\b'): name: p.name,
+  Line 150 (matched '\bName\b'): const nonComplianceAttendance: { studentId: string; name: string; courseName: string; percentage: number }[] = [];
+  Line 168 (matched '\bName\b'): name: studentUser ? studentUser.name : "Người học",
+  Line 215 (matched '\bCreate\b'): {/* Create Warning Modal Overlay */}
+  Line 292 (matched '\bSubmit\b'): type="submit"
+  Line 499 (matched '\bWarning\b'): {/* Col 3: Uncompliant attendance warning sheet summary */}
+  Line 521 (matched '\bTuition\b'): {/* Col 4: Semester Tuition Collection percentage ratios */}
+
+--- components\student\AssignmentSubmit.tsx ---
+  Line 119 (matched '\bDate\b'): const isDeadlineExpired = new Date(a.deadline).getTime() < Date.now();
+  Line 208 (matched '\bAssignment\b'): {/* ASSIGNMENT ATTACHMENT MODAL SUBMISSION */}
+  Line 285 (matched '\bSubmit\b'): type="submit"
+
+--- components\student\CourseCatalog.tsx ---
+  Line 79 (matched '\bSearch\b'): {/* Tab 1: Course list catalogs grid and search */}
+  Line 88 (matched '\bSearch\b'): {/* Filtering / Search panel */}
+  Line 119 (matched '\bCourse\b'): const lessonsCount = store.lessons.filter(l => l.courseId === course.id).length;
+  Line 194 (matched '\bCourse\b'): {/* Tab 1 Detail: Public course detailed inspector details modal view */}
+  Line 199 (matched '\bTeacher\b'): const teacher = store.users.find(u => u.id === crs.teacherId);
+  Line 361 (matched '\bAmount\b'): `Nhanh qua VietQR bank MB 099162438104 amount ${paymentGuideTx.amount} memo E16HP ${paymentGuideTx.id}`
+
+--- components\student\MyLearningWorkspace.tsx ---
+  Line 83 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 85 (matched '\bCourse\b'): const totalLessonsCount = store.lessons.filter(l => l.courseId === course.id).length;
+  Line 101 (matched '\bActive\b'): {enroll.status === "pending_payment" ? "Chờ duyệt phí" : enroll.status === "active" ? "Đang học" : "Đã hoàn thành"}
+  Line 136 (matched '\bCourse\b'): const foundTx = store.transactions.find(t => t.studentId === currentUser.id && t.courseId === course.id);
+  Line 169 (matched '\bActive\b'): {/* Tab 2 Detail: Active Classroom interactive study desk */}
+  Line 183 (matched '\bCourse\b'): {/* Sidebar: Course Lesson list complete checkpoints */}
+  Line 229 (matched '\bQuiz\b'): {/* Qualification Quiz Check trigger block */}
+
+--- components\student\QuizConsole.tsx ---
+  Line 77 (matched '\bQuiz\b'): {/* QUIZ TAKING IMMERSIVE INTERFACES AND MODALS */}
+  Line 156 (matched '\bQuiz\b'): {/* Nav Footer Quiz controls */}
+
+--- components\student\StudentAcademics.tsx ---
+  Line 143 (matched '\bCourse\b'): const course = store.courses.find((c: any) => c.id === courseId);
+  Line 158 (matched '\bGrade\b'): grade: gradeResult.finalPercent,
+  Line 168 (matched '\bCourse\b'): course: any;
+  Line 169 (matched '\bGrade\b'): grade: number;
+  Line 193 (matched '\bCourse\b'): const course = store.courses.find((c: any) => c.id === enroll.courseId);
+  Line 194 (matched '\bCourse\b'): return course?.title?.toLowerCase().includes(courseSearch.toLowerCase());
+  Line 214 (matched '\bStatus\b'): } else if (enrollSortField === "status") {
+  Line 231 (matched '\bCourse\b'): const course = store.courses.find((c: any) => c.id === tx.courseId);
+  Line 232 (matched '\bCourse\b'): const courseTitle = course?.title || "";
+  Line 255 (matched '\bAmount\b'): } else if (txSortField === "amount") {
+  Line 264 (matched '\bStatus\b'): } else if (txSortField === "status") {
+  Line 300 (matched '\bGrade\b'): } else if (transcriptSortField === "grade") {
+  Line 345 (matched '\bProfile\b'): {activeSubTab === "profile" && (
+  Line 365 (matched '\bStudent\b'): {/* Visual student card info */}
+  Line 455 (matched '\bPhone\b'): phone: editPhone || undefined,
+  Line 458 (matched '\bAddress\b'): address: editAddress || undefined,
+  Line 467 (matched '\bPhone\b'): phone: editPhone,
+  Line 470 (matched '\bAddress\b'): address: editAddress,
+  Line 484 (matched '\bProfile\b'): console.error("Profile update failed:", err);
+  Line 515 (matched '\bDate\b'): type="date"
+  Line 587 (matched '\bSubmit\b'): type="submit"
+  Line 636 (matched '\bDetails\b'): {/* Curriculum checklist details */}
+  Line 641 (matched '\bSearch\b'): {/* Course Search Input */}
+  Line 667 (matched '\bStatus\b'): Trạng thái {enrollSortField === "status" ? (enrollSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 673 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 678 (matched '\bCourse\b'): <span>{course ? course.title : "Không xác định"}</span>
+  Line 709 (matched '\bAttendance\b'): {/* Tab SIS 3: Attendance details summaries with alerts alerts */}
+  Line 721 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === enroll.courseId);
+  Line 724 (matched '\bCourse\b'): const sessions = (store.attendanceSessions || []).filter(s => s.courseId === course.id);
+  Line 774 (matched '\bTuition\b'): {/* Tab SIS 4: Tuition manager and bills receivables payment histories */}
+  Line 784 (matched '\bTuition\b'): {/* Tuition fee list */}
+  Line 788 (matched '\bPaid\b'): const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== "paid";
+  Line 801 (matched '\bPaid\b'): fee.status === "paid" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+  Line 805 (matched '\bPaid\b'): {fee.status === "paid" ? "Đã đóng đủ" :
+  Line 836 (matched '\bUnpaid\b'): {/* QR Code trigger if unpaid remains */}
+  Line 837 (matched '\bPaid\b'): {fee.status !== "paid" && (
+  Line 856 (matched '\bAmount\b'): await api.confirmTransfer({ feeId: fee.id, amount: customAmount });
+  Line 899 (matched '\bSearch\b'): {/* Transaction Search Input */}
+  Line 923 (matched '\bAmount\b'): Số tiền nộp {txSortField === "amount" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 932 (matched '\bStatus\b'): Trạng thái duyệt {txSortField === "status" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 938 (matched '\bCourse\b'): const course = store.courses.find(c => c.id === tx.courseId);
+  Line 944 (matched '\bCourse\b'): <span>{tx.notes && tx.notes.startsWith("tuition_fee_pay:") ? "Học phí học kỳ" : (course ? course.title : "Học phí")}</span>
+  Line 959 (matched '\bApproved\b'): {tx.status === "approved" && (
+  Line 962 (matched '\bPending\b'): {tx.status === "pending" && (
+  Line 965 (matched '\bRejected\b'): {tx.status === "rejected" && (
+  Line 1008 (matched '\bSearch\b'): {/* Transcript Search Input */}
+  Line 1038 (matched '\bGrade\b'): Điểm tổng kết (100) {transcriptSortField === "grade" ? (transcriptSortOrder === "asc" ? "▲" : "▼") : "↕"}
+  Line 1202 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 1204 (matched '\bCourse\b'): const course = store.courses.find((c: any) => c.id === courseDetailId);
+  Line 1206 (matched '\bName\b'): const teacher = store.users.find((u: any) => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 1207 (matched '\bCourse\b'): const lessons = store.lessons.filter((l: any) => l.courseId === course.id).sort((a: any, b: any) => a.order - b.order);
+  Line 1208 (matched '\bCourse\b'): const quizzes = store.quizzes.filter((q: any) => q.courseId === course.id);
+  Line 1209 (matched '\bCourse\b'): const assignments = store.assignments.filter((a: any) => a.courseId === course.id);
+
+--- components\teacher\AssignmentGrader.tsx ---
+  Line 118 (matched '\bStudent\b'): const student = store.users.find((u: any) => u.id === sub.studentId);
+  Line 159 (matched '\bStudent\b'): {/* Tab 3: Assignments list & Student submissions grading cockpit */}
+  Line 164 (matched '\bSearch\b'): {/* Submissions Search Input bar */}
+  Line 196 (matched '\bStudent\b'): const student = store.users.find(u => u.id === sub.studentId);
+  Line 244 (matched '\bStudent\b'): const student = store.users.find(u => u.id === sub.studentId);
+  Line 262 (matched '\bCreate\b'): {/* MODAL 5: CREATE ASSIGNMENT FORM */}
+  Line 295 (matched '\bDate\b'): type="date"
+  Line 337 (matched '\bSubmit\b'): type="submit"
+  Line 349 (matched '\bGrade\b'): {/* MODAL 6: EVALUATE & GRADE FORM */}
+  Line 411 (matched '\bSubmit\b'): type="submit"
+  Line 425 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 427 (matched '\bCourse\b'): const course = store.courses.find((c: any) => c.id === courseDetailId);
+  Line 429 (matched '\bName\b'): const teacher = store.users.find((u: any) => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 430 (matched '\bCourse\b'): const lessons = store.lessons.filter((l: any) => l.courseId === course.id).sort((a: any, b: any) => a.order - b.order);
+  Line 431 (matched '\bCourse\b'): const quizzes = store.quizzes.filter((q: any) => q.courseId === course.id);
+  Line 432 (matched '\bCourse\b'): const assignments = store.assignments.filter((a: any) => a.courseId === course.id);
+
+--- components\teacher\CourseBuilder.tsx ---
+  Line 109 (matched '\bEdit\b'): const [sectionModalMode, setSectionModalMode] = React.useState<"create" | "edit">("create");
+  Line 186 (matched '\bCreate\b'): setSectionModalMode("create");
+  Line 191 (matched '\bPending\b'): setFormStatus("pending");
+  Line 198 (matched '\bEdit\b'): setSectionModalMode("edit");
+  Line 239 (matched '\bCreate\b'): if (sectionModalMode === "create") {
+  Line 247 (matched '\bSchedule\b'): schedule: formSlots,
+  Line 248 (matched '\bStatus\b'): status: formStatus
+  Line 263 (matched '\bSchedule\b'): schedule: formSlots,
+  Line 264 (matched '\bStatus\b'): status: formStatus
+  Line 297 (matched '\bCourse\b'): course.title.toLowerCase().includes(courseSearch.toLowerCase()) ||
+  Line 298 (matched '\bCourse\b'): course.category.toLowerCase().includes(courseSearch.toLowerCase()) ||
+  Line 299 (matched '\bCourse\b'): course.description.toLowerCase().includes(courseSearch.toLowerCase());
+  Line 304 (matched '\bCourse\b'): {/* Tab 1: Curriculum development & course viewer */}
+  Line 321 (matched '\bCourse\b'): const enrolledCount = store.enrollments.filter((e: any) => e.courseId === course.id).length;
+  Line 334 (matched '\bCourse\b'): course.status === "published" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+  Line 335 (matched '\bPending\b'): course.status === "pending" ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+  Line 336 (matched '\bRejected\b'): course.status === "rejected" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
+  Line 340 (matched '\bPending\b'): course.status === "pending" ? "CHỜ DUYỆT" :
+  Line 341 (matched '\bRejected\b'): course.status === "rejected" ? "BỊ TRẢ VỀ" : "BẢN NHÁP"}
+  Line 394 (matched '\bCourse\b'): {/* Tab 1 Detail: Comprehensive Single Course modules editor */}
+  Line 407 (matched '\bPending\b'): activeCourse.status === "pending" ? "Đang chờ duyệt" :
+  Line 408 (matched '\bRejected\b'): activeCourse.status === "rejected" ? "Bị trả về chỉnh sửa" : "Bản nháp"
+  Line 455 (matched '\bStatus\b'): {/* Right Column: Mini tools linked (Quizzes, Assignments, workflow status actions) */}
+  Line 470 (matched '\bRejected\b'): {activeCourse.status === "rejected" && (
+  Line 490 (matched '\bPending\b'): {activeCourse.status === "pending" && (
+  Line 497 (matched '\bClass\b'): {/* Class sections list for this course */}
+  Line 565 (matched '\bPending\b'): sec.status === "pending" ? "text-amber-400" :
+  Line 568 (matched '\bPending\b'): {sec.status === "pending" ? "Chờ duyệt" :
+  Line 583 (matched '\bOverview\b'): {/* Quizzes overview in Course details */}
+  Line 611 (matched '\bOverview\b'): {/* Assignments overview in Course details */}
+  Line 644 (matched '\bEdit\b'): {/* MODAL 1: ADD / EDIT COURSE FORMS */}
+  Line 658 (matched '\bCreate\b'): {courseModalMode === "create" ? "Khởi tạo Khóa học Mới" : "Chỉnh sửa Thông tin Khóa học"}
+  Line 757 (matched '\bSubmit\b'): type="submit"
+  Line 769 (matched '\bAdd\b'): {/* MODAL 2: ADD LESSON FORM */}
+  Line 843 (matched '\bSubmit\b'): type="submit"
+  Line 868 (matched '\bCreate\b'): {sectionModalMode === "create" ? "Khởi tạo Lớp học phần mới" : "Chỉnh sửa Lớp học phần"}
+  Line 920 (matched '\bSchedule\b'): {/* Sub-form for schedule slots */}
+  Line 1025 (matched '\bSubmit\b'): type="submit"
+
+--- components\teacher\GradebookTable.tsx ---
+  Line 164 (matched '\bStudent\b'): {/* Tab 4: Student gradebook matrix table & CSV Export */}
+  Line 185 (matched '\bEmail\b'): placeholder="Tìm kiếm học viên theo tên hoặc email..."
+  Line 258 (matched '\bCourse\b'): {/* Premium glassmorphic Course Details consultation modal */}
+  Line 260 (matched '\bCourse\b'): const course = store.courses.find((c: any) => c.id === courseDetailId);
+  Line 262 (matched '\bName\b'): const teacher = store.users.find((u: any) => u.id === course.teacherId) || { name: "Chưa phân công" };
+  Line 263 (matched '\bCourse\b'): const lessons = store.lessons.filter((l: any) => l.courseId === course.id).sort((a: any, b: any) => a.order - b.order);
+  Line 264 (matched '\bCourse\b'): const quizzes = store.quizzes.filter((q: any) => q.courseId === course.id);
+  Line 265 (matched '\bCourse\b'): const assignments = store.assignments.filter((a: any) => a.courseId === course.id);
+
+--- components\teacher\QuizBuilder.tsx ---
+  Line 15 (matched '\bQuiz\b'): const [assessmentType, setAssessmentType] = useState<"quiz" | "essay">("quiz");
+  Line 130 (matched '\bDelete\b'): console.error("Failed to delete question:", err);
+  Line 168 (matched '\bQuiz\b'): AppStore.log(currentUser.id, "edit_quiz_question", qText, `Edited question ID: ${editingQuestionId} inside quiz: ${selectedQuizId}`);
+  Line 180 (matched '\bQuiz\b'): AppStore.log(currentUser.id, "add_quiz_question", qText, `Added question mapping inside quiz ID: ${selectedQuizId}`);
+  Line 192 (matched '\bSave\b'): console.error("Failed to save question:", err);
+  Line 199 (matched '\bQuiz\b'): {/* Tab 2: Quiz Management & Question Mapping panels */}
+  Line 211 (matched '\bQuiz\b'): onClick={() => setAssessmentType("quiz")}
+  Line 213 (matched '\bQuiz\b'): assessmentType === "quiz"
+  Line 234 (matched '\bQuiz\b'): {assessmentType === "quiz" ? "Đề trắc nghiệm đang hoạt động" : "Đề tự luận đang hoạt động"}
+  Line 238 (matched '\bQuiz\b'): {assessmentType === "quiz" ? (
+  Line 278 (matched '\bQuiz\b'): {assessmentType === "quiz" && store.quizzes.filter(q => myCourseIds.includes(q.courseId)).length === 0 && (
+  Line 286 (matched '\bCreate\b'): {/* Create Buttons */}
+  Line 287 (matched '\bQuiz\b'): {assessmentType === "quiz" ? (
+  Line 326 (matched '\bQuiz\b'): {assessmentType === "quiz" ? (
+  Line 354 (matched '\bEdit\b'): {/* Edit / Delete Actions */}
+  Line 448 (matched '\bStudent\b'): const student = store.users.find(u => u.id === sub.studentId);
+  Line 486 (matched '\bCreate\b'): {/* MODAL 3: CREATE QUIZ FORM */}
+  Line 566 (matched '\bSubmit\b'): type="submit"
+  Line 578 (matched '\bAdd\b'): {/* MODAL 4: ADD QUESTION FORM */}
+  Line 667 (matched '\bSubmit\b'): type="submit"
+  Line 679 (matched '\bCreate\b'): {/* MODAL 5: CREATE ASSIGNMENT FORM */}
+  Line 712 (matched '\bDate\b'): type="date"
+  Line 754 (matched '\bSubmit\b'): type="submit"
+
+--- components\teacher\TeacherAnalytics.tsx ---
+  Line 103 (matched '\bAnalytics\b'): {/* Tab 5: Analytics metrics */}
+  Line 104 (matched '\bAnalytics\b'): {activeSubTab === "analytics" && (
+  Line 110 (matched '\bCourse\b'): const enrolledEnroll = store.enrollments.filter(e => e.courseId === course.id);
+  Line 112 (matched '\bQuiz\b'): const quiz = store.quizzes.find(q => q.id === qa.quizId);
+  Line 113 (matched '\bQuiz\b'): return quiz?.courseId === course.id;
+  Line 120 (matched '\bCourse\b'): Course Assessment details
+  Line 146 (matched '\bAnalytics\b'): Analytics cockpit empty. Please initialize core academic course designs.
+
+--- hooks\apiHooks.ts ---
+  Line 85 (matched '\bDashboard\b'): queryKey: ["dashboard", "finance"],
+  Line 93 (matched '\bDashboard\b'): queryKey: ["dashboard", "teacher"],
+
+--- server\eventBus.ts ---
+  Line 4 (matched '\bGrade\b'): | "grade.saved"
+  Line 5 (matched '\bAttendance\b'): | "attendance.session.saved"
+  Line 6 (matched '\bTuition\b'): | "tuition.overdue"
+  Line 7 (matched '\bRegistration\b'): | "registration.dropped"
+  Line 14 (matched '\bClass\b'): class EventBus {
+
+--- server\eventHandlers.ts ---
+  Line 6 (matched '\bGrade\b'): eventBus.on("grade.saved", async ({ studentId, courseRegistrationId, grade }, pool) => {
+  Line 8 (matched '\bProfile\b'): const profile = (await pool.query("SELECT program_id FROM student_profiles WHERE user_id = $1", [studentId])).rows[0];
+  Line 26 (matched '\bProfile\b'): await eventBus.emit("program.completed", { studentId, programId: profile.program_id }, pool);
+  Line 33 (matched '\bAttendance\b'): eventBus.on("attendance.session.saved", async ({ courseId, records }, pool) => {
+  Line 38 (matched '\bFilter\b'): COUNT(*) FILTER (WHERE ar.status IN ('present','late','excused'))::int AS present
+  Line 44 (matched '\bTotal\b'): const total = Number(totals.rows[0]?.total || 0);
+  Line 46 (matched '\bTotal\b'): const attendancePct = total ? Math.round((present / total) * 100) : 100;
+  Line 62 (matched '\bWarning\b'): await notifyStudent(pool, studentId, `Attendance warning: ${attendancePct}%.`, { relatedEntityType: "course", relatedEntityId: courseId });
+  Line 63 (matched '\bCourse\b'): await notifyAdvisorOf(pool, studentId, `Assigned student attendance is ${attendancePct}%.`, { relatedEntityType: "course", relatedEntityId: courseId });
+  Line 64 (matched '\bWarning\b'): await notifyParentOf(pool, studentId, `Attendance warning: ${attendancePct}%.`, { relatedEntityType: "course", relatedEntityId: courseId });
+  Line 76 (matched '\bCourse\b'): await notifyRole(pool, "admin", "A student has been exam-banned for attendance.", { relatedEntityType: "course", relatedEntityId: courseId });
+  Line 93 (matched '\bTuition\b'): eventBus.on("tuition.overdue", async ({ feeId, studentId }, pool) => {
+  Line 101 (matched '\bTuition\b'): VALUES ($1,$2,'unpaid_fee','Tuition payment is overdue.',false,$3)
+  Line 108 (matched '\bTuition\b'): await notifyStudent(pool, studentId, "Tuition payment is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
+  Line 109 (matched '\bTuition\b'): await notifyParentOf(pool, studentId, "Tuition payment is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
+  Line 110 (matched '\bTuition\b'): await notifyRole(pool, "finance", "A tuition fee is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
+  Line 118 (matched '\bAmount\b'): const amount = Number(scholarship.amount || 0);
+  Line 120 (matched '\bAmount\b'): const reduction = amount || (Number(fee.amount) * discount) / 100;
+  Line 121 (matched '\bAmount\b'): await pool.query("UPDATE tuition_fees SET amount = GREATEST(0, amount - $1) WHERE id = $2", [reduction, fee.id]);
+  Line 123 (matched '\bApproved\b'): await notifyStudent(pool, studentId, "Scholarship approved.", { relatedEntityType: "scholarship", relatedEntityId: scholarshipId });
+  Line 124 (matched '\bApproved\b'): await notifyParentOf(pool, studentId, "Scholarship approved.", { relatedEntityType: "scholarship", relatedEntityId: scholarshipId });
+  Line 130 (matched '\bStatus\b'): SET status = 'withdrawn', grade = 'W', letter_grade = 'W'
+  Line 131 (matched '\bStatus\b'): WHERE student_id = $1 AND semester_id = $2 AND status = 'registered'
+  Line 136 (matched '\bCourse\b'): await notifyUsers(pool, teachers.rows.map(row => row.teacher_id), { type: "info", message: "A student leave request withdrew course registrations." });
+  Line 138 (matched '\bApproved\b'): await notifyStudent(pool, studentId, "Leave request approved.");
+  Line 139 (matched '\bApproved\b'): await notifyParentOf(pool, studentId, "Leave request approved.");
+  Line 150 (matched '\bStudent\b'): await notifyAdvisorOf(pool, studentId, "Assigned student is eligible for graduation.");
+  Line 151 (matched '\bStudent\b'): await notifyRole(pool, "admin", "A student is eligible for graduation.");
+  Line 152 (matched '\bStudent\b'): await notifyParentOf(pool, studentId, "Student is eligible for graduation.");
+
+--- server\gpaCalculator.ts ---
+  Line 21 (matched '\bStatus\b'): AND status NOT IN ('dropped', 'waitlisted')
+
+--- server\mappers.ts ---
+  Line 5 (matched '\bEmail\b'): email: string;
+  Line 8 (matched '\bName\b'): name: string;
+  Line 9 (matched '\bRole\b'): role: UserRole;
+  Line 11 (matched '\bPhone\b'): phone?: string | null;
+  Line 17 (matched '\bFinance\b'): if (role === "ke_toan") return "finance";
+  Line 18 (matched '\bRole\b'): if (role === "quan_ly_hoc_vu" || role === "academic" || role === "academic_admin") return "admin";
+  Line 20 (matched '\bRole\b'): return role as UserRole;
+  Line 24 (matched '\bRole\b'): if (role === "academic" || role === "quan_ly_hoc_vu" || role === "academic_admin") return "admin";
+  Line 32 (matched '\bEmail\b'): email: row.email,
+  Line 34 (matched '\bName\b'): name: row.name,
+  Line 35 (matched '\bRole\b'): role: normalizeRole(row.role),
+  Line 37 (matched '\bPhone\b'): phone: row.phone || undefined,
+  Line 43 (matched '\bCourse\b'): export function courseFromRow(row: any): Course {
+  Line 47 (matched '\bDescription\b'): description: row.description,
+  Line 49 (matched '\bStatus\b'): status: row.status,
+  Line 65 (matched '\bStatus\b'): status: row.status,
+  Line 81 (matched '\bQuiz\b'): export function quizFromRow(row: any): Quiz {
+  Line 117 (matched '\bAssignment\b'): export function assignmentFromRow(row: any): Assignment {
+  Line 122 (matched '\bDescription\b'): description: row.description,
+  Line 146 (matched '\bAmount\b'): amount: Number(row.amount),
+  Line 148 (matched '\bStatus\b'): status: row.status,
+
+--- server\notify.ts ---
+  Line 12 (matched '\bNotification\b'): export async function notifyUsers(db: Queryable, userIds: string[], notification: NotificationInput) {
+  Line 17 (matched '\bNotification\b'): uniqueIds.map(userId => ({ userId, type: notification.type || "info", ...notification }))
+  Line 30 (matched '\bRole\b'): export async function notifyRole(db: Queryable, role: UserRole, message: string, meta: Partial<NotificationInput> = {}) {
+  Line 31 (matched '\bRole\b'): const users = await db.query("SELECT id FROM users WHERE role = $1 AND is_active = true", [role]);
+
+--- server\scheduler.ts ---
+  Line 8 (matched '\bAttendance\b'): await runSchedulerTask("attendance alerts", checkAttendanceAlerts);
+  Line 28 (matched '\bPaid\b'): WHERE status != 'paid' AND due_date::date < NOW()::date
+  Line 31 (matched '\bTuition\b'): await eventBus.emit("tuition.overdue", { feeId: row.id, studentId: row.student_id, semesterId: row.semester_id }, pool);
+  Line 47 (matched '\bAttendance\b'): await eventBus.emit("attendance.session.saved", { courseId, records }, pool);
+  Line 52 (matched '\bStatus\b'): const students = await pool.query("SELECT user_id FROM student_profiles WHERE status = 'active'");
+
+--- server\seedCore.ts ---
+  Line 222 (matched '\bRegistration\b'): for (const registration of store.courseRegistrations || []) {
+  Line 230 (matched '\bRegistration\b'): registration.id,
+  Line 231 (matched '\bRegistration\b'): registration.studentId,
+  Line 232 (matched '\bRegistration\b'): registration.sectionId,
+  Line 233 (matched '\bRegistration\b'): registration.semesterId,
+  Line 234 (matched '\bRegistration\b'): registration.status,
+  Line 235 (matched '\bRegistration\b'): registration.registeredAt,
+  Line 236 (matched '\bRegistration\b'): registration.droppedAt || null,
+  Line 237 (matched '\bRegistration\b'): registration.grade || null,
+  Line 238 (matched '\bRegistration\b'): registration.letterGrade || null,
+  Line 239 (matched '\bRegistration\b'): registration.gradePoint ?? null,
+  Line 240 (matched '\bRegistration\b'): registration.credits,
+  Line 243 (matched '\bRegistration\b'): registration.gradePostedAt || null
+  Line 364 (matched '\bAssignment\b'): for (const assignment of store.advisorAssignments || []) {
+  Line 369 (matched '\bAssignment\b'): [assignment.id, assignment.advisorId, assignment.studentId, assignment.semesterId || null, assignment.assignedAt]
+  Line 410 (matched '\bParent\b'): VALUES ($1,$2,$3,$4,$5,'parent',true,$6,$7)
+  Line 412 (matched '\bName\b'): name = EXCLUDED.name,
+  Line 413 (matched '\bRole\b'): role = EXCLUDED.role,
+  Line 415 (matched '\bParent\b'): ["user_parent_demo", "parent@mcna.local", credential.hash, credential.salt || null, "Parent Demo", "user_student", new Date().toISOString()]
+  Line 424 (matched '\bRole\b'): const studentCount = Number((await db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'student'")).rows[0].count);
+  Line 425 (matched '\bRole\b'): const teacherCount = Number((await db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'teacher'")).rows[0].count);
+
+--- server\validation.ts ---
+  Line 17 (matched '\bEmail\b'): email: z.email().trim().toLowerCase(),
+  Line 21 (matched '\bEmail\b'): email: z.email().trim().toLowerCase(),
+  Line 23 (matched '\bName\b'): name: z.string().trim().min(1),
+  Line 24 (matched '\bRole\b'): role: z.enum(["manager", "super_admin", "teacher", "student", "sale", "admin", "finance", "advisor", "parent"]),
+  Line 25 (matched '\bPhone\b'): phone: z.string().trim().optional(),
+  Line 33 (matched '\bDescription\b'): description: z.string().trim().min(1),
+  Line 81 (matched '\bDescription\b'): description: z.string().trim().min(1),
+  Line 100 (matched '\bAmount\b'): amount: z.coerce.number().positive()
+  Line 103 (matched '\bStatus\b'): status: z.enum(["approved", "rejected"]),
+  Line 109 (matched '\bDate\b'): date: z.string().trim().min(1),
+  Line 113 (matched '\bStatus\b'): status: z.enum(["present", "absent", "late", "excused"]),
+  Line 120 (matched '\bStatus\b'): status: z.enum(["present", "absent", "late", "excused"]),
+  Line 155 (matched '\bStatus\b'): status: z.enum(["approved", "rejected"]),
+  Line 168 (matched '\bName\b'): name: z.string().min(1),
+  Line 170 (matched '\bAmount\b'): amount: z.coerce.number().optional(),
+  Line 183 (matched '\bPhone\b'): phone: z.string().trim().optional(),
+  Line 186 (matched '\bAddress\b'): address: z.string().trim().optional(),
+
+--- server\repositories\academics.ts ---
+  Line 7 (matched '\bRole\b'): const ADMIN_WARNING_ROLES = new Set<User["role"]>(["manager", "super_admin", "admin", "finance"]);
+  Line 27 (matched '\bRole\b'): user: Pick<User, "id" | "role">,
+  Line 29 (matched '\bStatus\b'): ): Promise<{ warnings: AcademicWarning[] } | { error: string; status: number }> {
+  Line 30 (matched '\bStudent\b'): if (user.role === "student") {
+  Line 34 (matched '\bParent\b'): if (user.role === "parent") {
+  Line 37 (matched '\bStatus\b'): return { error: "No linked student found for this parent account.", status: 403 };
+  Line 40 (matched '\bStatus\b'): return { error: "Permission denied.", status: 403 };
+  Line 45 (matched '\bAdvisor\b'): if (user.role === "advisor") {
+  Line 48 (matched '\bStatus\b'): return { error: "You are not assigned to this student.", status: 403 };
+  Line 67 (matched '\bStatus\b'): return { error: "Permission denied.", status: 403 };
+  Line 71 (matched '\bWarning\b'): const warning: AcademicWarning = { ...input, id: generateId("warning"), isResolved: false, createdAt: new Date().toISOString() };
+  Line 78 (matched '\bWarning\b'): [warning.id, warning.studentId, warning.type, warning.courseId || null, warning.message, warning.createdAt]
+
+--- server\repositories\advisors.ts ---
+  Line 28 (matched '\bDelete\b'): const row = (await db.query("DELETE FROM advisor_assignments WHERE id = $1 RETURNING *", [assignmentId])).rows[0];
+
+--- server\repositories\assignments.ts ---
+  Line 8 (matched '\bAssignment\b'): const assignment = { ...input, id: generateId("assign") };
+  Line 11 (matched '\bAssignment\b'): [assignment.id, assignment.courseId, assignment.title, assignment.description, assignment.deadline, assignment.maxScore]
+  Line 17 (matched '\bAssignment\b'): const assignment = (await db.query("SELECT course_id FROM assignments WHERE id = $1", [assignmentId])).rows[0];
+  Line 18 (matched '\bStatus\b'): if (!assignment) return { error: "Assignment not found.", status: 404 };
+  Line 21 (matched '\bStatus\b'): "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2 AND status IN ('active', 'completed')",
+  Line 22 (matched '\bAssignment\b'): [studentId, assignment.course_id]
+  Line 24 (matched '\bStatus\b'): if (!enrollment) return { error: "Active enrollment required to submit this assignment.", status: 403 };
+
+--- server\repositories\attendance.ts ---
+  Line 9 (matched '\bDate\b'): "SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_sessions' AND column_name IN ('date', 'session_date')"
+  Line 12 (matched '\bDate\b'): if (columns.includes("session_date") && columns.includes("date")) {
+  Line 37 (matched '\bStatus\b'): ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, note = EXCLUDED.note`,
+  Line 43 (matched '\bAttendance\b'): if (session) await eventBus.emit("attendance.session.saved", { sessionId: records[0].sessionId, courseId: session.course_id, records }, pool);
+  Line 59 (matched '\bStatus\b'): "SELECT status FROM attendance_records WHERE student_id = $1 AND session_id = ANY($2)",
+
+--- server\repositories\audit.ts ---
+  Line 5 (matched '\bAction\b'): async log(db: Queryable, userId: string, action: string, target: string, detail: string) {
+
+--- server\repositories\courseRegistrations.ts ---
+  Line 26 (matched '\bStatus\b'): return { error: "Section not found.", status: 404 };
+  Line 30 (matched '\bStatus\b'): "SELECT * FROM course_registrations WHERE student_id = $1 AND section_id = $2 AND status IN ('registered', 'waitlisted')",
+  Line 35 (matched '\bStatus\b'): return { error: "Student is already registered or waitlisted for this section.", status: 409 };
+  Line 38 (matched '\bProfile\b'): const profile = (await client.query("SELECT fee_hold FROM student_profiles WHERE user_id = $1", [studentId])).rows[0];
+  Line 41 (matched '\bStatus\b'): return { error: "Clear outstanding fees before registering for courses.", status: 403 };
+  Line 60 (matched '\bStatus\b'): return { error: "Schedule conflict detected", status: 409 };
+  Line 64 (matched '\bStatus\b'): "SELECT COUNT(*) AS count FROM course_registrations WHERE section_id = $1 AND status = 'registered'",
+  Line 67 (matched '\bStatus\b'): const status = count >= Number(section.max_students) ? "waitlisted" : "registered";
+  Line 101 (matched '\bDate\b'): const nextStatus = Date.now() <= dropDeadline ? "dropped" : "withdrawn";
+  Line 102 (matched '\bGrade\b'): const grade = nextStatus === "withdrawn" ? "W" : null;
+  Line 104 (matched '\bStatus\b'): "UPDATE course_registrations SET status = $2, dropped_at = $3, grade = COALESCE($4, grade), letter_grade = COALESCE($4, letter_grade) WHERE id = $1 RETURNING *",
+  Line 110 (matched '\bStatus\b'): SET status = 'registered'
+  Line 113 (matched '\bStatus\b'): WHERE section_id = $1 AND status = 'waitlisted'
+  Line 121 (matched '\bStudent\b'): await notifyUsers(db, [reg.teacher_id], { type: "info", message: "A student dropped or withdrew from your section.", relatedEntityType: "course_registration", relatedEntityId: registrationId });
+  Line 122 (matched '\bStatus\b'): await eventBus.emit("registration.dropped", { registrationId, studentId, status: nextStatus }, pool);
+
+--- server\repositories\courses.ts ---
+  Line 21 (matched '\bCourse\b'): const course: Course = { ...input, id: generateId("course"), createdAt: new Date().toISOString() };
+  Line 24 (matched '\bCourse\b'): [course.id, course.title, course.description, course.teacherId, course.status, course.category, course.thumbnail || null, course.price || 0, course.level || null, JSON.stringify(course.tags || []), course.rejectionReason || null, course.createdAt]
+  Line 29 (matched '\bStatus\b'): async setStatus(db: Queryable, id: string, status: Course["status"], rejectionReason?: string) {
+  Line 30 (matched '\bStatus\b'): const row = (await db.query("UPDATE courses SET status = $1, rejection_reason = $2 WHERE id = $3 RETURNING *", [status, rejectionReason || null, id])).rows[0];
+
+--- server\repositories\enrollments.ts ---
+  Line 8 (matched '\bRole\b'): const adminRoles = ["manager", "super_admin", "admin"] as User["role"][];
+  Line 20 (matched '\bStatus\b'): status: isPaidCourse ? "pending_payment" : "active",
+  Line 36 (matched '\bStatus\b'): "SELECT id FROM enrollments WHERE course_id = $1 AND student_id = $2 AND status IN ('active', 'pending_payment')",
+  Line 49 (matched '\bStatus\b'): if (!validLesson) return { error: "Lesson does not belong to this enrollment.", status: 400 };
+  Line 65 (matched '\bStatus\b'): const row = (await db.query("UPDATE enrollments SET status = 'active' WHERE id = $1 RETURNING *", [id])).rows[0];
+
+--- server\repositories\finance.ts ---
+  Line 19 (matched '\bPaid\b'): unpaidCount: fees.filter(fee => fee.status !== "paid").length
+  Line 30 (matched '\bPaid\b'): if (fee.status !== "paid") {
+  Line 31 (matched '\bPaid\b'): await db.query("UPDATE tuition_fees SET status = 'paid' WHERE id = $1", [feeId]);
+  Line 37 (matched '\bPaid\b'): fee.status = "paid";
+  Line 42 (matched '\bPaid\b'): const status: TuitionFee["status"] = totalPaid >= Number(fee.amount) ? "paid" : totalPaid > 0 ? "partial" : "unpaid";
+  Line 43 (matched '\bPaid\b'): const paidAt = status === "paid" ? new Date().toISOString() : fee.paid_at;
+  Line 45 (matched '\bStatus\b'): await db.query("UPDATE tuition_fees SET paid_amount = $1, status = $2, paid_at = $3, receipt_code = $4 WHERE id = $5", [totalPaid, status, paidAt, receiptCode, feeId]);
+  Line 46 (matched '\bPaid\b'): if (status === "paid") {
+  Line 56 (matched '\bStatus\b'): async reviewTransaction(db: Queryable, txId: string, status: "approved" | "rejected", reviewerId: string, notes?: string) {
+  Line 59 (matched '\bStatus\b'): if (tx.status !== "pending") return { error: "Transaction already reviewed.", status: 409 };
+  Line 62 (matched '\bApproved\b'): const finalNotes = notes || (status === "approved" ? "Payment matched and enrollment activated." : "Payment rejected by finance.");
+  Line 65 (matched '\bStatus\b'): SET status = $2, processed_at = $3, processed_by = $4, notes = $5
+  Line 71 (matched '\bApproved\b'): if (status === "approved") {
+  Line 77 (matched '\bStatus\b'): SET status = 'active'
+  Line 78 (matched '\bStatus\b'): WHERE student_id = $1 AND course_id = $2 AND status = 'pending_payment'`,
+  Line 91 (matched '\bStatus\b'): SET status = 'pending_payment'
+  Line 92 (matched '\bStatus\b'): WHERE student_id = $1 AND course_id = $2 AND status = 'pending_payment'`,
+  Line 102 (matched '\bPaid\b'): const overdue = (await db.query("SELECT id, student_id, semester_id FROM tuition_fees WHERE status != 'paid' AND due_date::date < NOW()::date")).rows;
+  Line 104 (matched '\bTuition\b'): await eventBus.emit("tuition.overdue", { feeId: fee.id, studentId: fee.student_id, semesterId: fee.semester_id }, pool);
+  Line 111 (matched '\bStatus\b'): "UPDATE scholarship_applications SET status = 'approved', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
+
+--- server\repositories\gradeAppeals.ts ---
+  Line 11 (matched '\bStatus\b'): if (!reg) return { error: "Course registration not found.", status: 404 };
+  Line 12 (matched '\bStatus\b'): if (!reg.grade_posted_at || (!reg.grade && !reg.letter_grade)) return { error: "No posted grade is available for appeal.", status: 400 };
+  Line 15 (matched '\bStatus\b'): if (Date.now() - posted > 7 * 24 * 60 * 60 * 1000) return { error: "Grade appeal window has closed.", status: 400 };
+  Line 18 (matched '\bStatus\b'): "SELECT id FROM grade_appeals WHERE student_id = $1 AND course_registration_id = $2 AND status IN ('pending', 'under_review')",
+  Line 21 (matched '\bStatus\b'): if (existing) return { error: "A grade appeal is already in progress for this registration.", status: 409 };
+  Line 25 (matched '\bPending\b'): VALUES ($1,$2,$3,$4,'pending',$5,$6)
+  Line 32 (matched '\bRole\b'): async list(db: Queryable, user: { id: string; role: string }) {
+  Line 33 (matched '\bStudent\b'): if (user.role === "student") {
+  Line 36 (matched '\bTeacher\b'): if (user.role === "teacher") {
+  Line 54 (matched '\bStatus\b'): SET status = 'under_review', revised_grade = COALESCE($3, ga.revised_grade)
+  Line 66 (matched '\bStatus\b'): async resolve(db: Queryable, appealId: string, reviewerId: string, status: "approved" | "rejected", resolutionNote?: string) {
+  Line 69 (matched '\bStatus\b'): SET status = $2, resolved_by = $3, resolution_note = $4, resolved_at = $5
+  Line 75 (matched '\bApproved\b'): if (status === "approved" && row.revised_grade) {
+  Line 82 (matched '\bGrade\b'): SET grade = COALESCE($1, grade), letter_grade = $2, grade_point = $3, grade_posted_at = $4
+  Line 86 (matched '\bGrade\b'): await eventBus.emit("grade.saved", { studentId: row.student_id, courseRegistrationId: row.course_registration_id, grade: letterGrade }, pool);
+  Line 88 (matched '\bStatus\b'): await notifyStudent(db, row.student_id, status === "approved" ? "Grade appeal approved." : `Grade appeal rejected.${resolutionNote ? ` ${resolutionNote}` : ""}`, { relatedEntityType: "grade_appeal", relatedEntityId: appealId });
+  Line 94 (matched '\bStatus\b'): "UPDATE grade_appeals SET escalated = true, status = 'under_review' WHERE id = $1 AND student_id = $2 AND status = 'rejected' AND escalated = false RETURNING *",
+
+--- server\repositories\graduation.ts ---
+  Line 7 (matched '\bProfile\b'): const profile = (await db.query(
+  Line 14 (matched '\bStatus\b'): if (!profile) return { error: "Student profile not found.", status: 404 };
+  Line 20 (matched '\bStatus\b'): return { error: "Student is not eligible for graduation.", status: 400 };
+  Line 24 (matched '\bStatus\b'): "SELECT * FROM graduation_applications WHERE student_id = $1 AND status IN ('pending', 'eligible', 'approved') ORDER BY applied_at DESC LIMIT 1",
+  Line 27 (matched '\bStatus\b'): if (existing) return { error: "Graduation application already exists.", status: 409 };
+  Line 31 (matched '\bPending\b'): VALUES ($1,$2,'pending',$3,$4,$5)
+  Line 38 (matched '\bRole\b'): async list(db: Queryable, user: { id: string; role: string }) {
+  Line 39 (matched '\bStudent\b'): if (user.role === "student") return (await db.query("SELECT * FROM graduation_applications WHERE student_id = $1 ORDER BY applied_at DESC", [user.id])).rows;
+  Line 58 (matched '\bStatus\b'): return { error: "Student is not eligible for graduation.", status: 400 };
+  Line 62 (matched '\bStatus\b'): "UPDATE graduation_applications SET status = 'approved', reviewed_by = $2, note = $3 WHERE id = $1 RETURNING *",
+  Line 66 (matched '\bStatus\b'): await db.query("UPDATE student_profiles SET status = 'graduated' WHERE user_id = $1", [row.student_id]);
+  Line 67 (matched '\bApproved\b'): await notifyStudent(db, row.student_id, "Graduation application approved.", { relatedEntityType: "graduation_application", relatedEntityId: id });
+  Line 73 (matched '\bStatus\b'): "UPDATE graduation_applications SET status = 'rejected', reviewed_by = $2, note = $3 WHERE id = $1 RETURNING *",
+  Line 76 (matched '\bRejected\b'): if (row) await notifyStudent(db, row.student_id, `Graduation application rejected.${note ? ` ${note}` : ""}`, { relatedEntityType: "graduation_application", relatedEntityId: id });
+
+--- server\repositories\leaveRequests.ts ---
+  Line 11 (matched '\bPending\b'): VALUES ($1,$2,$3,$4,$5,'pending',$6,$7)
+  Line 18 (matched '\bRole\b'): async list(db: Queryable, user: { id: string; role: string }) {
+  Line 19 (matched '\bStudent\b'): if (user.role === "student") return (await db.query("SELECT * FROM leave_requests WHERE student_id = $1 ORDER BY requested_at DESC", [user.id])).rows;
+  Line 26 (matched '\bStatus\b'): "UPDATE leave_requests SET status = 'approved', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
+  Line 36 (matched '\bStatus\b'): "UPDATE leave_requests SET status = 'rejected', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
+  Line 39 (matched '\bRejected\b'): if (row) await notifyStudent(db, row.student_id, `Leave request rejected.${reviewNote ? ` ${reviewNote}` : ""}`, { relatedEntityType: "leave_request", relatedEntityId: id });
+
+--- server\repositories\notifications.ts ---
+  Line 29 (matched '\bNotification\b'): const notification: Notification = {
+  Line 41 (matched '\bNotification\b'): notification.id,
+  Line 42 (matched '\bNotification\b'): notification.userId,
+  Line 43 (matched '\bNotification\b'): notification.type,
+  Line 44 (matched '\bNotification\b'): notification.message,
+  Line 46 (matched '\bNotification\b'): notification.createdAt,
+  Line 55 (matched '\bNotification\b'): for (const notification of notifications) {
+
+--- server\repositories\quizzes.ts ---
+  Line 9 (matched '\bQuiz\b'): const quiz = { ...input, id: generateId("quiz") };
+  Line 12 (matched '\bQuiz\b'): [quiz.id, quiz.courseId, quiz.lessonId || null, quiz.title, quiz.passingScore, quiz.timeLimit, quiz.maxAttempts]
+  Line 35 (matched '\bDelete\b'): await db.query("DELETE FROM questions WHERE id = $1", [questionId]);
+  Line 49 (matched '\bQuiz\b'): const quiz = await this.findById(db, quizId);
+  Line 53 (matched '\bStatus\b'): "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2 AND status IN ('active', 'completed')",
+  Line 54 (matched '\bQuiz\b'): [studentId, quiz.courseId]
+  Line 56 (matched '\bStatus\b'): if (!enrollment) return { error: "Active enrollment required to submit this quiz.", status: 403 };
+  Line 66 (matched '\bQuiz\b'): const passed = score >= quiz.passingScore;
+  Line 76 (matched '\bQuiz\b'): { relatedEntityType: "quiz", relatedEntityId: quizId }
+  Line 78 (matched '\bTotal\b'): return { row: { ...attempt, correctAnswers: correctCount, total: questions.length } };
+
+--- server\repositories\scholarships.ts ---
+  Line 12 (matched '\bAmount\b'): async create(db: Queryable, input: { name: string; type: string; amount?: number; discountPercent?: number; semesterId?: string; conditions?: string }) {
+  Line 22 (matched '\bRole\b'): async listApplications(db: Queryable, user: { id: string; role: string }) {
+  Line 23 (matched '\bStudent\b'): if (user.role === "student") return (await db.query("SELECT * FROM scholarship_applications WHERE student_id = $1 ORDER BY applied_at DESC", [user.id])).rows;
+  Line 24 (matched '\bAdvisor\b'): if (user.role === "advisor") {
+  Line 34 (matched '\bFinance\b'): if (!["admin", "manager", "super_admin", "finance"].includes(user.role)) return [];
+  Line 40 (matched '\bStatus\b'): if (!scholarship) return { error: "Scholarship not found.", status: 404 };
+  Line 43 (matched '\bStatus\b'): if (!semester) return { error: "Semester not found.", status: 404 };
+  Line 49 (matched '\bStatus\b'): if (existing) return { error: "Scholarship application already exists.", status: 409 };
+  Line 53 (matched '\bPending\b'): VALUES ($1,$2,$3,$4,'pending',$5)
+  Line 62 (matched '\bStatus\b'): "UPDATE scholarship_applications SET status = 'approved', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
+  Line 72 (matched '\bStatus\b'): "UPDATE scholarship_applications SET status = 'rejected', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
+  Line 75 (matched '\bRejected\b'): if (row) await notifyStudent(db, row.student_id, `Scholarship application rejected.${reviewNote ? ` ${reviewNote}` : ""}`, { relatedEntityType: "scholarship_application", relatedEntityId: id });
+
+--- server\repositories\sections.ts ---
+  Line 25 (matched '\bSchedule\b'): schedule: JSON.parse(row.schedule_json || "[]"),
+  Line 26 (matched '\bStatus\b'): status: row.status
+  Line 43 (matched '\bSchedule\b'): const targetSchedule = JSON.parse(targetRes.rows[0].schedule_json || "[]") as CourseSection["schedule"];
+  Line 58 (matched '\bSchedule\b'): const existingSchedules = currentRegs.rows.flatMap(r => JSON.parse(r.schedule_json || "[]") as CourseSection["schedule"]);
+  Line 85 (matched '\bStatus\b'): const countRes = await db.query("SELECT COUNT(*) AS count FROM course_registrations WHERE section_id = $1 AND status = 'registered'", [sectionId]);
+  Line 91 (matched '\bStatus\b'): "SELECT id FROM course_registrations WHERE section_id = $1 AND status = 'waitlisted' ORDER BY registered_at ASC LIMIT 1",
+  Line 95 (matched '\bStatus\b'): await db.query("UPDATE course_registrations SET status = 'registered' WHERE id = $1", [wlRes.rows[0].id]);
+
+--- server\repositories\storeSnapshot.ts ---
+  Line 17 (matched '\bDate\b'): const now = Date.now();
+  Line 109 (matched '\bAction\b'): const auditLogs = auditLogsRes.rows.map(row => ({ id: row.id, userId: row.user_id, action: row.action, target: row.target, detail: row.detail || "", createdAt: row.created_at }));
+  Line 112 (matched '\bName\b'): const academicYears = academicYearsRes.rows.map(row => ({ id: row.id, name: row.name, startDate: row.start_date, endDate: row.end_date, isCurrent: Boolean(row.is_current) }));
+  Line 113 (matched '\bName\b'): const semesters = semestersRes.rows.map(row => ({ id: row.id, academicYearId: row.academic_year_id, name: row.name, type: row.type, startDate: row.start_date, endDate: row.end_date, registrationOpen: row.registration_open, registrationClose: row.registration_close }));
+  Line 114 (matched '\bDescription\b'): const departments = departmentsRes.rows.map(row => ({ id: row.id, name: row.name, code: row.code, headTeacherId: row.head_teacher_id, description: row.description }));
+  Line 115 (matched '\bDescription\b'): const programs = programsRes.rows.map(row => ({ id: row.id, departmentId: row.department_id, name: row.name, code: row.code, type: row.type, totalCredits: row.total_credits, description: row.description }));
+  Line 119 (matched '\bStatus\b'): const studentProfiles = studentProfilesRes.rows.map(row => ({ id: row.id, userId: row.user_id, studentCode: row.student_code, programId: row.program_id, departmentId: row.department_id, academicYear: row.academic_year, enrollmentDate: row.enrollment_date, expectedGraduation: row.expected_graduation, status: row.status, gpa: Number(row.gpa), totalCreditsEarned: row.total_credits_earned, address: row.address || undefined, phone: row.phone || undefined, dateOfBirth: row.date_of_birth || undefined, gender: row.gender || undefined, guardianName: row.guardian_name || undefined, guardianPhone: row.guardian_phone || undefined, guardianEmail: row.guardian_email || undefined, notes: row.notes || undefined, feeHold: Boolean(row.fee_hold), academicProbation: Boolean(row.academic_probation) }));
+  Line 120 (matched '\bDate\b'): const attendanceSessions = attendanceSessionsRes.rows.map(row => ({ id: row.id, courseId: row.course_id, semesterId: row.semester_id, teacherId: row.teacher_id, date: row.date || row.session_date, topic: row.topic }));
+  Line 121 (matched '\bStatus\b'): const attendanceRecords = attendanceRecordsRes.rows.map(row => ({ id: row.id, sessionId: row.session_id, studentId: row.student_id, status: row.status, note: row.note || undefined }));
+  Line 123 (matched '\bStatus\b'): const transactions = transactionsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, courseId: row.course_id, amount: Number(row.amount), status: row.status, paymentMethod: row.payment_method, createdAt: row.created_at, processedAt: row.processed_at || undefined, processedBy: row.processed_by || undefined, notes: row.notes || undefined }));
+  Line 127 (matched '\bStatus\b'): const courseSections = courseSectionsRes.rows.map(row => ({ id: row.id, courseId: row.course_id, semesterId: row.semester_id, teacherId: row.teacher_id, sectionCode: row.section_code, maxStudents: row.max_students, schedule: typeof row.schedule === "string" ? JSON.parse(row.schedule || "[]") : row.schedule || JSON.parse(row.schedule_json || "[]"), status: row.status }));
+  Line 128 (matched '\bName\b'): const registrationPeriods = registrationPeriodsRes.rows.map(row => ({ id: row.id, semesterId: row.semester_id, name: row.name, startDate: row.start_date, endDate: row.end_date, allowedYears: Array.isArray(row.allowed_years) ? row.allowed_years.map(Number) : JSON.parse(row.allowed_years_json || '[]'), isOpen: Boolean(row.is_open) }));
+  Line 129 (matched '\bStatus\b'): const courseRegistrations = courseRegistrationsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, sectionId: row.section_id, semesterId: row.semester_id, status: row.status, registeredAt: row.registered_at, droppedAt: row.dropped_at || undefined, grade: row.grade || undefined, letterGrade: row.letter_grade || undefined, gradePoint: row.grade_point === null ? undefined : Number(row.grade_point), credits: row.credits, isRetake: Boolean(row.is_retake) }));
+  Line 130 (matched '\bAmount\b'): const scholarships = scholarshipsRes.rows.map(row => ({ id: row.id, name: row.name, type: row.type, amount: row.amount === null ? undefined : Number(row.amount), discountPercent: row.discount_percent === null ? undefined : Number(row.discount_percent), semesterId: row.semester_id, conditions: row.conditions }));
+  Line 131 (matched '\bStatus\b'): const scholarshipApplications = scholarshipApplicationsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, scholarshipId: row.scholarship_id, semesterId: row.semester_id, status: row.status, appliedAt: row.applied_at, reviewedBy: row.reviewed_by || undefined, reviewNote: row.review_note || undefined }));
+  Line 132 (matched '\bStatus\b'): const gradeAppeals = gradeAppealsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, courseRegistrationId: row.course_registration_id, reason: row.reason, status: row.status, originalGrade: Number(row.original_grade), revisedGrade: row.revised_grade === null ? undefined : Number(row.revised_grade), submittedAt: row.submitted_at, resolvedAt: row.resolved_at || undefined, resolvedBy: row.resolved_by || undefined, resolutionNote: row.resolution_note || undefined }));
+  Line 134 (matched '\bStatus\b'): const leaveRequests = leaveRequestsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, type: row.type, semesterId: row.semester_id, reason: row.reason, status: row.status, requestedAt: row.requested_at, reviewedBy: row.reviewed_by || undefined, reviewNote: row.review_note || undefined, resumeSemesterId: row.resume_semester_id }));
+  Line 135 (matched '\bStatus\b'): const graduationApplications = graduationApplicationsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, status: row.status, appliedAt: row.applied_at, reviewedBy: row.reviewed_by || undefined, totalCreditsAtApplication: row.total_credits_at_application, gpaAtApplication: Number(row.gpa_at_application), note: row.note || undefined }));
+  Line 184 (matched '\bDate\b'): lastCacheTime = Date.now();
+  Line 196 (matched '\bTeacher\b'): if (user.role === "teacher") {
+  Line 197 (matched '\bCourse\b'): const teacherCourseIds = new Set(store.courses.filter((course: Course) => course.teacherId === user.id).map((course: Course) => course.id));
+  Line 213 (matched '\bStudent\b'): if (user.role === "student") {
+  Line 230 (matched '\bParent\b'): if (user.role === "parent") {
+  Line 249 (matched '\bFinance\b'): if (user.role === "finance" || user.role === "sale") {
+
+--- server\repositories\studentProfiles.ts ---
+  Line 15 (matched '\bProfile\b'): async create(db: Queryable, profile: StudentProfile): Promise<StudentProfile> {
+  Line 23 (matched '\bProfile\b'): profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId,
+  Line 24 (matched '\bProfile\b'): profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status,
+  Line 25 (matched '\bProfile\b'): profile.gpa, profile.totalCreditsEarned, profile.address || null, profile.phone || null,
+  Line 26 (matched '\bProfile\b'): profile.dateOfBirth || null, profile.gender || null, profile.guardianName || null,
+  Line 27 (matched '\bProfile\b'): profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null
+  Line 37 (matched '\bStatus\b'): async updateStatus(db: Queryable, userId: string, status: StudentProfile["status"]): Promise<void> {
+  Line 38 (matched '\bStatus\b'): await db.query("UPDATE student_profiles SET status = $1 WHERE user_id = $2", [status, userId]);
+  Line 51 (matched '\bStatus\b'): status: row.status,
+  Line 54 (matched '\bAddress\b'): address: row.address || undefined,
+  Line 55 (matched '\bPhone\b'): phone: row.phone || undefined,
+
+--- server\repositories\users.ts ---
+  Line 8 (matched '\bRole\b'): UPDATE users SET role = 'finance' WHERE role = 'ke_toan';
+  Line 9 (matched '\bRole\b'): UPDATE users SET role = 'admin' WHERE role IN ('quan_ly_hoc_vu', 'academic', 'academic_admin');
+  Line 10 (matched '\bRole\b'): UPDATE users SET role = 'sale' WHERE role = 'le_tan';
+  Line 17 (matched '\bFinance\b'): ["finance@mcna.local", "Nguyễn Văn Kế Toán", "finance"],
+  Line 20 (matched '\bAdvisor\b'): ["advisor@mcna.local", "Phạm Cố Vấn (Cố vấn Học tập)", "advisor"]
+  Line 25 (matched '\bRole\b'): "UPDATE users SET name = $1, role = $2 WHERE lower(email) = $3",
+  Line 35 (matched '\bEmail\b'): async findAuthByEmail(db: Queryable, email: string) {
+  Line 36 (matched '\bEmail\b'): let cleanEmail = email.toLowerCase().trim();

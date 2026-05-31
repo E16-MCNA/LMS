@@ -31,7 +31,8 @@ function normalizeLegacyRoles(store: LMSDataStore): void {
   store.users = store.users.map(user => {
     const legacyRole = user.role as string;
     if (legacyRole === "ke_toan") return { ...user, role: "finance" };
-    if (legacyRole === "quan_ly_hoc_vu" || legacyRole === "academic") return { ...user, role: "academic_admin" };
+    if (legacyRole === "quan_ly_hoc_vu" || legacyRole === "academic" || legacyRole === "academic_admin") return { ...user, role: "admin" };
+    if (legacyRole === "le_tan") return { ...user, role: "sale" };
     return user;
   });
 }
@@ -64,17 +65,17 @@ export function getInitialStore(): LMSDataStore {
     users: [
       {
         id: adminId,
-        email: "admin@e16.local",
+        email: "admin@mcna.local",
         passwordHash: ADMIN_CREDENTIAL.hash,
         passwordSalt: ADMIN_CREDENTIAL.salt,
         name: "Arthur Pendragon",
-        role: "admin",
+        role: "manager",
         isActive: true,
         createdAt: new Date("2026-01-01T08:00:00Z").toISOString()
       },
       {
         id: teacherId,
-        email: "teacher@e16.local",
+        email: "teacher@mcna.local",
         passwordHash: TEACHER_CREDENTIAL.hash,
         passwordSalt: TEACHER_CREDENTIAL.salt,
         name: "Prof. Linus Torvalds",
@@ -84,7 +85,7 @@ export function getInitialStore(): LMSDataStore {
       },
       {
         id: studentId,
-        email: "student@e16.local",
+        email: "student@mcna.local",
         passwordHash: STUDENT_CREDENTIAL.hash,
         passwordSalt: STUDENT_CREDENTIAL.salt,
         name: "Ada Lovelace",
@@ -94,7 +95,7 @@ export function getInitialStore(): LMSDataStore {
       },
       {
         id: financeId,
-        email: "finance@e16.local",
+        email: "finance@mcna.local",
         passwordHash: FINANCE_CREDENTIAL.hash,
         passwordSalt: FINANCE_CREDENTIAL.salt,
         name: "Nguyễn Văn Kế Toán",
@@ -104,27 +105,27 @@ export function getInitialStore(): LMSDataStore {
       },
       {
         id: letanId,
-        email: "le_tan@e16.local",
+        email: "le_tan@mcna.local",
         passwordHash: LETAN_CREDENTIAL.hash,
         passwordSalt: LETAN_CREDENTIAL.salt,
         name: "Lê Thị Lễ Tân",
-        role: "le_tan",
+        role: "sale",
         isActive: true,
         createdAt: new Date("2026-01-05T12:00:00Z").toISOString()
       },
       {
         id: academicId,
-        email: "academic@e16.local",
+        email: "academic@mcna.local",
         passwordHash: ACADEMIC_CREDENTIAL.hash,
         passwordSalt: ACADEMIC_CREDENTIAL.salt,
         name: "Trần Văn Học Vụ",
-        role: "academic_admin",
+        role: "admin",
         isActive: true,
         createdAt: new Date("2026-01-06T13:00:00Z").toISOString()
       },
       {
         id: "user_advisor",
-        email: "advisor@e16.local",
+        email: "advisor@mcna.local",
         passwordHash: ADVISOR_CREDENTIAL.hash,
         passwordSalt: ADVISOR_CREDENTIAL.salt,
         name: "Phạm Cố Vấn (Cố vấn Học tập)",
@@ -172,6 +173,32 @@ export function getInitialStore(): LMSDataStore {
         tags: ["System Design", "Microservices", "Clean Code"],
         thumbnail: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=60",
         createdAt: new Date("2026-05-20T10:00:00Z").toISOString()
+      },
+      {
+        id: "course_microservices",
+        title: "Advanced Microservices & Cloud Native",
+        description: "Learn building scale-ready system design using Docker, Kubernetes, gRPC, and Kafka. Essential for DevOps and modern software engineers.",
+        teacherId: teacherId,
+        status: "published",
+        category: "DevOps & Infrastructure",
+        price: 4200000,
+        level: "Nâng cao",
+        tags: ["Microservices", "Kubernetes", "gRPC", "Kafka"],
+        thumbnail: "https://images.unsplash.com/photo-1607799279861-4dd421887fb3?w=600&auto=format&fit=crop&q=60",
+        createdAt: new Date("2026-05-30T10:00:00Z").toISOString()
+      },
+      {
+        id: "course_dataengineering",
+        title: "Data Engineering & Real-Time Analytics Pipeline",
+        description: "Master Spark streaming, Kafka events processing, and data warehouse patterns. Build high throughput data pipelines.",
+        teacherId: teacherId,
+        status: "published",
+        category: "Data Science",
+        price: 2900000,
+        level: "Trung cấp",
+        tags: ["Data Engineering", "Spark", "Kafka", "Data Warehouse"],
+        thumbnail: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&auto=format&fit=crop&q=60",
+        createdAt: new Date("2026-05-31T10:00:00Z").toISOString()
       }
     ],
     lessons: [

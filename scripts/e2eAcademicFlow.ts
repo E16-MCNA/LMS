@@ -13,7 +13,7 @@ function assert(condition: unknown, message: string): asserts condition {
 function cookieHeader(headers: Headers) {
   const raw = headers.get("set-cookie") || "";
   return raw
-    .split(/,(?=\s*e16_lms_)/)
+    .split(/,(?=\s*mcna_lms_)/)
     .map(part => part.split(";")[0].trim())
     .filter(Boolean)
     .join("; ");
@@ -50,11 +50,11 @@ async function main() {
   const health = await request<{ ok: boolean }>("/health");
   assert(health.ok, "health check failed");
 
-  const admin = await login("admin@e16.local", "admine16");
-  const teacher = await login("teacher@e16.local", "teachere16");
-  const student = await login("student@e16.local", "studente16");
-  const finance = await login("finance@e16.local", "finance16");
-  const academic = await login("academic@e16.local", "academice16");
+  const admin = await login("admin@mcna.local", "admine16");
+  const teacher = await login("teacher@mcna.local", "teachere16");
+  const student = await login("student@mcna.local", "studente16");
+  const finance = await login("finance@mcna.local", "finance16");
+  const academic = await login("academic@mcna.local", "academice16");
 
   const stamp = Date.now();
   const course = await request<any>("/api/courses", {

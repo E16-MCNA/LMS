@@ -362,7 +362,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
 
       {activeTab === "years" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
+          <div className={`${currentUser.role === "admin" ? "lg:col-span-3" : "lg:col-span-2"} space-y-4`}>
             <h4 className="text-sm font-bold text-white uppercase tracking-wider">Danh sách các năm học hiện hữu</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -380,7 +380,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                     <th className="py-2.5 px-3 cursor-pointer select-none hover:text-white transition" onClick={() => handleYearsSort("isCurrent")}>
                       Hiện tại {yearsSortField === "isCurrent" ? (yearsSortOrder === "asc" ? "▲" : "▼") : "↕"}
                     </th>
-                    <th className="py-2.5 px-3 text-right">Thao tác</th>
+                    {currentUser.role !== "admin" && <th className="py-2.5 px-3 text-right">Thao tác</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -410,27 +410,33 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                             Đang hoạt động
                           </span>
                         ) : (
-                          <button
-                            onClick={() => handleSetCurrentYear(y.id)}
-                            className="bg-white/5 hover:bg-white/10 text-white/80 px-2 py-0.5 rounded text-[10px] transition cursor-pointer"
-                          >
-                            Thiết lập
-                          </button>
+                          currentUser.role !== "admin" ? (
+                            <button
+                              onClick={() => handleSetCurrentYear(y.id)}
+                              className="bg-white/5 hover:bg-white/10 text-white/80 px-2 py-0.5 rounded text-[10px] transition cursor-pointer"
+                            >
+                              Thiết lập
+                            </button>
+                          ) : (
+                            <span className="text-white/40 text-[10px]">Lưu trữ</span>
+                          )
                         )}
                       </td>
-                      <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => handleDeleteYear(y.id)}
-                          className="p-1 text-red-400 hover:bg-red-500/10 rounded transition cursor-pointer"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </button>
-                      </td>
+                      {currentUser.role !== "admin" && (
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => handleDeleteYear(y.id)}
+                            className="p-1 text-red-400 hover:bg-red-500/10 rounded transition cursor-pointer"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {years.filter(y => y.name.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-white/40 italic">Không tìm thấy năm học nào phù hợp.</td>
+                      <td colSpan={currentUser.role === "admin" ? 4 : 5} className="py-8 text-center text-white/40 italic">Không tìm thấy năm học nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -438,54 +444,56 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
-            <h4 className="text-sm font-bold text-white">Thêm năm học mới</h4>
-            <form onSubmit={handleAddYear} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Tên năm học</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: 2024–2025"
-                  value={yearName}
-                  onChange={(e) => setYearName(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Ngày bắt đầu</label>
-                <input
-                  type="date"
-                  required
-                  value={yearStart}
-                  onChange={(e) => setYearStart(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Ngày kết thúc</label>
-                <input
-                  type="date"
-                  required
-                  value={yearEnd}
-                  onChange={(e) => setYearEnd(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
-              >
-                Tạo năm học
-              </button>
-            </form>
-          </div>
+          {currentUser.role !== "admin" && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
+              <h4 className="text-sm font-bold text-white">Thêm năm học mới</h4>
+              <form onSubmit={handleAddYear} className="space-y-3 text-xs">
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Tên năm học</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: 2024–2025"
+                    value={yearName}
+                    onChange={(e) => setYearName(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Ngày bắt đầu</label>
+                  <input
+                    type="date"
+                    required
+                    value={yearStart}
+                    onChange={(e) => setYearStart(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Ngày kết thúc</label>
+                  <input
+                    type="date"
+                    required
+                    value={yearEnd}
+                    onChange={(e) => setYearEnd(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
+                >
+                  Tạo năm học
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === "semesters" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
+          <div className={`${currentUser.role === "admin" ? "lg:col-span-3" : "lg:col-span-2"} space-y-4`}>
             <h4 className="text-sm font-bold text-white uppercase tracking-wider">Danh sách học kỳ trong năm học</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -506,7 +514,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                     <th className="py-2.5 px-3 cursor-pointer select-none hover:text-white transition" onClick={() => handleSemsSort("registrationOpen")}>
                       Đăng ký môn {semsSortField === "registrationOpen" ? (semsSortOrder === "asc" ? "▲" : "▼") : "↕"}
                     </th>
-                    <th className="py-2.5 px-3 text-right">Thao tác</th>
+                    {currentUser.role !== "admin" && <th className="py-2.5 px-3 text-right">Thao tác</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -541,20 +549,22 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                         <td className="py-3 px-3 text-[11px] text-white/40">
                           Mở: {s.registrationOpen} <br /> Đóng: {s.registrationClose}
                         </td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => handleDeleteSemester(s.id)}
-                            className="p-1 text-red-400 hover:bg-red-500/10 rounded transition cursor-pointer"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </button>
-                        </td>
+                        {currentUser.role !== "admin" && (
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              onClick={() => handleDeleteSemester(s.id)}
+                              className="p-1 text-red-400 hover:bg-red-500/10 rounded transition cursor-pointer"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
                   {semesters.filter(s => s.name.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-white/40 italic">Không tìm thấy học kỳ nào phù hợp.</td>
+                      <td colSpan={currentUser.role === "admin" ? 5 : 6} className="py-8 text-center text-white/40 italic">Không tìm thấy học kỳ nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -562,104 +572,106 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
-            <h4 className="text-sm font-bold text-white">Thêm học kỳ mới</h4>
-            <form onSubmit={handleAddSemester} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Thuộc năm học</label>
-                <select
-                  value={semYearId}
-                  onChange={(e) => setSemYearId(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+          {currentUser.role !== "admin" && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
+              <h4 className="text-sm font-bold text-white">Thêm học kỳ mới</h4>
+              <form onSubmit={handleAddSemester} className="space-y-3 text-xs">
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Thuộc năm học</label>
+                  <select
+                    value={semYearId}
+                    onChange={(e) => setSemYearId(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  >
+                    <option value="">-- Chọn Năm học --</option>
+                    {years.map(y => (
+                      <option key={y.id} value={y.id} className="bg-slate-900">{y.name} {y.isCurrent ? "(Hiện tại)" : ""}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Tên học kỳ</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: Spring 2025"
+                    value={semName}
+                    onChange={(e) => setSemName(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Kiểu học kỳ</label>
+                  <select
+                    value={semType}
+                    onChange={(e) => setSemType(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  >
+                    <option value="fall" className="bg-slate-900">Kỳ Mùa Thu (Fall)</option>
+                    <option value="spring" className="bg-slate-900">Kỳ Mùa Xuân (Spring)</option>
+                    <option value="summer" className="bg-slate-900">Kỳ Mùa Hè (Summer)</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-white/60 font-medium">Ngày bắt đầu</label>
+                    <input
+                      type="date"
+                      required
+                      value={semStart}
+                      onChange={(e) => setSemStart(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-white/60 font-medium">Ngày bế giảng</label>
+                    <input
+                      type="date"
+                      required
+                      value={semEnd}
+                      onChange={(e) => setSemEnd(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-white/60 font-medium">Mở đăng ký môn</label>
+                    <input
+                      type="date"
+                      required
+                      value={semRegOpen}
+                      onChange={(e) => setSemRegOpen(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-white/60 font-medium">Khóa đăng ký môn</label>
+                    <input
+                      type="date"
+                      required
+                      value={semRegClose}
+                      onChange={(e) => setSemRegClose(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
                 >
-                  <option value="">-- Chọn Năm học --</option>
-                  {years.map(y => (
-                    <option key={y.id} value={y.id} className="bg-slate-900">{y.name} {y.isCurrent ? "(Hiện tại)" : ""}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Tên học kỳ</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Spring 2025"
-                  value={semName}
-                  onChange={(e) => setSemName(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Kiểu học kỳ</label>
-                <select
-                  value={semType}
-                  onChange={(e) => setSemType(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                >
-                  <option value="fall" className="bg-slate-900">Fall (Thu)</option>
-                  <option value="spring" className="bg-slate-900">Spring (Xuân)</option>
-                  <option value="summer" className="bg-slate-900">Summer (Hè)</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-white/60 font-medium">Ngày bắt đầu</label>
-                  <input
-                    type="date"
-                    required
-                    value={semStart}
-                    onChange={(e) => setSemStart(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-white/60 font-medium">Ngày bế giảng</label>
-                  <input
-                    type="date"
-                    required
-                    value={semEnd}
-                    onChange={(e) => setSemEnd(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-white/60 font-medium">Mở đăng ký môn</label>
-                  <input
-                    type="date"
-                    required
-                    value={semRegOpen}
-                    onChange={(e) => setSemRegOpen(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-white/60 font-medium">Khóa đăng ký môn</label>
-                  <input
-                    type="date"
-                    required
-                    value={semRegClose}
-                    onChange={(e) => setSemRegClose(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none text-[10px]"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
-              >
-                Khởi tạo học kỳ
-              </button>
-            </form>
-          </div>
+                  Khởi tạo học kỳ
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === "departments" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
+          <div className={`${currentUser.role === "admin" ? "lg:col-span-3" : "lg:col-span-2"} space-y-4`}>
             <h4 className="text-sm font-bold text-white uppercase tracking-wider">Danh sách Khoa đào tạo chuyên môn</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -726,62 +738,64 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
-            <h4 className="text-sm font-bold text-white">Đăng ký khoa phòng mới</h4>
-            <form onSubmit={handleAddDept} className="space-y-3 text-xs">
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Mã khoa viết tắt</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: CS, CNTT"
-                  value={deptCode}
-                  onChange={(e) => setDeptCode(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Tên gọi của Khoa</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Khoa Khoa học Máy tính"
-                  value={deptName}
-                  onChange={(e) => setDeptName(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Giảng viên/Trưởng khoa</label>
-                <select
-                  value={deptHeadId}
-                  onChange={(e) => setDeptHeadId(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+          {currentUser.role !== "admin" && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
+              <h4 className="text-sm font-bold text-white">Đăng ký khoa phòng mới</h4>
+              <form onSubmit={handleAddDept} className="space-y-3 text-xs">
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Mã khoa viết tắt</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: CS, CNTT"
+                    value={deptCode}
+                    onChange={(e) => setDeptCode(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Tên gọi của Khoa</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ví dụ: Khoa Khoa học Máy tính"
+                    value={deptName}
+                    onChange={(e) => setDeptName(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Giảng viên/Trưởng khoa</label>
+                  <select
+                    value={deptHeadId}
+                    onChange={(e) => setDeptHeadId(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  >
+                    <option value="">-- Chọn Giảng viên phụ trách --</option>
+                    {teachers.map(t => (
+                      <option key={t.id} value={t.id} className="bg-slate-900">{t.name} ({t.email})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-white/60 font-medium">Mô tả khái quát</label>
+                  <textarea
+                    value={deptDesc}
+                    onChange={(e) => setDeptDesc(e.target.value)}
+                    placeholder="Nhập mô trình bày về khoa..."
+                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none h-16"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
                 >
-                  <option value="">-- Chọn Giảng viên phụ trách --</option>
-                  {teachers.map(t => (
-                    <option key={t.id} value={t.id} className="bg-slate-900">{t.name} ({t.email})</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-white/60 font-medium">Mô tả khái quát</label>
-                <textarea
-                  value={deptDesc}
-                  onChange={(e) => setDeptDesc(e.target.value)}
-                  placeholder="Nhập mô trình bày về khoa..."
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none h-16"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
-              >
-                Xác nhận lập khoa
-              </button>
-            </form>
-          </div>
+                  Xác nhận lập khoa
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
@@ -821,77 +835,79 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
               )}
             </div>
 
-            <div className="border-t border-white/10 pt-4 space-y-3">
-              <h5 className="text-xs font-bold text-white">Thêm chương trình đào tạo mới</h5>
-              <form onSubmit={handleAddProg} className="space-y-2 text-[11px]">
-                <div className="space-y-0.5">
-                  <label className="text-white/60">Mã chương trình</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: SE, MKT, BA"
-                    value={progCode}
-                    onChange={(e) => setProgCode(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
-                  />
-                </div>
-                <div className="space-y-0.5">
-                  <label className="text-white/60">Tên chuyên ngành đào tạo</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: Software Engineering"
-                    value={progName}
-                    onChange={(e) => setProgName(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+            {currentUser.role !== "admin" && (
+              <div className="border-t border-white/10 pt-4 space-y-3">
+                <h5 className="text-xs font-bold text-white">Thêm chương trình đào tạo mới</h5>
+                <form onSubmit={handleAddProg} className="space-y-2 text-[11px]">
                   <div className="space-y-0.5">
-                    <label className="text-white/60">Cấp đào tạo</label>
-                    <select
-                      value={progType}
-                      onChange={(e) => setProgType(e.target.value as any)}
-                      className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
-                    >
-                      <option value="degree" className="bg-slate-900">Cử nhân/Kỹ sư</option>
-                      <option value="diploma" className="bg-slate-900">Cao đẳng</option>
-                      <option value="certificate" className="bg-slate-900">Chứng chỉ</option>
-                    </select>
-                  </div>
-                  <div className="space-y-0.5">
-                    <label className="text-white/60">Số tín chỉ tối thiểu</label>
+                    <label className="text-white/60">Mã chương trình</label>
                     <input
-                      type="number"
+                      type="text"
                       required
-                      value={progCredits}
-                      onChange={(e) => setProgCredits(Number(e.target.value))}
+                      placeholder="Ví dụ: SE, MKT, BA"
+                      value={progCode}
+                      onChange={(e) => setProgCode(e.target.value)}
                       className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
                     />
                   </div>
-                </div>
-                <div className="space-y-0.5">
-                  <label className="text-white/60">Trực thuộc Khoa</label>
-                  <select
-                    value={progDeptId}
-                    onChange={(e) => setProgDeptId(e.target.value)}
-                    required
-                    className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
+                  <div className="space-y-0.5">
+                    <label className="text-white/60">Tên chuyên ngành đào tạo</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: Software Engineering"
+                      value={progName}
+                      onChange={(e) => setProgName(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-0.5">
+                      <label className="text-white/60">Cấp đào tạo</label>
+                      <select
+                        value={progType}
+                        onChange={(e) => setProgType(e.target.value as any)}
+                        className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
+                      >
+                        <option value="degree" className="bg-slate-900">Cử nhân/Kỹ sư</option>
+                        <option value="diploma" className="bg-slate-900">Cao đẳng</option>
+                        <option value="certificate" className="bg-slate-900">Chứng chỉ</option>
+                      </select>
+                    </div>
+                    <div className="space-y-0.5">
+                      <label className="text-white/60">Số tín chỉ tối thiểu</label>
+                      <input
+                        type="number"
+                        required
+                        value={progCredits}
+                        onChange={(e) => setProgCredits(Number(e.target.value))}
+                        className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-0.5">
+                    <label className="text-white/60">Trực thuộc Khoa</label>
+                    <select
+                      value={progDeptId}
+                      onChange={(e) => setProgDeptId(e.target.value)}
+                      required
+                      className="w-full px-2.5 py-1.5 bg-black/25 text-white border border-white/10 rounded-lg focus:outline-none text-xs"
+                    >
+                      <option value="">-- Chọn Khoa --</option>
+                      {departments.map(d => (
+                        <option key={d.id} value={d.id} className="bg-slate-900">{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-1.5 bg-white text-indigo-950 font-bold rounded-lg hover:bg-white/95 transition cursor-pointer text-xs mt-2"
                   >
-                    <option value="">-- Chọn Khoa --</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id} className="bg-slate-900">{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-1.5 bg-white text-indigo-950 font-bold rounded-lg hover:bg-white/95 transition cursor-pointer text-xs mt-2"
-                >
-                  Khởi tạo Ngành học
-                </button>
-              </form>
-            </div>
+                    Khởi tạo Ngành học
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-8 bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">

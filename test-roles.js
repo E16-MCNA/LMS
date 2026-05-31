@@ -133,7 +133,7 @@ async function testRole(roleName, buttonTextSelector) {
       log("\x1b[31mRESULT: Rendered empty screen (WHITE SCREEN)!\x1b[0m");
     } else {
       log(`RESULT: Rendered successfully. HTML length: ${htmlVal.length}`);
-      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO E16 LMS") || htmlVal.includes("Đăng xuất")) {
+      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO MCNA LMS") || htmlVal.includes("Đăng xuất")) {
         log("\x1b[32mSUCCESS: Logged in successfully and dashboard loaded!\x1b[0m");
       } else {
         log("\x1b[33mWARNING: Remained on the login page.\x1b[0m");
@@ -152,7 +152,7 @@ async function testRole(roleName, buttonTextSelector) {
 
 async function runAllTests() {
   const roles = [
-    { name: "Admin", btn: "Admin" },
+    { name: "Admin", btn: "Manager" },
     { name: "Teacher", btn: "Giảng Viên" },
     { name: "Student", btn: "Học Viên" }
   ];

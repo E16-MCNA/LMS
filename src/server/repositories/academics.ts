@@ -4,7 +4,7 @@ import { generateId } from "../ids";
 import { academicWarningFromRow } from "../mappers";
 import { parentRepository } from "./parent";
 
-const ADMIN_WARNING_ROLES = new Set<User["role"]>(["admin", "super_admin", "academic_admin", "finance"]);
+const ADMIN_WARNING_ROLES = new Set<User["role"]>(["manager", "super_admin", "admin", "finance"]);
 
 export const academicsRepository = {
   async listWarnings(db: Queryable, studentId?: string) {

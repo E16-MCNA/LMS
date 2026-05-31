@@ -1,13 +1,13 @@
 export type UserRole =
   | "super_admin"
+  | "manager"
   | "admin"
-  | "academic_admin"
   | "finance"
   | "advisor"
   | "teacher"
   | "student"
   | "parent"
-  | "le_tan";
+  | "sale";
 
 export interface User {
   id: string;
@@ -319,7 +319,7 @@ export interface CourseSection {
   sectionCode: string;          // e.g. "CS101-01"
   maxStudents: number;          // capacity cap
   schedule: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>;
-  status: "open" | "closed" | "cancelled";
+  status: "pending" | "open" | "closed" | "cancelled";
 }
 
 export interface RegistrationPeriod {

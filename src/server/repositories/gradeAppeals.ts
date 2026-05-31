@@ -44,7 +44,7 @@ export const gradeAppealsRepository = {
         [user.id]
       )).rows;
     }
-    if (!["admin", "super_admin", "academic_admin"].includes(user.role)) return [];
+    if (!["manager", "super_admin", "admin"].includes(user.role)) return [];
     return (await db.query("SELECT * FROM grade_appeals ORDER BY submitted_at DESC")).rows;
   },
 

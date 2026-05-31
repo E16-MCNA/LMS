@@ -1,0 +1,63 @@
+File: App.tsx | Line: 263 | Type: JSX text: 'MCNA LMS - Standalone Learning Management System' | Code: <title>MCNA LMS - Standalone Learning Management System</title>
+File: App.tsx | Line: 308 | Type: JSX text: 'MCNA LMS Standalone Client' | Code: <h1 class="text-3xl font-extrabold text-white tracking-widest uppercase">MCNA LMS Standalone Client</h1>
+File: App.tsx | Line: 315 | Type: JSX text: 'Standalone credentials configured:' | Code: <span class="text-xs font-mono font-bold tracking-wider text-indigo-300 block uppercase">Standalone credentials configured:</span>
+File: App.tsx | Line: 317 | Type: JSX text: 'admin@mcna.local / admine16' | Code: <div class="py-1.5 flex justify-between"><span>Manager</span><span class="text-white">admin@mcna.local / admine16</span></div>
+File: App.tsx | Line: 318 | Type: JSX text: 'teacher@mcna.local / teachere16' | Code: <div class="py-1.5 flex justify-between"><span>Teacher</span><span class="text-white">teacher@mcna.local / teachere16</span></div>
+File: App.tsx | Line: 319 | Type: JSX text: 'student@mcna.local / studente16' | Code: <div class="py-1.5 flex justify-between"><span>Student</span><span class="text-white">student@mcna.local / studente16</span></div>
+File: App.tsx | Line: 320 | Type: JSX text: 'finance@mcna.local / finance16' | Code: <div class="py-1.5 flex justify-between"><span>Kế Toán</span><span class="text-white">finance@mcna.local / finance16</span></div>
+File: App.tsx | Line: 322 | Type: JSX text: 'academic@mcna.local / academice16' | Code: <div class="py-1.5 flex justify-between"><span>Admin học tập</span><span class="text-white">academic@mcna.local / academice16</span></div>
+File: App.tsx | Line: 382 | Type: JSX text: 'MCNA LMS' | Code: <h1 className="text-sm font-display font-black tracking-widest text-white uppercase leading-none">MCNA LMS</h1>
+File: App.tsx | Line: 383 | Type: JSX text: 'Academic suite v1.1' | Code: <p className="text-[9px] text-white/40 uppercase tracking-tighter mt-0.5">Academic suite v1.1</p>
+File: App.tsx | Line: 662 | Type: JSX text: 'MCNA LMS INC.' | Code: <span className="font-display font-black text-white tracking-widest uppercase text-xs">MCNA LMS INC.</span>
+File: App.tsx | Line: 666 | Type: JSX text: 'Advanced Local LMS Ecosystem' | Code: <h2 className="text-2xl font-display font-extrabold text-white leading-tight">Advanced Local LMS Ecosystem</h2>
+File: App.tsx | Line: 752 | Type: JSX text: 'Manager QTV' | Code: <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-red-300">Manager QTV</span>
+File: App.tsx | Line: 753 | Type: JSX text: 'admin@mcna.local' | Code: <span className="font-mono text-[8px] font-normal text-white/30 truncate block">admin@mcna.local</span>
+File: App.tsx | Line: 765 | Type: JSX text: 'teacher@mcna.local' | Code: <span className="font-mono text-[8px] font-normal text-white/30 truncate block">teacher@mcna.local</span>
+File: App.tsx | Line: 777 | Type: JSX text: 'student@mcna.local' | Code: <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student@mcna.local</span>
+File: App.tsx | Line: 789 | Type: JSX text: 'finance@mcna.local' | Code: <span className="font-mono text-[8px] font-normal text-white/30 truncate block">finance@mcna.local</span>
+File: App.tsx | Line: 813 | Type: JSX text: 'academic@mcna.local' | Code: <span className="font-mono text-[8px] font-normal text-white/30 truncate block">academic@mcna.local</span>
+File: components\AcademicManager.tsx | Line: 611 | Type: JSX text: 'Fall (Thu)' | Code: <option value="fall" className="bg-slate-900">Fall (Thu)</option>
+File: components\AdminPanel.tsx | Line: 442 | Type: JSX text: 'Executive Portal & Academic Records' | Code: <h2 className="text-xl font-display font-bold text-white mt-2">Executive Portal & Academic Records</h2>
+File: components\AdminPanel.tsx | Line: 527 | Type: JSX text: 'Khoa (Departments)' | Code: <span className="flex items-center gap-2"><Building className="h-4 w-4" /> Khoa (Departments)</span>
+File: components\AdminPanel.tsx | Line: 854 | Type: JSX text: 'Interactive User Directory & Access Controls' | Code: <h3 className="text-base font-bold text-white">Interactive User Directory & Access Controls</h3>
+File: components\AdminPanel.tsx | Line: 1081 | Type: JSX text: 'by:' | Code: <span className="text-slate-400">by:</span> <span className="text-emerald-400 font-bold">{log.userId}</span>{" "}
+File: components\AdminPanel.tsx | Line: 1082 | Type: JSX text: 'target:' | Code: <span className="text-slate-400">target:</span> <span className="text-yellow-400">{log.target}</span> --{" "}
+File: components\AdminPanel.tsx | Line: 1274 | Type: JSX text: 'password123' | Code: Nhập dòng giá trị ngăn cách bởi dấu phẩy. Cột định dạng: <code className="text-indigo-400 font-bold">name, email, role</code>. Mật khẩu mặc định sinh tự động là <code className="text-cyan-400 font-bold">password123</code>.
+File: components\AdvisorPanel.tsx | Line: 87 | Type: JSX text: 'p.gpa ' | Code: const atRiskCount = myStudents.filter(p => p.gpa < 2.0 || unresolvedWarnings.some(w => w.studentId === p.userId)).length;
+File: components\FinancePanel.tsx | Line: 486 | Type: JSX text: 'Income vs Expense & Liabilities' | Code: <h3 className="text-sm font-bold text-white">Income vs Expense & Liabilities</h3>
+File: components\FinancePanel.tsx | Line: 487 | Type: JSX text: 'Tuition billed/collected, course revenue, payroll expense, and open debt.' | Code: <p className="text-xs text-white/45">Tuition billed/collected, course revenue, payroll expense, and open debt.</p>
+File: components\FinancePanel.tsx | Line: 493 | Type: JSX text: 'Collected' | Code: <span className="text-[10px] text-white/40 uppercase font-mono">Collected</span>
+File: components\FinancePanel.tsx | Line: 497 | Type: JSX text: 'Course sales' | Code: <span className="text-[10px] text-white/40 uppercase font-mono">Course sales</span>
+File: components\FinancePanel.tsx | Line: 501 | Type: JSX text: 'Payroll expense' | Code: <span className="text-[10px] text-white/40 uppercase font-mono">Payroll expense</span>
+File: components\FinancePanel.tsx | Line: 505 | Type: JSX text: 'Open debt' | Code: <span className="text-[10px] text-white/40 uppercase font-mono">Open debt</span>
+File: components\FinancePanel.tsx | Line: 509 | Type: Prop label='Billed versus collected chart' | Code: <svg viewBox="0 0 520 118" className="w-full h-32 overflow-visible" role="img" aria-label="Billed versus collected chart">
+File: components\FinancePanel.tsx | Line: 512 | Type: JSX text: 'Billed' | Code: <text x="20" y="18" fill="rgba(255,255,255,.55)" fontSize="11">Billed</text>
+File: components\FinancePanel.tsx | Line: 515 | Type: JSX text: 'Collected' | Code: <text x="20" y="66" fill="rgba(255,255,255,.55)" fontSize="11">Collected</text>
+File: components\FinancePanel.tsx | Line: 524 | Type: JSX text: 'Invoice Health' | Code: <h3 className="text-sm font-bold text-white">Invoice Health</h3>
+File: components\FinancePanel.tsx | Line: 527 | Type: JSX text: 'Paid' | Code: <span className="text-[10px] text-emerald-200 uppercase font-mono">Paid</span>
+File: components\FinancePanel.tsx | Line: 531 | Type: JSX text: 'Unpaid' | Code: <span className="text-[10px] text-amber-200 uppercase font-mono">Unpaid</span>
+File: components\FinancePanel.tsx | Line: 538 | Type: JSX text: 'Debt recovery is based on paid tuition amount divided by billed tuition amount.' | Code: <p className="text-xs text-white/45">Debt recovery is based on paid tuition amount divided by billed tuition amount.</p>
+File: components\ReceptionPanel.tsx | Line: 490 | Type: JSX text: 'GV: ' | Code: <span>GV: <strong className="text-white/85">{teacherObj?.name || "Giảng viên E16"}</strong></span>
+File: components\StudentPanel.tsx | Line: 682 | Type: JSX text: 'Explore public curriculum classes, view lessons complete logs, and take certificates assessments easily.' | Code: <p className="text-sm text-white/60">Explore public curriculum classes, view lessons complete logs, and take certificates assessments easily.</p>
+File: components\Timetable.tsx | Line: 787 | Type: JSX text: 'DAY' | Code: <span className="text-[9px] font-bold uppercase tracking-wider block">DAY</span>
+File: components\TuitionManager.tsx | Line: 276 | Type: JSX text: 'VND' | Code: <h3 className="text-xl font-mono font-black text-white mt-1.5">{totalBilled.toLocaleString()} <span className="text-[10px] text-white/40">VND</span></h3>
+File: components\TuitionManager.tsx | Line: 284 | Type: JSX text: 'VND' | Code: <h3 className="text-xl font-mono font-black text-emerald-400 mt-1.5">{totalCollected.toLocaleString()} <span className="text-[10px] text-emerald-400/40">VND</span></h3>
+File: components\TuitionManager.tsx | Line: 296 | Type: JSX text: 'Billed' | Code: <text x="13" y="14" fill="#ffffff" fontSize="7" fontWeight="bold">Billed</text>
+File: components\TuitionManager.tsx | Line: 368 | Type: JSX text: 'Spring 2025' | Code: <option value="sem_spring25" className="bg-slate-900">Spring 2025</option>
+File: components\TuitionManager.tsx | Line: 369 | Type: JSX text: 'Fall 2024' | Code: <option value="sem_fall24" className="bg-slate-900">Fall 2024</option>
+File: components\TuitionManager.tsx | Line: 460 | Type: JSX text: 'Paid' | Code: <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/15 px-2 py-0.5 rounded text-[9.5px] font-bold">Paid</span>
+File: components\student\CourseCatalog.tsx | Line: 344 | Type: JSX text: 'CONG TY CONG NGHE E16 VIET NAM' | Code: <span className="font-bold text-white uppercase text-[11px]">CONG TY CONG NGHE E16 VIET NAM</span>
+File: components\student\StudentAcademics.tsx | Line: 504 | Type: Prop placeholder='VD: 0912345678' | Code: placeholder="VD: 0912345678"
+File: components\student\StudentAcademics.tsx | Line: 537 | Type: JSX text: 'Nam' | Code: <option value="Nam">Nam</option>
+File: components\teacher\CourseBuilder.tsx | Line: 681 | Type: JSX text: 'Web Development' | Code: <option value="Web Development" className="bg-slate-900">Web Development</option>
+File: components\teacher\CourseBuilder.tsx | Line: 682 | Type: JSX text: 'Data Science' | Code: <option value="Data Science" className="bg-slate-900">Data Science</option>
+File: components\teacher\CourseBuilder.tsx | Line: 683 | Type: JSX text: 'Software Engineering' | Code: <option value="Software Engineering" className="bg-slate-900">Software Engineering</option>
+File: components\teacher\CourseBuilder.tsx | Line: 684 | Type: JSX text: 'DevOps & Infrastructure' | Code: <option value="DevOps & Infrastructure" className="bg-slate-900">DevOps & Infrastructure</option>
+File: components\teacher\CourseBuilder.tsx | Line: 692 | Type: Prop placeholder='https://images.unsplash.com/...' | Code: placeholder="https://images.unsplash.com/..."
+File: components\teacher\CourseBuilder.tsx | Line: 803 | Type: Prop placeholder='https://example.com/lecture.mp4' | Code: placeholder="https://example.com/lecture.mp4"
+File: components\teacher\TeacherAnalytics.tsx | Line: 126 | Type: JSX text: 'Student registrations' | Code: <span className="text-white/40">Student registrations</span>
+File: components\teacher\TeacherAnalytics.tsx | Line: 130 | Type: JSX text: 'Averaged quiz score' | Code: <span className="text-white/40">Averaged quiz score</span>
+File: components\teacher\TeacherAnalytics.tsx | Line: 134 | Type: JSX text: 'Approval Status' | Code: <span className="text-white/40">Approval Status</span>
+File: server\eventBus.ts | Line: 17 | Type: JSX text: '(event: EventType, handler: Handler' | Code: on<T>(event: EventType, handler: Handler<T>) {
+File: server\redis.ts | Line: 16 | Type: JSX text: ', fallback: T): Promise' | Code: export async function safeRedis<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+File: server\validation.ts | Line: 4 | Type: JSX text: '(schema: ZodSchema' | Code: export function validateBody<T>(schema: ZodSchema<T>) {

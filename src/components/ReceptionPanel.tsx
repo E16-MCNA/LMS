@@ -25,6 +25,7 @@ import { hashPassword } from "../authHash";
 import { api } from "../api";
 import { useApiStore } from "../hooks/apiHooks";
 import ModalPortal from "./ModalPortal";
+import UserGuide from "./UserGuide";
 
 interface ReceptionPanelProps {
   currentUser: UserType;
@@ -36,7 +37,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   const { store, isLoading, isError } = useApiStore();
 
   // Tab states
-  const [activeTab, setActiveTab] = useState<"search" | "register" | "courses">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "register" | "courses" | "reception_guide">("reception_guide");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -204,6 +205,16 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
       {/* Sub Tabs */}
       <div className="flex border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
         <button
+          onClick={() => setActiveTab("reception_guide")}
+          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+            activeTab === "reception_guide" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+          }`}
+        >
+          <div className="flex justify-center items-center gap-2">
+             Hướng dẫn sử dụng
+          </div>
+        </button>
+        <button
           onClick={() => setActiveTab("search")}
           className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
             activeTab === "search" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
@@ -236,6 +247,10 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+        {activeTab === "reception_guide" && (
+          <UserGuide role="sale" activeSystem="SIS" onClose={() => setActiveTab("search")} />
+        )}
+
         {/* Tab 1: Tra cứu học viên */}
         {activeTab === "search" && (
           <div className="space-y-6">
@@ -335,7 +350,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
                             onClick={() => handleResetPassword(student.id)}
                             className="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 font-semibold rounded-lg text-[10px] uppercase border border-amber-500/20 transition cursor-pointer"
                           >
-                            Reset Mật khẩu
+                            Đặt Lại Mật Khẩu
                           </button>
                         </td>
                       </tr>

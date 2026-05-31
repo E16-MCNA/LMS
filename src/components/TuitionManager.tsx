@@ -293,12 +293,12 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
               {/* Total Billed Bar */}
               <rect x="10" y="5" width="140" height="12" rx="3" fill="rgba(255,255,255,0.06)" />
               <rect x="10" y="5" width="140" height="12" rx="3" fill="#2563eb" className="transition-all duration-300" />
-              <text x="13" y="14" fill="#ffffff" fontSize="7" fontWeight="bold">Billed</text>
+              <text x="13" y="14" fill="#ffffff" fontSize="7" fontWeight="bold">Phải thu</text>
               
               {/* Collected Progress Bar */}
               <rect x="10" y="25" width="140" height="12" rx="3" fill="rgba(255,255,255,0.06)" />
               <rect x="10" y="25" width={140 * (Math.min(collectionRate, 100)/100)} height="12" rx="3" fill="#10b981" />
-              <text x="13" y="34" fill="#ffffff" fontSize="7" fontWeight="bold">Collected ({collectionRate}%)</text>
+              <text x="13" y="34" fill="#ffffff" fontSize="7" fontWeight="bold">Đã thu ({collectionRate}%)</text>
             </svg>
           </div>
         </div>
@@ -365,8 +365,8 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
               onChange={(e) => setSelectedSemesterId(e.target.value)}
               className="px-2 py-1 bg-black/25 text-white/80 border border-white/10 rounded-lg focus:outline-none"
             >
-              <option value="sem_spring25" className="bg-slate-900">Spring 2025</option>
-              <option value="sem_fall24" className="bg-slate-900">Fall 2024</option>
+              <option value="sem_spring25" className="bg-slate-900">Kỳ Mùa Xuân 2025</option>
+              <option value="sem_fall24" className="bg-slate-900">Kỳ Mùa Thu 2024</option>
             </select>
           </div>
 
@@ -457,7 +457,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
                   <td className="py-3 px-3 text-right font-mono text-white/50">{fee.dueDate}</td>
                   <td className="py-3 px-3 text-center">
                     {fee.status === "paid" && (
-                      <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/15 px-2 py-0.5 rounded text-[9.5px] font-bold">Paid</span>
+                      <span className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/15 px-2 py-0.5 rounded text-[9.5px] font-bold">Đã đóng đủ</span>
                     )}
                     {fee.status === "partial" && (
                       <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/15 px-2 py-0.5 rounded text-[9.5px] font-bold">Thanh toán một phần</span>

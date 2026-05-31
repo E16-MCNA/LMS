@@ -23,22 +23,35 @@ import { User, StudentProfile, AdvisorNote, AcademicWarning, TuitionFee, Course,
 import { AppStore } from "../store";
 import { calculateCourseGradePercent, collectCourseGradeInputs, warningTypeLabel } from "../gradeUtils";
 import ModalPortal from "./ModalPortal";
+import UserGuide from "./UserGuide";
 
 interface ParentPanelProps {
   currentUser: User;
   onLogout: () => void;
   onRefreshData: () => void;
+  activeSystem?: "SIS" | "LMS";
 }
 
-export default function ParentPanel({ currentUser, onLogout, onRefreshData }: ParentPanelProps) {
+export default function ParentPanel({ currentUser, onLogout, onRefreshData, activeSystem = "SIS" }: ParentPanelProps) {
   const store = AppStore.get();
   
   // States
-  const [activeTab, setActiveTab] = useState<"overview" | "grades" | "attendance" | "warnings" | "financial" | "notifications">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "grades" | "attendance" | "warnings" | "financial" | "notifications" | "parent_guide">(
+    "parent_guide"
+  );
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "parent_guide") return;
+    if (activeSystem === "LMS") {
+      if (activeTab !== "grades") setActiveTab("grades");
+    } else {
+      if (activeTab === "grades") setActiveTab("overview");
+    }
+  }, [activeSystem]);
   const [gradesSearch, setGradesSearch] = useState("");
   const [courseDetailId, setCourseDetailId] = useState<string | null>(null);
 
@@ -226,42 +239,71 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData }: Pa
         
         {/* Left Navigator Side */}
         <div className="lg:col-span-3 bg-slate-900 border border-white/10 rounded-2xl p-4 flex flex-col space-y-1 text-xs">
-          <span className="text-[10px] font-mono tracking-widest text-white/30 block mb-2 px-3 uppercase">Danh mục quản lý</span>
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "overview" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
-          >
-            Tổng Quan Con Em
-          </button>
-          <button
-            onClick={() => setActiveTab("grades")}
-            className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "grades" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
-          >
-            Bảng Điểm Học Tập
-          </button>
-          <button
-            onClick={() => setActiveTab("attendance")}
-            className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "attendance" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
-          >
-            Biểu Đồ Chuyên Cần
-          </button>
-          <button
-            onClick={() => setActiveTab("warnings")}
-            className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "warnings" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
-          >
-            Cảnh Báo & Kỷ Luật ({childWarnings.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("financial")}
-            className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "financial" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
-          >
-            Sổ Học Phí & Biên Lai
-          </button>
+          
+          {activeSystem === "SIS" && (
+            <>
+              <span className="text-[10px] font-mono tracking-widest text-cyan-400 block mb-2 px-3 uppercase">Hồ Sơ Học Vụ SIS</span>
+              <button
+                onClick={() => setActiveTab("parent_guide")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "parent_guide" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Hướng dẫn sử dụng
+              </button>
+              <button
+                onClick={() => setActiveTab("overview")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "overview" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Tổng Quan Con Em
+              </button>
+              <button
+                onClick={() => setActiveTab("attendance")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "attendance" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Biểu Đồ Chuyên Cần
+              </button>
+              <button
+                onClick={() => setActiveTab("warnings")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "warnings" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Cảnh Báo & Kỷ Luật ({childWarnings.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("financial")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "financial" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Sổ Học Phí & Biên Lai
+              </button>
+            </>
+          )}
+
+          {activeSystem === "LMS" && (
+            <>
+              <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-2 px-3 uppercase">Tiến Độ Học Tập LMS</span>
+              <button
+                onClick={() => setActiveTab("parent_guide")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "parent_guide" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Hướng dẫn sử dụng
+              </button>
+              <button
+                onClick={() => setActiveTab("grades")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "grades" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                Bảng Điểm Học Tập
+              </button>
+            </>
+          )}
+
         </div>
 
         {/* Right Active pane details */}
         <div className="lg:col-span-9 bg-slate-900 border border-white/10 rounded-2xl p-6">
           
+          {/* TAB USER GUIDE */}
+          {activeTab === "parent_guide" && (
+            <UserGuide role="parent" activeSystem={activeSystem} onClose={() => setActiveTab("overview")} />
+          )}
+
           {/* TAB 1: OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-6">

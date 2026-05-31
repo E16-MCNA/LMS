@@ -31,7 +31,8 @@ import {
   FileSpreadsheet,
   Cpu,
   ChevronUp,
-  BadgeAlert
+  BadgeAlert,
+  LifeBuoy
 } from "lucide-react";
 import { LMSDataStore, User as UserType, Course, Lesson, Enrollment, LessonProgress, Quiz, Question, QuizAttempt, Assignment, Submission, Certificate, Notification, Transaction, AttendanceRecord, AttendanceSession, TuitionFee, AcademicWarning } from "../types";
 import { AppStore } from "../store";
@@ -41,6 +42,8 @@ import QuizConsole from "./student/QuizConsole";
 import AssignmentSubmit from "./student/AssignmentSubmit";
 import StudentAcademics from "./student/StudentAcademics";
 import ParentPanel from "./ParentPanel";
+import Timetable from "./Timetable";
+import UserGuide from "./UserGuide";
 import { generateId, escapeHTML } from "../utils";
 import { useApiStore } from "../hooks/apiHooks";
 import { api } from "../api";
@@ -50,9 +53,10 @@ interface StudentPanelProps {
   currentUser: UserType;
   onLogout: () => void;
   onRefreshData: () => void;
+  activeSystem?: "SIS" | "LMS";
 }
 
-export default function StudentPanel({ currentUser, onLogout, onRefreshData }: StudentPanelProps) {
+export default function StudentPanel({ currentUser, onLogout, onRefreshData, activeSystem = "LMS" }: StudentPanelProps) {
   const { store, isLoading, isError } = useApiStore();
 
 
@@ -107,7 +111,21 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
     | "student_tuition"
     | "student_transcript"
     | "parent_view"
-  >("profile");
+    | "student_guide"
+    | "student_timetable"
+  >(activeSystem === "SIS" ? "student_guide" : "student_guide");
+
+  useEffect(() => {
+    if (activeSystem === "SIS") {
+      if (!["profile", "academics_record", "student_attendance", "student_tuition", "student_transcript", "parent_view", "student_guide", "student_timetable"].includes(activeSubTab)) {
+        setActiveSubTab("student_guide");
+      }
+    } else {
+      if (!["catalog", "learning", "quizzes", "assignments", "certificates", "notifications", "student_guide", "student_timetable"].includes(activeSubTab)) {
+        setActiveSubTab("student_guide");
+      }
+    }
+  }, [activeSystem]);
 
   // Payment popup state
   const [paymentGuideTx, setPaymentGuideTx] = useState<Transaction | null>(null);
@@ -618,7 +636,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
                     setCpLoading(true);
                     setCpError(null);
                     try {
-                      const csrfToken = sessionStorage.getItem("e16_lms_csrf");
+                      const csrfToken = sessionStorage.getItem("mcna_lms_csrf");
                       const response = await fetch("/api/users/change-password", {
                         method: "POST",
                         headers: {
@@ -658,10 +676,10 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-mono font-semibold tracking-widest text-indigo-300 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 uppercase">
-            Active Student Desk
+            Cổng Học Tập Học Viên
           </span>
-          <h2 className="text-2xl font-display font-bold text-white mt-1.5">Welcome Back, {currentUser.name} 🎓</h2>
-          <p className="text-sm text-white/60">Explore public curriculum classes, view lessons complete logs, and take certificates assessments easily.</p>
+          <h2 className="text-2xl font-display font-bold text-white mt-1.5">Chào mừng trở lại, {currentUser.name} 🎓</h2>
+          <p className="text-sm text-white/60">Tìm kiếm các khóa học trực tuyến, theo dõi tiến độ học tập và kiểm tra lấy chứng chỉ số hóa dễ dàng.</p>
         </div>
 
       </div>
@@ -698,12 +716,23 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
         {/* Left Navigation Sidebar */}
         <div className={`w-full lg:w-64 xl:w-72 flex flex-col gap-4 shrink-0 ${showSidebar ? "block" : "hidden"} lg:flex lg:flex-col`}>
           
-          {/* LMS Modules group */}
+          {activeSystem === "LMS" && (
           <div className="bg-white/3 border border-white/10 rounded-3xl p-3 flex flex-col gap-1 w-full text-xs">
             <span className="text-[10px] text-white/40 uppercase tracking-widest px-3 py-2 font-bold font-mono border-b border-white/5 mb-1.5">
               HỌC TẬP LMS
             </span>
             <button
+               onClick={() => { setActiveSubTab("student_guide"); setShowSidebar(false); }}
+               className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                 activeSubTab === "student_guide" 
+                   ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                   : "text-white/60 hover:text-white hover:bg-white/5"
+               }`}
+             >
+               <LifeBuoy className={`h-4.5 w-4.5 ${activeSubTab === "student_guide" ? "text-indigo-300" : "text-white/40"}`} />
+               <span>Hướng dẫn sử dụng</span>
+             </button>
+             <button
               onClick={() => { setActiveSubTab("catalog"); setLearningCourseId(null); setShowSidebar(false); }}
               className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                 activeSubTab === "catalog" 
@@ -768,12 +797,24 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
               </span>
             </button>
           </div>
+          )}
 
-          {/* SIS Academics Systems modules group */}
+          {activeSystem === "SIS" && (
           <div className="bg-indigo-950/20 border border-indigo-500/10 rounded-3xl p-3 flex flex-col gap-1 w-full text-xs">
             <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-widest px-3 py-2 font-mono border-b border-indigo-500/15 mb-1.5">
               HỒ SƠ HỌC VỤ SIS
             </span>
+            <button
+              onClick={() => { setActiveSubTab("student_guide"); setShowSidebar(false); }}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "student_guide" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <LifeBuoy className={`h-4.5 w-4.5 ${activeSubTab === "student_guide" ? "text-white" : "text-white/40"}`} />
+              <span>Hướng dẫn sử dụng</span>
+            </button>
             <button
               onClick={() => { setActiveSubTab("profile"); setShowSidebar(false); }}
               className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
@@ -784,6 +825,17 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
             >
               <User className={`h-4.5 w-4.5 ${activeSubTab === "profile" ? "text-white" : "text-white/40"}`} />
               <span>Lý lịch cá nhân</span>
+            </button>
+            <button
+              onClick={() => { setActiveSubTab("student_timetable"); setShowSidebar(false); }}
+              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                activeSubTab === "student_timetable" 
+                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
+                  : "text-white/60 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Calendar className={`h-4.5 w-4.5 ${activeSubTab === "student_timetable" ? "text-white" : "text-white/40"}`} />
+              <span>Thời khóa biểu</span>
             </button>
             <button
               onClick={() => { setActiveSubTab("academics_record"); setShowSidebar(false); }}
@@ -841,6 +893,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
               <span>Cổng Phụ Huynh</span>
             </button>
           </div>
+          )}
         </div>
 
         {/* Right Canvas workspace content bodies */}
@@ -981,6 +1034,23 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData }: S
         {/* Tab SIS 1: My Profile Section */}
         <StudentAcademics {...studentPanelProps} />
         <QuizConsole {...studentPanelProps} />
+
+        {activeSubTab === "student_guide" && (
+          <UserGuide
+            role="student"
+            activeSystem={activeSystem}
+            onClose={() => setActiveSubTab("catalog")}
+          />
+        )}
+
+        {activeSubTab === "student_timetable" && (
+          <Timetable
+            role="student"
+            currentUser={currentUser}
+            store={store}
+            onRefreshData={onRefreshData}
+          />
+        )}
 
         {activeSubTab === "parent_view" && (
           <ParentPanel 

@@ -117,23 +117,23 @@ export default function TeacherAnalytics(props: ComponentProps) {
                 return (
                   <div key={course.id} className="bg-white/5 border border-white/10 p-5 rounded-2xl hover:border-white/20 transition backdrop-blur-md">
                     <span className="text-[10px] font-mono text-white/40 block pb-1 border-b border-white/5 truncate uppercase">
-                      Course Assessment details
+                      Chi tiết Đánh giá Khóa học
                     </span>
                     <h5 className="font-display font-bold text-white text-sm my-2 truncate">{course.title}</h5>
 
                     <div className="space-y-3.5 pt-2">
                       <div className="flex justify-between text-xs">
-                        <span className="text-white/40">Student registrations</span>
-                        <span className="font-mono text-white font-bold">{enrolledEnroll.length} scholar(s)</span>
+                        <span className="text-white/40">Lượt đăng ký học</span>
+                        <span className="font-mono text-white font-bold">{enrolledEnroll.length} học viên</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-white/40">Averaged quiz score</span>
-                        <span className="font-mono text-cyan-300 font-bold">{Math.round(totalAvgQuiz)}% average</span>
+                        <span className="text-white/40">Điểm kiểm tra trung bình</span>
+                        <span className="font-mono text-cyan-300 font-bold">{Math.round(totalAvgQuiz)}%</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-white/40">Approval Status</span>
+                        <span className="text-white/40">Trạng thái Phê duyệt</span>
                         <span className="text-indigo-200 uppercase font-mono text-[10px] bg-white/5 py-0.5 px-2 rounded-full border border-white/10 font-bold">
-                          {course.status}
+                          {course.status === "published" ? "Đã duyệt" : course.status === "pending" ? "Chờ duyệt" : course.status === "rejected" ? "Bị từ chối" : "Bản nháp"}
                         </span>
                       </div>
                     </div>
@@ -143,7 +143,7 @@ export default function TeacherAnalytics(props: ComponentProps) {
 
               {myCourses.length === 0 && (
                 <div className="col-span-full text-center py-16 text-white/40">
-                  Analytics cockpit empty. Please initialize core academic course designs.
+                  Chưa có dữ liệu thống kê. Vui lòng khởi tạo chương trình đào tạo của bạn trước.
                 </div>
               )}
             </div>

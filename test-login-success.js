@@ -152,7 +152,7 @@ async function testRoleLogin(roleName, email, password) {
       log("\x1b[31mRESULT: Rendered empty screen (WHITE SCREEN)!\x1b[0m");
     } else {
       log(`RESULT: HTML length: ${htmlVal.length}`);
-      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO E16 LMS") || htmlVal.includes("Đăng xuất")) {
+      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO MCNA LMS") || htmlVal.includes("Đăng xuất")) {
         log("\x1b[32mSUCCESS: Logged in successfully and dashboard loaded!\x1b[0m");
       } else {
         log("\x1b[33mWARNING: Remained on the login page.\x1b[0m");
@@ -171,7 +171,7 @@ async function testRoleLogin(roleName, email, password) {
 
 async function runAllTests() {
   const roles = [
-    { name: "Teacher", email: "teacher@e16.local", pass: "teachere16" }
+    { name: "Teacher", email: "teacher@mcna.local", pass: "teachere16" }
   ];
 
   const allLogs = [];

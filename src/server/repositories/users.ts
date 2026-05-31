@@ -1,27 +1,29 @@
 import { Queryable } from "../db";
-import { DbUserRow, normalizeRole, denormalizeRole, toPublicUser } from "../mappers";
+import { DbUserRow, denormalizeRole, toPublicUser } from "../mappers";
 import { User } from "../../types";
 
 export const usersRepository = {
   async normalizeLegacyRoles(db: Queryable) {
     await db.query(`
       UPDATE users SET role = 'finance' WHERE role = 'ke_toan';
-      UPDATE users SET role = 'academic_admin' WHERE role IN ('quan_ly_hoc_vu', 'academic');
+      UPDATE users SET role = 'admin' WHERE role IN ('quan_ly_hoc_vu', 'academic', 'academic_admin');
+      UPDATE users SET role = 'sale' WHERE role = 'le_tan';
     `);
   },
 
   async normalizeSystemUsers(db: Queryable) {
     const systemUsers = [
-      ["finance@e16.local", "Nguyễn Văn Kế Toán"],
-      ["le_tan@e16.local", "Lê Thị Lễ Tân"],
-      ["academic@e16.local", "Trần Văn Học Vụ"],
-      ["advisor@e16.local", "Phạm Cố Vấn (Cố vấn Học tập)"]
+      ["admin@mcna.local", "Arthur Pendragon", "manager"],
+      ["finance@mcna.local", "Nguyễn Văn Kế Toán", "finance"],
+      ["le_tan@mcna.local", "Lê Thị Lễ Tân", "sale"],
+      ["academic@mcna.local", "Trần Văn Học Vụ", "admin"],
+      ["advisor@mcna.local", "Phạm Cố Vấn (Cố vấn Học tập)", "advisor"]
     ];
 
-    for (const [email, name] of systemUsers) {
+    for (const [email, name, role] of systemUsers) {
       await db.query(
-        "UPDATE users SET name = $1 WHERE lower(email) = $2",
-        [name, email]
+        "UPDATE users SET name = $1, role = $2 WHERE lower(email) = $3",
+        [name, role, email]
       );
     }
   },
@@ -31,7 +33,11 @@ export const usersRepository = {
   },
 
   async findAuthByEmail(db: Queryable, email: string) {
-    return (await db.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [email.toLowerCase()])).rows[0] || null;
+    let cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail.endsWith("@e16.local")) {
+      cleanEmail = cleanEmail.replace("@e16.local", "@mcna.local");
+    }
+    return (await db.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [cleanEmail])).rows[0] || null;
   },
 
   async findById(db: Queryable, id: string) {

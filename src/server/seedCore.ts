@@ -412,7 +412,7 @@ export async function seedAuthUsers(db: Queryable) {
        name = EXCLUDED.name,
        role = EXCLUDED.role,
        linked_student_id = EXCLUDED.linked_student_id`,
-    ["user_parent_demo", "parent@e16.local", credential.hash, credential.salt || null, "Parent Demo", "user_student", new Date().toISOString()]
+    ["user_parent_demo", "parent@mcna.local", credential.hash, credential.salt || null, "Parent Demo", "user_student", new Date().toISOString()]
   );
   await db.query(
     `INSERT INTO parent_links (id, parent_id, student_id, created_at)

@@ -186,7 +186,7 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
 }
 
 export function limitStoreForRole(store: any, user: User) {
-  if (user.role === "admin" || user.role === "super_admin" || user.role === "academic_admin") {
+  if (user.role === "manager" || user.role === "super_admin" || user.role === "admin") {
     return {
       ...store,
       users: store.users.map((item: User) => ({ ...item, passwordHash: "" }))
@@ -246,7 +246,7 @@ export function limitStoreForRole(store: any, user: User) {
     };
   }
 
-  if (user.role === "finance" || user.role === "le_tan") {
+  if (user.role === "finance" || user.role === "sale") {
     return {
       ...store,
       users: store.users.map((item: User) => ({ ...item, passwordHash: "" })),

@@ -22,6 +22,7 @@ import { generateId } from "../utils";
 import { api } from "../api";
 import { warningTypeLabel, normalizeWarningType } from "../gradeUtils";
 import ModalPortal from "./ModalPortal";
+import UserGuide from "./UserGuide";
 
 interface AdvisorPanelProps {
   currentUser: User;
@@ -34,7 +35,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
   
   // States
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(store.studentProfiles[0]?.userId || null);
-  const [activeTab, setActiveTab] = useState<"students" | "warnings" | "notes">("students");
+  const [activeTab, setActiveTab] = useState<"students" | "warnings" | "notes" | "advisor_guide">("advisor_guide");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -224,6 +225,16 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
           <p className="text-xs text-white/50 mt-1">Theo dõi, định hướng học tập, xử lý cảnh báo chuyên cần & thiết lập lộ trình cho sinh viên.</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab(activeTab === "advisor_guide" ? "students" : "advisor_guide")}
+            className={`text-[11px] font-bold py-1 px-3 rounded-full transition cursor-pointer border ${
+              activeTab === "advisor_guide"
+                ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
+                : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {activeTab === "advisor_guide" ? "✕ Đóng Hướng dẫn" : "📖 Hướng dẫn nghiệp vụ"}
+          </button>
           <span className="text-[11px] font-mono bg-indigo-500/10 border border-indigo-400/20 text-indigo-400 py-1 px-3 rounded-full">
             Cố vấn: Lớp Kỹ thuật Phần mềm
           </span>
@@ -244,7 +255,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
 
         <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-white/45 block uppercase tracking-wider">Sinh Viên Có Nguy Cơ (At-Risk)</span>
+            <span className="text-[11px] font-bold text-white/45 block uppercase tracking-wider">Sinh Viên Cần Hỗ Trợ Học Tập</span>
             <span className="text-2xl font-black text-red-400 mt-1 block">{atRiskCount} SV</span>
           </div>
           <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400">
@@ -321,10 +332,13 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
           </div>
         </div>
 
-        {/* Right Side: selected student profiles & interactive advisors controls */}
         <div className="lg:col-span-8 space-y-6">
           
-          {selectedProfile && selectedUser ? (
+          {activeTab === "advisor_guide" ? (
+            <div className="bg-slate-900 border border-white/10 rounded-2xl p-6">
+              <UserGuide role="advisor" activeSystem="SIS" onClose={() => setActiveTab("students")} />
+            </div>
+          ) : selectedProfile && selectedUser ? (
             <div className="space-y-6">
               
               {/* Profile Card Header */}
@@ -545,7 +559,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                     <p className="text-[10px] text-white/50">Các nhận xét, lộ trình đề cử sẽ xuất hiện trực tiếp tại giao diện đăng ký học phần kì tới của sinh viên.</p>
 
                     <div className="space-y-2 text-xs">
-                      <label className="text-white/60 font-semibold block">Môn học đề xuất / Lớp học (Section Code)</label>
+                      <label className="text-white/60 font-semibold block">Môn học đề xuất / Mã lớp học phần</label>
                       <textarea
                         required
                         value={suggestedPlanText}

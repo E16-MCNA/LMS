@@ -95,7 +95,7 @@ async function testDashboard(roleName, email, password) {
           });
           const data = await res.json();
           if (res.ok) {
-            sessionStorage.setItem('e16_lms_csrf', data.csrfToken);
+            sessionStorage.setItem('mcna_lms_csrf', data.csrfToken);
             return { ok: true, role: data.user.role };
           }
           return { ok: false, error: data.error };
@@ -128,7 +128,7 @@ async function testDashboard(roleName, email, password) {
       log("\x1b[31mRESULT: Rendered empty screen (WHITE SCREEN)!\x1b[0m");
     } else {
       log(`RESULT: Rendered successfully. HTML length: ${htmlVal.length}`);
-      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO E16 LMS") || htmlVal.includes("Đăng xuất")) {
+      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO MCNA LMS") || htmlVal.includes("Đăng xuất")) {
         log("\x1b[32mSUCCESS: Dashboard loaded successfully!\x1b[0m");
       } else {
         log("\x1b[31mRESULT: Dashboard did not load (remained on login or blank)!\x1b[0m");
@@ -147,12 +147,12 @@ async function testDashboard(roleName, email, password) {
 
 async function runAllTests() {
   const roles = [
-    { name: "Admin", email: "admin@e16.local", pass: "admine16" },
-    { name: "Teacher", email: "teacher@e16.local", pass: "teachere16" },
-    { name: "Student", email: "student@e16.local", pass: "studente16" },
-    { name: "Finance", email: "finance@e16.local", pass: "finance16" },
-    { name: "Reception", email: "le_tan@e16.local", pass: "letane16" },
-    { name: "Academic", email: "academic@e16.local", pass: "academice16" }
+    { name: "Admin", email: "admin@mcna.local", pass: "admine16" },
+    { name: "Teacher", email: "teacher@mcna.local", pass: "teachere16" },
+    { name: "Student", email: "student@mcna.local", pass: "studente16" },
+    { name: "Finance", email: "finance@mcna.local", pass: "finance16" },
+    { name: "Reception", email: "le_tan@mcna.local", pass: "letane16" },
+    { name: "Academic", email: "academic@mcna.local", pass: "academice16" }
   ];
 
   const allLogs = [];

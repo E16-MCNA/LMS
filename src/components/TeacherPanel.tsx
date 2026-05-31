@@ -30,6 +30,8 @@ import QuizBuilder from "./teacher/QuizBuilder";
 import AssignmentGrader from "./teacher/AssignmentGrader";
 import GradebookTable from "./teacher/GradebookTable";
 import TeacherAnalytics from "./teacher/TeacherAnalytics";
+import Timetable from "./Timetable";
+import UserGuide from "./UserGuide";
 import { generateId } from "../utils";
 import { useApiStore } from "../hooks/apiHooks";
 import { api } from "../api";
@@ -38,17 +40,26 @@ interface TeacherPanelProps {
   currentUser: User;
   onLogout: () => void;
   onRefreshData: () => void;
+  activeSystem?: "SIS" | "LMS";
 }
 
-export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: TeacherPanelProps) {
+export default function TeacherPanel({ currentUser, onLogout, onRefreshData, activeSystem = "LMS" }: TeacherPanelProps) {
   const { store, isLoading, isError } = useApiStore();
 
   // Local active sub-module state
-  const [activeSubTab, setActiveSubTab] = useState<"courses" | "quizzes" | "assignments" | "gradebook" | "analytics">("courses");
+  const [activeSubTab, setActiveSubTab] = useState<string>("teacher_guide");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [activeSubTab]);
+
+  useEffect(() => {
+    if (activeSystem === "SIS") {
+      setActiveSubTab("timetable");
+    } else {
+      setActiveSubTab("courses");
+    }
+  }, [activeSystem]);
 
   // Selection states
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -466,7 +477,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
 
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", encodeURI(csvContent));
-    downloadAnchor.setAttribute("download", `e16_lms_gradebook_export.csv`);
+    downloadAnchor.setAttribute("download", `mcna_lms_gradebook_export.csv`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -511,63 +522,101 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-mono font-semibold tracking-widest text-indigo-300 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20 uppercase">
-            Góc Nghiệp vụ Giảng viên
+            {activeSystem === "SIS" ? "Học Vụ Hành Chính SIS" : "Góc Nghiệp vụ Giảng viên"}
           </span>
-          <h2 className="text-2xl font-display font-bold text-white mt-1.5">Bàn làm việc & Chấm điểm Học thuật</h2>
-          <p className="text-sm text-white/60">Tải lên giáo án bài giảng mới, thiết lập đề thi đánh giá tự động, quản lý điểm và tương tác trực quan với học viên.</p>
+          <h2 className="text-2xl font-display font-bold text-white mt-1.5">
+            {activeSystem === "SIS" ? "Quản lý Lịch giảng dạy & Chuyên cần" : "Bàn làm việc & Chấm điểm Học thuật"}
+          </h2>
+          <p className="text-sm text-white/60">
+            {activeSystem === "SIS" 
+              ? "Theo dõi ca học đứng lớp, phân bổ thời khóa biểu dạy tuần và quản lý lớp học hành chính."
+              : "Tải lên giáo án bài giảng mới, thiết lập đề thi đánh giá tự động, quản lý điểm và tương tác trực quan với học viên."
+            }
+          </p>
         </div>
 
-        <button
-          onClick={handleOpenCreateCourse}
-          className="px-4 py-2 text-xs font-bold text-indigo-950 bg-white hover:bg-white/95 rounded-xl flex items-center gap-1.5 transition duration-150 cursor-pointer self-start"
-        >
-          <FolderPlus className="h-4 w-4" /> Khởi tạo Khóa học Mới
-        </button>
+        {activeSystem !== "SIS" && (
+          <button
+            onClick={handleOpenCreateCourse}
+            className="px-4 py-2 text-xs font-bold text-indigo-950 bg-white hover:bg-white/95 rounded-xl flex items-center gap-1.5 transition duration-150 cursor-pointer self-start"
+          >
+            <FolderPlus className="h-4 w-4" /> Khởi tạo Khóa học Mới
+          </button>
+        )}
       </div>
 
       {/* Main tab control buttons */}
-      <div className="flex border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
-        <button
-          onClick={() => { setActiveSubTab("courses"); setSelectedCourseId(null); }}
-          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "courses" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Chương trình Đào tạo
-        </button>
-        <button
-          onClick={() => setActiveSubTab("quizzes")}
-          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "quizzes" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Đề thi & Đánh giá
-        </button>
-        <button
-          onClick={() => setActiveSubTab("assignments")}
-          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "assignments" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Bài tập & Chấm điểm
-        </button>
-        <button
-          onClick={() => setActiveSubTab("gradebook")}
-          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "gradebook" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Sổ điểm Tổng hợp
-        </button>
-        <button
-          onClick={() => setActiveSubTab("analytics")}
-          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "analytics" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Báo cáo Hiệu suất
-        </button>
-      </div>
+      {activeSystem === "SIS" ? (
+        <div className="flex border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
+          <button
+            onClick={() => setActiveSubTab("teacher_guide")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "teacher_guide" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Hướng dẫn sử dụng
+          </button>
+          <button
+            onClick={() => setActiveSubTab("timetable")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "timetable" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Thời khóa biểu giảng dạy
+          </button>
+        </div>
+      ) : (
+        <div className="flex border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
+          <button
+            onClick={() => setActiveSubTab("teacher_guide")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "teacher_guide" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Hướng dẫn sử dụng
+          </button>
+          <button
+            onClick={() => { setActiveSubTab("courses"); setSelectedCourseId(null); }}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "courses" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Chương trình Đào tạo
+          </button>
+          <button
+            onClick={() => setActiveSubTab("quizzes")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "quizzes" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Đề thi & Đánh giá
+          </button>
+          <button
+            onClick={() => setActiveSubTab("assignments")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "assignments" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Bài tập & Chấm điểm
+          </button>
+          <button
+            onClick={() => setActiveSubTab("gradebook")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "gradebook" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Sổ điểm Tổng hợp
+          </button>
+          <button
+            onClick={() => setActiveSubTab("analytics")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "analytics" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Báo cáo Hiệu suất
+          </button>
+        </div>
+      )}
 
       {/* Active Panel View Canvas */}
       <div className="relative bg-white/5 border border-white/10 rounded-3xl p-6">
@@ -577,6 +626,23 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData }: T
         <AssignmentGrader {...teacherPanelProps} />
         <GradebookTable {...teacherPanelProps} />
         <TeacherAnalytics {...teacherPanelProps} />
+
+        {activeSubTab === "timetable" && (
+          <Timetable
+            role="teacher"
+            currentUser={currentUser}
+            store={store}
+            onRefreshData={onRefreshData}
+          />
+        )}
+
+        {activeSubTab === "teacher_guide" && (
+          <UserGuide
+            role="teacher"
+            activeSystem={activeSystem}
+            onClose={() => setActiveSubTab("courses")}
+          />
+        )}
 
 
       </div>

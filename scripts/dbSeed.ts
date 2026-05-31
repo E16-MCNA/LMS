@@ -66,7 +66,7 @@ async function main() {
       client,
       "users",
       ["id", "email", "password_hash", "password_salt", "name", "role", "is_active", "phone", "linked_student_id", "created_at"],
-      [["user_parent_demo", "parent@e16.local", parentCredential.hash, parentCredential.salt, "Parent Demo", "parent", true, null, "user_student", new Date().toISOString()]],
+      [["user_parent_demo", "parent@mcna.local", parentCredential.hash, parentCredential.salt, "Parent Demo", "parent", true, null, "user_student", new Date().toISOString()]],
       `(id) DO UPDATE SET email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, password_salt = EXCLUDED.password_salt, name = EXCLUDED.name, role = EXCLUDED.role, is_active = EXCLUDED.is_active, linked_student_id = EXCLUDED.linked_student_id`
     );
     await insertBatch(

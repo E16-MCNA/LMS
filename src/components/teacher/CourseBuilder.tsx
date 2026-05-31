@@ -1,6 +1,10 @@
 import React from "react";
-import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings, Download, Tv, Trash, ChevronRight, TrendingUp, BarChart, Users, Clock, Search, MessageSquare, X, PlusCircle, FolderPlus } from "lucide-react";
+import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings, Download, Tv, Trash, ChevronRight, TrendingUp, BarChart, Users, Clock, Search, MessageSquare, X, PlusCircle, FolderPlus, MapPin, Calendar, Trash2, AlertCircle, Layers } from "lucide-react";
 import ModalPortal from "../ModalPortal";
+import { AppStore } from "../../store";
+
+const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+
 
 interface ComponentProps {
   [key: string]: any;
@@ -99,6 +103,194 @@ export default function CourseBuilder(props: ComponentProps) {
     myAssignments,
     studentSubmissionsRaw
   } = props;
+
+  // Local states for CourseSection management inside CourseBuilder
+  const [showSectionModal, setShowSectionModal] = React.useState(false);
+  const [sectionModalMode, setSectionModalMode] = React.useState<"create" | "edit">("create");
+  const [editingSectionId, setEditingSectionId] = React.useState<string | null>(null);
+
+  // Form states
+  const [formSemesterId, setFormSemesterId] = React.useState("sem_spring25");
+  const [formSectionCode, setFormSectionCode] = React.useState("");
+  const [formMaxStudents, setFormMaxStudents] = React.useState<number>(30);
+  const [formStatus, setFormStatus] = React.useState<"open" | "closed" | "cancelled">("open");
+  const [formSlots, setFormSlots] = React.useState<Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>>([
+    { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "Phòng A101" }
+  ]);
+  const [formConflicts, setFormConflicts] = React.useState<string[]>([]);
+
+  // Conflict Checker
+  const checkConflicts = (
+    sectionId: string | null,
+    teacherId: string,
+    slots: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>,
+    semesterId: string
+  ): string[] => {
+    const sections = store.courseSections || [];
+    const activeSections = sections.filter(
+      (s: any) => s.id !== sectionId && s.semesterId === semesterId && s.status !== "cancelled"
+    );
+
+    const conflicts: string[] = [];
+
+    slots.forEach(slot => {
+      const timeToMins = (t: string) => {
+        if (!t) return 0;
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m;
+      };
+
+      const start = timeToMins(slot.startTime);
+      const end = timeToMins(slot.endTime);
+
+      if (start >= end) {
+        conflicts.push(`Ca học vào ${slot.dayOfWeek} có giờ bắt đầu (${slot.startTime}) phải nhỏ hơn giờ kết thúc (${slot.endTime}).`);
+        return;
+      }
+
+      activeSections.forEach((sec: any) => {
+        sec.schedule.forEach((secSlot: any) => {
+          if (secSlot.dayOfWeek === slot.dayOfWeek) {
+            const secStart = timeToMins(secSlot.startTime);
+            const secEnd = timeToMins(secSlot.endTime);
+
+            // Overlap logic: startA < endB && startB < endA
+            const isOverlapping = start < secEnd && secStart < end;
+
+            if (isOverlapping) {
+              // Check teacher conflict
+              if (sec.teacherId === teacherId) {
+                const tName = store.users.find((u: any) => u.id === teacherId)?.name || "Giảng viên";
+                const cTitle = store.courses.find((c: any) => c.id === sec.courseId)?.title || "Môn học";
+                conflicts.push(
+                  `Giảng viên ${tName} đã bị trùng lịch dạy lớp "${sec.sectionCode}" (${cTitle}) tại khung giờ ${secSlot.startTime} - ${secSlot.endTime} cùng ngày ${slot.dayOfWeek}.`
+                );
+              }
+              // Check room conflict
+              if (secSlot.room.trim().toLowerCase() === slot.room.trim().toLowerCase() && slot.room.trim()) {
+                const cTitle = store.courses.find((c: any) => c.id === sec.courseId)?.title || "Môn học";
+                conflicts.push(
+                  `Phòng học "${slot.room}" đã bị đặt bởi lớp "${sec.sectionCode}" (${cTitle}) tại khung giờ ${secSlot.startTime} - ${secSlot.endTime} cùng ngày ${slot.dayOfWeek}.`
+                );
+              }
+            }
+          }
+        });
+      });
+    });
+
+    return conflicts;
+  };
+
+  const handleOpenCreateSection = () => {
+    setSectionModalMode("create");
+    setEditingSectionId(null);
+    setFormSemesterId("sem_spring25");
+    setFormSectionCode("");
+    setFormMaxStudents(30);
+    setFormStatus("pending");
+    setFormSlots([]);
+    setFormConflicts([]);
+    setShowSectionModal(true);
+  };
+
+  const handleOpenEditSection = (sec: any) => {
+    setSectionModalMode("edit");
+    setEditingSectionId(sec.id);
+    setFormSemesterId(sec.semesterId);
+    setFormSectionCode(sec.sectionCode);
+    setFormMaxStudents(sec.maxStudents);
+    setFormStatus(sec.status);
+    setFormSlots(sec.schedule);
+    setFormConflicts([]);
+    setShowSectionModal(true);
+  };
+
+  const handleDeleteSection = (id: string, code: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa lớp học phần "${code}"? Tất cả thông tin lịch dạy sẽ bị hủy bỏ hoàn toàn.`)) return;
+    
+    const storeData = AppStore.get();
+    storeData.courseSections = (storeData.courseSections || []).filter((s: any) => s.id !== id);
+    storeData.courseRegistrations = (storeData.courseRegistrations || []).filter((r: any) => r.sectionId !== id);
+
+    AppStore.log(currentUser.id, "delete_section_from_builder", code, `Xóa lớp học phần ${code} trực tiếp từ trình quản lý khóa học.`);
+    AppStore.save(storeData);
+    props.onRefreshData();
+    alert(`🗑️ Đã xóa lớp học phần ${code}!`);
+  };
+
+  const handleSaveSection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formSectionCode.trim()) {
+      alert("⚠️ Vui lòng nhập Mã lớp học phần!");
+      return;
+    }
+
+    const conflicts = checkConflicts(editingSectionId, currentUser.id, formSlots, formSemesterId);
+    if (conflicts.length > 0) {
+      setFormConflicts(conflicts);
+      alert("❗ Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra kỹ chi tiết báo đỏ!");
+      return;
+    }
+
+    const storeData = AppStore.get();
+    const generateId = (prefix: string) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;
+
+    if (sectionModalMode === "create") {
+      const newSection = {
+        id: generateId("section"),
+        courseId: activeCourse.id,
+        semesterId: formSemesterId,
+        teacherId: currentUser.id,
+        sectionCode: formSectionCode,
+        maxStudents: formMaxStudents,
+        schedule: formSlots,
+        status: formStatus
+      };
+
+      if (!storeData.courseSections) storeData.courseSections = [];
+      storeData.courseSections.push(newSection);
+      AppStore.log(currentUser.id, "create_section_from_builder", newSection.sectionCode, `Khởi tạo lớp học phần ${newSection.sectionCode} cho khóa ${activeCourse.title} trực tiếp từ CourseBuilder.`);
+    } else {
+      storeData.courseSections = (storeData.courseSections || []).map((s: any) => {
+        if (s.id === editingSectionId) {
+          AppStore.log(currentUser.id, "edit_section_from_builder", s.sectionCode, `Cập nhật lớp học phần ${formSectionCode} từ CourseBuilder.`);
+          return {
+            ...s,
+            semesterId: formSemesterId,
+            sectionCode: formSectionCode,
+            maxStudents: formMaxStudents,
+            schedule: formSlots,
+            status: formStatus
+          };
+        }
+        return s;
+      });
+    }
+
+    AppStore.save(storeData);
+    setShowSectionModal(false);
+    props.onRefreshData();
+  };
+
+  const addFormSlot = () => {
+    setFormSlots([...formSlots, { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "" }]);
+  };
+
+  const removeFormSlot = (idx: number) => {
+    setFormSlots(formSlots.filter((_, i) => i !== idx));
+  };
+
+  const updateFormSlot = (idx: number, field: string, value: string) => {
+    setFormSlots(formSlots.map((slot, i) => {
+      if (i === idx) {
+        return { ...slot, [field]: value };
+      }
+      return slot;
+    }));
+  };
+
+  const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === activeCourse?.id);
 
   const filteredCourses = myCourses.filter((course: any) => {
     return !courseSearch ||
@@ -302,6 +494,92 @@ export default function CourseBuilder(props: ComponentProps) {
                   )}
                 </div>
 
+                {/* Class sections list for this course */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-white block">Các Lớp học phần đang mở</span>
+                      <span className="text-[10px] text-white/40 block">Phân bổ ca học & thời khóa biểu</span>
+                    </div>
+                    {activeCourse.status === "published" && (
+                      <button 
+                        onClick={handleOpenCreateSection}
+                        className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+                      >
+                        + Lập lớp học
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {courseSections.map((sec: any) => {
+                      const currentCount = (store.courseRegistrations || []).filter(
+                        (r: any) => r.sectionId === sec.id && r.status === "registered"
+                      ).length;
+
+                      return (
+                        <div key={sec.id} className="text-xs space-y-1.5 bg-black/25 p-3 rounded-xl border border-white/5 relative group">
+                          <div className="flex justify-between items-center">
+                            <span className="px-2 py-0.5 bg-indigo-600 text-white font-bold rounded-lg text-[9px] font-mono tracking-wider">
+                              {sec.sectionCode}
+                            </span>
+                            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                onClick={() => handleOpenEditSection(sec)}
+                                className="p-0.5 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
+                                title="Chỉnh sửa ca học"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSection(sec.id, sec.sectionCode)}
+                                className="p-0.5 hover:bg-red-500/20 text-red-400 rounded cursor-pointer"
+                                title="Xóa lớp học phần"
+                              >
+                                <Trash className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <div className="text-[10px] text-white/50 space-y-1 font-sans">
+                            {sec.schedule.map((slot: any, sIdx: number) => (
+                              <div key={sIdx} className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 shrink-0 text-indigo-400" />
+                                <span>{slot.dayOfWeek} ({slot.startTime} - {slot.endTime})</span>
+                                <span className="font-mono text-white/30">|</span>
+                                <MapPin className="h-3 w-3 shrink-0 text-indigo-400" />
+                                <span className="truncate">{slot.room || "Trực tuyến"}</span>
+                              </div>
+                            ))}
+                            {(!sec.schedule || sec.schedule.length === 0) && (
+                              <div className="text-[10px] text-amber-400/80 italic flex items-center gap-1">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                <span>Chờ Giáo vụ xếp ca & phòng học</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex justify-between items-center text-[9px] pt-1 border-t border-white/5 font-mono text-white/40">
+                            <span>Sĩ số: {currentCount}/{sec.maxStudents} HS</span>
+                            <span className={`uppercase font-bold ${
+                              sec.status === "pending" ? "text-amber-400" :
+                              sec.status === "open" ? "text-emerald-400" : "text-white/40"
+                            }`}>
+                              {sec.status === "pending" ? "Chờ duyệt" :
+                               sec.status === "open" ? "Đang mở" : 
+                               sec.status === "closed" ? "Đã đóng" : "Đã hủy"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {courseSections.length === 0 && (
+                      <p className="text-[11px] text-white/40 italic">Chưa có lớp học phần nào được lập. Hãy xuất bản khóa học và nhấp "+ Lập lớp học" để bắt đầu xếp thời khóa biểu.</p>
+                    )}
+                  </div>
+                </div>
+
                 {/* Quizzes overview in Course details */}
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
                   <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
@@ -400,10 +678,10 @@ export default function CourseBuilder(props: ComponentProps) {
                   onChange={(e) => setCourseCategory(e.target.value)}
                   className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 text-xs"
                 >
-                  <option value="Web Development" className="bg-slate-900">Web Development</option>
-                  <option value="Data Science" className="bg-slate-900">Data Science</option>
-                  <option value="Software Engineering" className="bg-slate-900">Software Engineering</option>
-                  <option value="DevOps & Infrastructure" className="bg-slate-900">DevOps & Infrastructure</option>
+                  <option value="Web Development" className="bg-slate-900">Phát triển Web</option>
+                  <option value="Data Science" className="bg-slate-900">Khoa học Dữ liệu</option>
+                  <option value="Software Engineering" className="bg-slate-900">Kỹ thuật Phần mềm</option>
+                  <option value="DevOps & Infrastructure" className="bg-slate-900">DevOps & Hạ tầng</option>
                 </select>
               </div>
 
@@ -574,6 +852,189 @@ export default function CourseBuilder(props: ComponentProps) {
         </ModalPortal>
       )}
 
+      {showSectionModal && (
+        <ModalPortal>
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-xl shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+              <button 
+                onClick={() => setShowSectionModal(false)}
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <h3 className="text-lg font-display font-medium text-white mb-2 flex items-center gap-2 border-b border-white/10 pb-3">
+                <Layers className="h-5 w-5 text-indigo-400" /> 
+                {sectionModalMode === "create" ? "Khởi tạo Lớp học phần mới" : "Chỉnh sửa Lớp học phần"}
+              </h3>
+
+              <form onSubmit={handleSaveSection} className="space-y-4 text-xs font-sans">
+                {/* Basic info row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-white/60 block font-bold">Học Kỳ</label>
+                    <select
+                      value={formSemesterId}
+                      onChange={(e) => setFormSemesterId(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/40"
+                    >
+                      {(store.semesters || []).map((s: any) => (
+                        <option key={s.id} value={s.id} className="bg-slate-900">{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-white/60 block font-bold">Mã lớp học phần</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: CS101-L02"
+                      value={formSectionCode}
+                      onChange={(e) => setFormSectionCode(e.target.value.toUpperCase())}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/40 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-white/60 block font-bold">Sĩ số tối đa (Học sinh)</label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={100}
+                      value={formMaxStudents}
+                      onChange={(e) => setFormMaxStudents(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/40"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-white/60 block font-bold">Trạng thái phê duyệt</label>
+                    <div className="px-3 py-2 bg-black/40 text-amber-300 font-bold border border-amber-500/20 rounded-xl text-xs flex items-center gap-1.5 h-[34px]">
+                      <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 animate-pulse" />
+                      <span>Chờ duyệt & xếp ca</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-form for schedule slots */}
+                <div className="border-t border-white/5 pt-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <h5 className="font-bold text-white text-xs uppercase tracking-wider text-indigo-400">
+                      Thời khóa biểu chi tiết ({formSlots.length})
+                    </h5>
+                    <button
+                      type="button"
+                      onClick={addFormSlot}
+                      className="px-3 py-1 bg-white/5 border border-white/10 text-white font-bold rounded-lg hover:bg-white/10 transition cursor-pointer text-[10.5px]"
+                    >
+                      + Thêm ca học tuần
+                    </button>
+                  </div>
+
+                  <div className="space-y-3.5">
+                    {formSlots.map((slot, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-black/15 border border-white/5 p-3 rounded-2xl grid grid-cols-1 sm:grid-cols-4 gap-3 items-end relative overflow-hidden"
+                      >
+                        <div className="space-y-1">
+                          <label className="text-white/40 text-[10px] block">Ngày học</label>
+                          <select
+                            value={slot.dayOfWeek}
+                            onChange={(e) => updateFormSlot(idx, "dayOfWeek", e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white text-xs"
+                          >
+                            {DAYS_OF_WEEK.map(d => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-white/40 text-[10px] block">Giờ bắt đầu</label>
+                          <input
+                            type="time"
+                            required
+                            value={slot.startTime}
+                            onChange={(e) => updateFormSlot(idx, "startTime", e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white text-xs font-mono"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-white/40 text-[10px] block">Giờ kết thúc</label>
+                          <input
+                            type="time"
+                            required
+                            value={slot.endTime}
+                            onChange={(e) => updateFormSlot(idx, "endTime", e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white text-xs font-mono"
+                          />
+                        </div>
+
+                        <div className="space-y-1 relative">
+                          <label className="text-white/40 text-[10px] block">Phòng học / Đường dẫn</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ví dụ: Phòng A101"
+                            value={slot.room}
+                            onChange={(e) => updateFormSlot(idx, "room", e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white text-xs"
+                          />
+                          {formSlots.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeFormSlot(idx)}
+                              className="absolute -top-1.5 -right-1 text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 p-1.5 rounded-lg border border-red-500/10 cursor-pointer"
+                              title="Xóa ca học"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Conflicts Panel */}
+                {formConflicts.length > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/25 p-3 rounded-2xl space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-red-400 font-bold">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>Phát hiện trùng lịch biểu ({formConflicts.length})</span>
+                    </div>
+                    <ul className="list-disc pl-5 text-red-200/80 space-y-1 leading-relaxed">
+                      {formConflicts.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Footer Modal Actions */}
+                <div className="border-t border-white/5 pt-4 flex justify-end gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShowSectionModal(false)}
+                    className="px-4 py-2 bg-transparent text-white/50 hover:text-white transition cursor-pointer"
+                  >
+                    Bỏ qua
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Lưu thiết lập
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
     </>
   );
 }
+

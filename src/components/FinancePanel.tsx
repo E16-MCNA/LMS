@@ -20,6 +20,7 @@ import { useApiStore } from "../hooks/apiHooks";
 import TuitionManager from "./TuitionManager";
 import { api } from "../api";
 import ModalPortal from "./ModalPortal";
+import UserGuide from "./UserGuide";
 
 interface FinancePanelProps {
   currentUser: User;
@@ -37,7 +38,7 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
   const [rejectionNotes, setRejectionNotes] = useState("");
   const [rejectingTxId, setRejectingTxId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"transactions" | "salaries" | "tuition">("transactions");
+  const [activeTab, setActiveTab] = useState<"transactions" | "salaries" | "tuition" | "finance_guide">("finance_guide");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -482,64 +483,74 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
         <div className="xl:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-sm font-bold text-white">Income vs Expense & Liabilities</h3>
-              <p className="text-xs text-white/45">Tuition billed/collected, course revenue, payroll expense, and open debt.</p>
+              <h3 className="text-sm font-bold text-white">Biểu đồ Thu chi & Dư nợ</h3>
+              <p className="text-xs text-white/45">Thống kê hóa đơn học phí, doanh thu khóa học, lương giảng viên và nợ đọng.</p>
             </div>
-            <span className="text-[10px] uppercase tracking-widest text-emerald-300 font-mono">Recovery {debtRecoveryRate}%</span>
+            <span className="text-[10px] uppercase tracking-widest text-emerald-300 font-mono">Tỷ lệ thu hồi {debtRecoveryRate}%</span>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-black/20 rounded-xl border border-white/5 p-3">
-              <span className="text-[10px] text-white/40 uppercase font-mono">Collected</span>
+              <span className="text-[10px] text-white/40 uppercase font-mono">Đã thu</span>
               <strong className="block text-emerald-300 mt-1">{formatVND(totalTuitionPaid)}</strong>
             </div>
             <div className="bg-black/20 rounded-xl border border-white/5 p-3">
-              <span className="text-[10px] text-white/40 uppercase font-mono">Course sales</span>
+              <span className="text-[10px] text-white/40 uppercase font-mono">Bán khóa học</span>
               <strong className="block text-sky-300 mt-1">{formatVND(totalCourseRevenue)}</strong>
             </div>
             <div className="bg-black/20 rounded-xl border border-white/5 p-3">
-              <span className="text-[10px] text-white/40 uppercase font-mono">Payroll expense</span>
+              <span className="text-[10px] text-white/40 uppercase font-mono">Chi trả lương</span>
               <strong className="block text-rose-300 mt-1">{formatVND(totalSalaryExpense)}</strong>
             </div>
             <div className="bg-black/20 rounded-xl border border-white/5 p-3">
-              <span className="text-[10px] text-white/40 uppercase font-mono">Open debt</span>
+              <span className="text-[10px] text-white/40 uppercase font-mono">Nợ đọng</span>
               <strong className="block text-amber-300 mt-1">{formatVND(outstandingLiabilities)}</strong>
             </div>
           </div>
-          <svg viewBox="0 0 520 118" className="w-full h-32 overflow-visible" role="img" aria-label="Billed versus collected chart">
+          <svg viewBox="0 0 520 118" className="w-full h-32 overflow-visible" role="img" aria-label="Biểu đồ công nợ và thực thu">
             <line x1="20" y1="24" x2="500" y2="24" stroke="rgba(255,255,255,.08)" />
             <line x1="20" y1="72" x2="500" y2="72" stroke="rgba(255,255,255,.08)" />
-            <text x="20" y="18" fill="rgba(255,255,255,.55)" fontSize="11">Billed</text>
+            <text x="20" y="18" fill="rgba(255,255,255,.55)" fontSize="11">Phải thu</text>
             <rect x="92" y="8" width="400" height="22" rx="8" fill="rgba(148,163,184,.18)" />
             <rect x="92" y="8" width={totalBilled > 0 ? 400 : 0} height="22" rx="8" fill="rgba(56,189,248,.75)" />
-            <text x="20" y="66" fill="rgba(255,255,255,.55)" fontSize="11">Collected</text>
+            <text x="20" y="66" fill="rgba(255,255,255,.55)" fontSize="11">Thực thu</text>
             <rect x="92" y="56" width="400" height="22" rx="8" fill="rgba(148,163,184,.18)" />
             <rect x="92" y="56" width={totalBilled > 0 ? Math.min(400, Math.round((totalTuitionPaid / totalBilled) * 400)) : 0} height="22" rx="8" fill="rgba(16,185,129,.82)" />
-            <text x="92" y="104" fill="rgba(255,255,255,.4)" fontSize="10">{formatVND(totalBilled)} billed</text>
-            <text x="360" y="104" fill="rgba(255,255,255,.4)" fontSize="10">{formatVND(totalTuitionPaid)} collected</text>
+            <text x="92" y="104" fill="rgba(255,255,255,.4)" fontSize="10">{formatVND(totalBilled)} phải thu</text>
+            <text x="360" y="104" fill="rgba(255,255,255,.4)" fontSize="10">{formatVND(totalTuitionPaid)} đã thu</text>
           </svg>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-white">Invoice Health</h3>
+          <h3 className="text-sm font-bold text-white">Tỷ lệ Thanh toán Hóa đơn</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
-              <span className="text-[10px] text-emerald-200 uppercase font-mono">Paid</span>
+              <span className="text-[10px] text-emerald-200 uppercase font-mono">Đã đóng</span>
               <strong className="block text-2xl text-emerald-300 mt-1">{paidInvoiceCount}</strong>
             </div>
             <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4">
-              <span className="text-[10px] text-amber-200 uppercase font-mono">Unpaid</span>
+              <span className="text-[10px] text-amber-200 uppercase font-mono">Chưa đóng</span>
               <strong className="block text-2xl text-amber-300 mt-1">{unpaidInvoiceCount}</strong>
             </div>
           </div>
           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${debtRecoveryRate}%` }} />
           </div>
-          <p className="text-xs text-white/45">Debt recovery is based on paid tuition amount divided by billed tuition amount.</p>
+          <p className="text-xs text-white/45">Tỷ lệ thu hồi nợ được tính bằng tổng số tiền học phí đã thu chia cho tổng học phí phải thu.</p>
         </div>
       </div>
 
       {/* Tab Switching Segmented Control */}
       <div className="flex border-b border-white/10 pb-px mb-6 text-xs bg-white/3 rounded-xl p-1 gap-1">
+        <button
+          onClick={() => setActiveTab("finance_guide")}
+          className={`flex-1 py-3 text-xs font-semibold rounded-lg transition cursor-pointer ${
+            activeTab === "finance_guide"
+              ? "bg-white/10 text-white border border-white/10 font-bold shadow-lg"
+              : "text-white/50 hover:text-white"
+          }`}
+        >
+          Hướng dẫn sử dụng
+        </button>
         <button
           onClick={() => setActiveTab("transactions")}
           className={`flex-1 py-3 text-xs font-semibold rounded-lg transition cursor-pointer ${
@@ -571,6 +582,12 @@ export default function FinancePanel({ currentUser, onLogout, onRefreshData }: F
           Quản lý Học phí & Công nợ
         </button>
       </div>
+
+      {activeTab === "finance_guide" && (
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-md">
+          <UserGuide role="finance" activeSystem="SIS" onClose={() => setActiveTab("transactions")} />
+        </div>
+      )}
 
       {activeTab === "transactions" && (
         <>

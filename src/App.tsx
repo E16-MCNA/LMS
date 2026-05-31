@@ -73,12 +73,12 @@ function AppShell() {
   const [changePasswordSuccess, setChangePasswordSuccess] = useState<string | null>(null);
 
   const roleLabel = (role: User["role"]) => {
-    if (role === "admin" || role === "super_admin") return "Ban Quản Trị";
+    if (role === "admin") return "Giáo Vụ Học Tập";
+    if (role === "manager" || role === "super_admin") return "Ban Quản Trị";
     if (role === "teacher") return "Giảng Viên";
     if (role === "student") return "Học Viên";
     if (role === "finance") return "Phòng Tài Chính";
-    if (role === "le_tan") return "Quầy Tiếp Tân";
-    if (role === "academic_admin") return "Phòng Học Vụ";
+    if (role === "sale") return "Tuyển sinh Lễ tân";
     if (role === "advisor") return "Cố Vấn Học Tập";
     if (role === "parent") return "Trang Phụ Huynh";
     return role;
@@ -230,7 +230,7 @@ function AppShell() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E16 LMS - Standalone Learning Management System</title>
+  <title>MCNA LMS - Hệ thống Quản lý Học tập Nội bộ</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -275,24 +275,24 @@ function AppShell() {
       </svg>
     </div>
     <div class="space-y-2">
-      <h1 class="text-3xl font-extrabold text-white tracking-widest uppercase">E16 LMS Standalone Client</h1>
+      <h1 class="text-3xl font-extrabold text-white tracking-widest uppercase">MCNA LMS - Bản chạy Ngoại tuyến</h1>
       <p class="text-sm text-indigo-200/70 max-w-xl mx-auto leading-relaxed">
-        This export contains public learning data only. User credentials and user directory records are intentionally excluded from browser storage.
+        Bản xuất bản này chỉ chứa dữ liệu học tập công khai. Thông tin tài khoản người dùng và hồ sơ nhân sự được chủ ý loại bỏ khỏi bộ nhớ lưu trữ trình duyệt.
       </p>
     </div>
 
     <div class="max-w-md mx-auto bg-black/35 p-6 rounded-2xl border border-white/5 text-left space-y-4">
-      <span class="text-xs font-mono font-bold tracking-wider text-indigo-300 block uppercase">Standalone credentials configured:</span>
+      <span class="text-xs font-mono font-bold tracking-wider text-indigo-300 block uppercase">Tài khoản demo cấu hình sẵn:</span>
       <div class="space-y-2 text-xs font-mono divide-y divide-white/5">
-        <div class="py-1.5 flex justify-between"><span>Admin</span><span class="text-white">admin@e16.local / admine16</span></div>
-        <div class="py-1.5 flex justify-between"><span>Teacher</span><span class="text-white">teacher@e16.local / teachere16</span></div>
-        <div class="py-1.5 flex justify-between"><span>Student</span><span class="text-white">student@e16.local / studente16</span></div>
+        <div class="py-1.5 flex justify-between"><span>Quản trị viên (Manager)</span><span class="text-white">admin@mcna.local / admine16</span></div>
+        <div class="py-1.5 flex justify-between"><span>Giảng viên (Teacher)</span><span class="text-white">teacher@mcna.local / teachere16</span></div>
+        <div class="py-1.5 flex justify-between"><span>Học viên (Student)</span><span class="text-white">student@mcna.local / studente16</span></div>
       </div>
     </div>
 
     <div class="pt-4">
       <button onclick="launchInteractiveWorkspace()" class="px-6 py-3 bg-white text-indigo-950 font-bold hover:bg-white/95 text-sm rounded-xl transition cursor-pointer shadow-lg inline-flex items-center gap-1.5">
-        Launch Standalone Local LMS Workspace
+        Khởi chạy Không gian LMS MCNA
       </button>
     </div>
   </div>
@@ -306,7 +306,7 @@ function AppShell() {
 
     function launchInteractiveWorkspace() {
       // Direct redirection to the full active preview layout in this local file directory
-      alert("Local standalone workspace successfully initialized! You can interact with all standard features directly in this tab container.");
+      alert("Không gian làm việc ngoại tuyến đã khởi tạo thành công! Bạn có thể trải nghiệm toàn bộ tính năng trực tiếp.");
     }
   </script>
 
@@ -346,8 +346,8 @@ function AppShell() {
                 </div>
                 {!isSidebarCollapsed && (
                   <div>
-                    <h1 className="text-sm font-display font-black tracking-widest text-white uppercase leading-none">E16 LMS</h1>
-                    <p className="text-[9px] text-white/40 uppercase tracking-tighter mt-0.5">Academic suite v1.1</p>
+                    <h1 className="text-sm font-display font-black tracking-widest text-white uppercase leading-none">MCNA LMS</h1>
+                    <p className="text-[9px] text-white/40 uppercase tracking-tighter mt-0.5">Học viện MCNA v1.1</p>
                   </div>
                 )}
               </div>
@@ -609,18 +609,18 @@ function AppShell() {
                 <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center">
                   <GraduationCap className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-display font-black text-white tracking-widest uppercase text-xs">E16 LMS INC.</span>
+                <span className="font-display font-black text-white tracking-widest uppercase text-xs">MCNA LMS INC.</span>
               </div>
 
               <div className="relative z-10 py-12 space-y-4">
-                <h2 className="text-2xl font-display font-extrabold text-white leading-tight">Advanced Local LMS Ecosystem</h2>
+                <h2 className="text-2xl font-display font-extrabold text-white leading-tight">Hệ thống Quản lý Học tập Nâng cao</h2>
                 <p className="text-xs text-indigo-200/75 leading-relaxed font-sans max-w-sm">
-                  Experience a high-fidelity learning playground. Manage course catalog requests, append dynamic checkbox lesson syllabuses, evaluate student deliverables, and download standalone files instantly.
+                  Trải nghiệm môi trường học tập chất lượng cao. Quản lý yêu cầu khóa học, xây dựng đề cương chi tiết, đánh giá kết quả và cấp chứng chỉ trực tuyến tức thì.
                 </p>
               </div>
 
               <div className="relative z-10 text-[10px] font-mono text-white/40">
-                Created At: 2026-05-25 • E16 Local Platform
+                Khởi tạo ngày: 2026-05-25 • Nền tảng MCNA
               </div>
             </div>
 
@@ -747,7 +747,7 @@ function AppShell() {
                     className="p-2 bg-pink-500/10 hover:bg-pink-600/20 border border-pink-400/20 text-pink-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
                   >
                     <div className="min-w-0 flex-1">
-                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-pink-200">Lễ Tân (Tư vấn)</span>
+                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-pink-200">Tuyển sinh Lễ tân</span>
                       <span className="font-mono text-[8px] font-normal text-white/30 truncate block">le_tan@e16.local</span>
                     </div>
                     <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-pink-300" />

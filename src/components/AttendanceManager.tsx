@@ -265,7 +265,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
     <div className="space-y-6">
 
       {/* Giám sát tuân thủ điểm danh giảng viên (Học vụ & Admin) */}
-      {(currentUser.role === "academic_admin" || currentUser.role === "admin" || currentUser.role === "super_admin") && (
+      {(currentUser.role === "admin" || currentUser.role === "manager" || currentUser.role === "super_admin") && (
         <div className="bg-white/4 border border-white/5 p-5 rounded-2xl space-y-4">
           <div className="flex justify-between items-center pb-2 border-b border-white/10">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
@@ -321,7 +321,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
                           </td>
                           <td className="py-3">
                             <div className="font-semibold text-white/95">{teacher.name}</div>
-                            <div className="text-[10px] text-white/40">{teacher.email || "N/A"}</div>
+                            <div className="text-[10px] text-white/40">{teacher.email || "Chưa cập nhật"}</div>
                           </td>
                           <td className="py-3 text-center">
                             <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">

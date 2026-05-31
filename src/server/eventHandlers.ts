@@ -73,7 +73,7 @@ export function registerEventHandlers() {
           [studentId, courseId]
         );
         if (!existingWarning) {
-          await notifyRole(pool, "academic_admin", "A student has been exam-banned for attendance.", { relatedEntityType: "course", relatedEntityId: courseId });
+          await notifyRole(pool, "admin", "A student has been exam-banned for attendance.", { relatedEntityType: "course", relatedEntityId: courseId });
         }
       } else {
         await pool.query(
@@ -148,7 +148,7 @@ export function registerEventHandlers() {
     );
     await notifyStudent(pool, studentId, "You are eligible for graduation.");
     await notifyAdvisorOf(pool, studentId, "Assigned student is eligible for graduation.");
-    await notifyRole(pool, "academic_admin", "A student is eligible for graduation.");
+    await notifyRole(pool, "admin", "A student is eligible for graduation.");
     await notifyParentOf(pool, studentId, "Student is eligible for graduation.");
   });
 }

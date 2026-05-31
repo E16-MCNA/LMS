@@ -26,17 +26,28 @@ interface AcademicPanelProps {
   currentUser: User;
   onLogout: () => void;
   onRefreshData: () => void;
+  activeSystem?: "SIS" | "LMS";
 }
 
-export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: AcademicPanelProps) {
+export default function AcademicPanel({ currentUser, onLogout, onRefreshData, activeSystem = "SIS" }: AcademicPanelProps) {
   const { store, isLoading, isError } = useApiStore();
 
   // Active sub tab navigation
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts" | "attendance" | "warnings" | "reports">("overview");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts" | "attendance" | "warnings" | "reports">(
+    activeSystem === "LMS" ? "overview" : "attendance"
+  );
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [activeSubTab]);
+
+  useEffect(() => {
+    if (activeSystem === "LMS") {
+      if (!["overview", "students", "compare", "dropouts"].includes(activeSubTab)) setActiveSubTab("overview");
+    } else {
+      if (!["attendance", "warnings", "reports"].includes(activeSubTab)) setActiveSubTab("attendance");
+    }
+  }, [activeSystem]);
 
   // Filters state
   const [selectedCourseId, setSelectedCourseId] = useState<string>("all");
@@ -414,62 +425,71 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
 
       {/* Main interactive subpanels workspace */}
       <div className="flex flex-wrap border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
-        <button
-          onClick={() => setActiveSubTab("overview")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "overview" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Tổng quan Chất lượng
-        </button>
-        <button
-          onClick={() => setActiveSubTab("students")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "students" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Tiến độ Từng Học viên
-        </button>
-        <button
-          onClick={() => setActiveSubTab("compare")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "compare" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          So sánh Hiệu suất
-        </button>
-        <button
-          onClick={() => setActiveSubTab("dropouts")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "dropouts" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Hao hụt Bài học
-        </button>
-        <button
-          onClick={() => setActiveSubTab("attendance")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "attendance" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Quản lý Điểm danh
-        </button>
-        <button
-          onClick={() => setActiveSubTab("warnings")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "warnings" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Cảnh báo Học tập
-        </button>
-        <button
-          onClick={() => setActiveSubTab("reports")}
-          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-            activeSubTab === "reports" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-          }`}
-        >
-          Báo cáo & Phổ điểm
-        </button>
+        {activeSystem === "LMS" && (
+          <>
+            <button
+              onClick={() => setActiveSubTab("overview")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "overview" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+              }`}
+            >
+              Tổng quan Chất lượng
+            </button>
+            <button
+              onClick={() => setActiveSubTab("students")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "students" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+              }`}
+            >
+              Tiến độ Từng Học viên
+            </button>
+            <button
+              onClick={() => setActiveSubTab("compare")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "compare" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+              }`}
+            >
+              So sánh Hiệu suất
+            </button>
+            <button
+              onClick={() => setActiveSubTab("dropouts")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "dropouts" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+              }`}
+            >
+              Hao hụt Bài học
+            </button>
+          </>
+        )}
+
+        {activeSystem === "SIS" && (
+          <>
+            <button
+              onClick={() => setActiveSubTab("attendance")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "attendance" ? "bg-indigo-600 text-white border border-indigo-500" : "text-white/60 hover:text-white"
+              }`}
+            >
+              Quản lý Điểm danh
+            </button>
+            <button
+              onClick={() => setActiveSubTab("warnings")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "warnings" ? "bg-indigo-600 text-white border border-indigo-500" : "text-white/60 hover:text-white"
+              }`}
+            >
+              Cảnh báo Học tập
+            </button>
+            <button
+              onClick={() => setActiveSubTab("reports")}
+              className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+                activeSubTab === "reports" ? "bg-indigo-600 text-white border border-indigo-500" : "text-white/60 hover:text-white"
+              }`}
+            >
+              Báo cáo & Phổ điểm
+            </button>
+          </>
+        )}
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
@@ -761,7 +781,7 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
                     <th className="p-4 cursor-pointer select-none hover:text-white transition" onClick={() => handleCompareSort("avgQuizScore")}>
                       Điểm thi quiz trung bình {compareSortField === "avgQuizScore" ? (compareSortOrder === "asc" ? "▲" : "▼") : "↕"}
                     </th>
-                    {["admin", "super_admin", "academic_admin"].includes(currentUser.role) && (
+                    {["manager", "super_admin", "admin"].includes(currentUser.role) && (
                       <th className="p-4 text-right">Thao tác</th>
                     )}
                   </tr>
@@ -784,7 +804,7 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData }: 
                       <td className="p-4 font-mono font-bold text-sky-400">{item.enrollmentCount} học viên</td>
                       <td className="p-4 font-mono font-bold text-emerald-400">{item.avgCompletion}%</td>
                       <td className="p-4 font-mono font-bold text-indigo-400">{item.avgQuizScore}%</td>
-                      {["admin", "super_admin", "academic_admin"].includes(currentUser.role) && (
+                      {["manager", "super_admin", "admin"].includes(currentUser.role) && (
                         <td className="p-4 text-right">
                           <button
                             onClick={() => handleDeleteCourse(item.course.id, item.course.title)}

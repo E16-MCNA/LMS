@@ -14,7 +14,7 @@ const BASE = "http://localhost:3100";
 
 function parseCookies(headers) {
   const raw = headers.get("set-cookie") || "";
-  return raw.split(/,(?=\s*e16_lms_)/)
+  return raw.split(/,(?=\s*mcna_lms_)/)
     .map(p => p.split(";")[0].trim())
     .filter(Boolean)
     .join("; ");
@@ -51,16 +51,16 @@ async function main() {
 
   // Step 1: Đăng nhập Admin (không có cookie cũ) → phải thành công
   console.log("[Step 1] Đăng nhập Admin (không có cookie trước)...");
-  const r1 = await login("admin@e16.local", "admine16");
+  const r1 = await login("admin@mcna.local", "admine16");
   assert(r1.status === 200, `Admin login success (got ${r1.status})`);
-  assert(r1.body.user?.role === "admin", "Admin role returned");
-  assert(r1.cookie.includes("e16_lms_session"), "Session cookie set");
+  assert(r1.body.user?.role === "manager", "Admin role returned");
+  assert(r1.cookie.includes("mcna_lms_session"), "Session cookie set");
   const adminCookie = r1.cookie;
   console.log("  Admin cookie:", adminCookie.substring(0, 40) + "...\n");
 
   // Step 2: Dùng cookie Admin, thử đăng nhập Teacher → phải bị từ chối
   console.log("[Step 2] Thử đăng nhập Teacher với cookie Admin đang hoạt động...");
-  const r2 = await login("teacher@e16.local", "teachere16", adminCookie);
+  const r2 = await login("teacher@mcna.local", "teachere16", adminCookie);
   assert(r2.status === 400, `Session conflict rejected (got ${r2.status})`);
   assert(r2.body.code === "SESSION_CONFLICT", `Got SESSION_CONFLICT code (got: ${r2.body.code})`);
   console.log("  Error message:", r2.body.error, "\n");
@@ -73,7 +73,7 @@ async function main() {
 
   // Step 4: Đăng nhập Teacher mà không có cookie → phải thành công
   console.log("[Step 4] Đăng nhập Teacher sau khi xóa phiên (không có cookie)...");
-  const r4 = await login("teacher@e16.local", "teachere16");
+  const r4 = await login("teacher@mcna.local", "teachere16");
   assert(r4.status === 200, `Teacher login success after force-logout (got ${r4.status})`);
   assert(r4.body.user?.role === "teacher", "Teacher role returned");
   const teacherCookie = r4.cookie;
@@ -81,7 +81,7 @@ async function main() {
 
   // Step 5: Với cookie Teacher, đăng nhập lại Teacher (cùng tài khoản) → phải thành công
   console.log("[Step 5] Đăng nhập lại Teacher với chính cookie Teacher (cùng user)...");
-  const r5 = await login("teacher@e16.local", "teachere16", teacherCookie);
+  const r5 = await login("teacher@mcna.local", "teachere16", teacherCookie);
   assert(r5.status === 200, `Re-login same user allowed (got ${r5.status})`);
   assert(r5.body.user?.role === "teacher", "Teacher role returned on re-login");
   console.log();
