@@ -172,89 +172,108 @@ export default function AssignmentGrader(props: ComponentProps) {
               />
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-white/80 font-sans">
-                <thead className="bg-white/5 border-b border-white/10 text-white uppercase text-[10px] tracking-wider sticky top-0">
-                  <tr>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("studentName")}>
-                      Tên Học viên {subSortField === "studentName" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("challengeTitle")}>
-                      Bài tập Thử thách {subSortField === "challengeTitle" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("submittedAt")}>
-                      Ngày nộp {subSortField === "submittedAt" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("score")}>
-                      Điểm số đạt được {subSortField === "score" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold text-right">Hành động Chấm điểm</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {sortedSubmissions.map(sub => {
-                    const student = store.users.find(u => u.id === sub.studentId);
-                    const challenge = store.assignments.find(a => a.id === sub.assignmentId);
-                    
-                    return (
-                      <tr key={sub.id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-medium text-white">{student?.name || "Học viên ẩn danh"}</td>
-                        <td className="p-4 font-bold text-indigo-200">
-                          <div className="flex items-center gap-1.5">
-                            <span>{challenge?.title || "Không xác định"}</span>
-                            {challenge && (
-                              <button
-                                onClick={() => setCourseDetailId(challenge.courseId)}
-                                className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
-                              >
-                                Xem 👁️
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4 text-white/50">{new Date(sub.submittedAt).toLocaleDateString()}</td>
-                        <td className="p-4">
-                          {sub.score !== undefined ? (
-                            <span className="text-emerald-400 font-bold font-mono">
-                              {sub.score}/{challenge?.maxScore || 100}
-                            </span>
-                          ) : (
-                            <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                              Chưa chấm điểm
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-4 text-right">
-                          <button
-                            onClick={() => {
-                              setActiveSubmissionId(sub.id);
-                              setGradingScore(sub.score ?? challenge?.maxScore ?? 100);
-                              setGradingFeedback(sub.feedback ?? "");
-                            }}
-                            className="p-1 px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white border border-white/15 rounded-lg cursor-pointer transition"
-                          >
-                            {sub.score !== undefined ? "Cập nhật Điểm" : "Chấm điểm & Nhận xét"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+            <div className="space-y-6">
+              {myCourses.map(course => {
+                const courseAssignments = store.assignments.filter((a: any) => a.courseId === course.id);
+                const courseAssignmentIds = courseAssignments.map((a: any) => a.id);
+                const courseSubmissions = sortedSubmissions.filter((sub: any) => courseAssignmentIds.includes(sub.assignmentId));
+                
+                if (courseSubmissions.length === 0) return null;
+                
+                return (
+                  <div key={course.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                      <div>
+                        <h5 className="text-sm font-bold text-indigo-300 font-display">📖 {course.title}</h5>
+                        <p className="text-[10px] text-white/40">Phân loại: {course.category} · Tổng số {courseSubmissions.length} bài nộp</p>
+                      </div>
+                    </div>
 
-                  {studentSubmissionsRaw.filter(sub => {
-                    const student = store.users.find(u => u.id === sub.studentId);
-                    const challenge = store.assignments.find(a => a.id === sub.assignmentId);
-                    return !submissionSearch ||
-                      (student?.name || "").toLowerCase().includes(submissionSearch.toLowerCase()) ||
-                      (challenge?.title || "").toLowerCase().includes(submissionSearch.toLowerCase());
-                  }).length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="text-center py-12 text-white/40">
-                        {studentSubmissionsRaw.length === 0 ? "Hiện chưa có học viên nào nộp bài tự luận cho các bài tập được giao." : "Không tìm thấy bài nộp nào phù hợp với bộ lọc."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-white/80 font-sans border-collapse">
+                        <thead className="bg-white/2 border-b border-white/5 text-white uppercase text-[9px] tracking-wider">
+                          <tr>
+                            <th className="p-3.5 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("studentName")}>
+                              Tên Học viên {subSortField === "studentName" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                            </th>
+                            <th className="p-3.5 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("challengeTitle")}>
+                              Bài tập Thử thách {subSortField === "challengeTitle" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                            </th>
+                            <th className="p-3.5 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("submittedAt")}>
+                              Ngày nộp {subSortField === "submittedAt" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                            </th>
+                            <th className="p-3.5 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleSubSort("score")}>
+                              Điểm số đạt được {subSortField === "score" ? (subSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                            </th>
+                            <th className="p-3.5 font-semibold text-right">Hành động Chấm điểm</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {courseSubmissions.map((sub: any) => {
+                            const student = store.users.find((u: any) => u.id === sub.studentId);
+                            const challenge = store.assignments.find((a: any) => a.id === sub.assignmentId);
+                            
+                            return (
+                              <tr key={sub.id} className="hover:bg-white/2 transition-colors">
+                                <td className="p-3.5 font-medium text-white">{student?.name || "Học viên ẩn danh"}</td>
+                                <td className="p-3.5 font-bold text-indigo-200">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{challenge?.title || "Không xác định"}</span>
+                                    {challenge && (
+                                      <button
+                                        onClick={() => setCourseDetailId(challenge.courseId)}
+                                        className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                                      >
+                                        Xem 👁️
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-3.5 text-white/50">{new Date(sub.submittedAt).toLocaleDateString()}</td>
+                                <td className="p-3.5">
+                                  {sub.score !== undefined ? (
+                                    <span className="text-emerald-400 font-bold font-mono">
+                                      {sub.score}/{challenge?.maxScore || 100}
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                      Chưa chấm điểm
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-3.5 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setActiveSubmissionId(sub.id);
+                                      setGradingScore(sub.score ?? challenge?.maxScore ?? 100);
+                                      setGradingFeedback(sub.feedback ?? "");
+                                    }}
+                                    className="p-1 px-3 bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white border border-white/15 rounded-lg cursor-pointer transition"
+                                  >
+                                    {sub.score !== undefined ? "Cập nhật Điểm" : "Chấm điểm & Nhận xét"}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {studentSubmissionsRaw.filter((sub: any) => {
+                const student = store.users.find((u: any) => u.id === sub.studentId);
+                const challenge = store.assignments.find((a: any) => a.id === sub.assignmentId);
+                return !submissionSearch ||
+                  (student?.name || "").toLowerCase().includes(submissionSearch.toLowerCase()) ||
+                  (challenge?.title || "").toLowerCase().includes(submissionSearch.toLowerCase());
+              }).length === 0 && (
+                <div className="text-center py-12 text-white/40 bg-white/5 border border-white/10 rounded-2xl">
+                  {studentSubmissionsRaw.length === 0 ? "Hiện chưa có học viên nào nộp bài tự luận cho các bài tập được giao." : "Không tìm thấy bài nộp nào phù hợp với bộ lọc."}
+                </div>
+              )}
             </div>
           </div>
         )}

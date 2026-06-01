@@ -234,51 +234,50 @@ export default function QuizBuilder(props: ComponentProps) {
                   {assessmentType === "quiz" ? "Đề trắc nghiệm đang hoạt động" : "Đề tự luận đang hoạt động"}
                 </span>
 
-                <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
-                  {assessmentType === "quiz" ? (
-                    store.quizzes.filter(q => myCourseIds.includes(q.courseId)).map(q => {
-                      const courseName = store.courses.find(c => c.id === q.courseId)?.title || "Khóa học ẩn danh";
-                      return (
-                        <button
-                          key={q.id}
-                          type="button"
-                          onClick={() => setSelectedQuizId(q.id)}
-                          className={`w-full text-left p-3.5 rounded-xl border text-xs transition duration-150 relative block cursor-pointer ${
-                            selectedQuizId === q.id
-                              ? "bg-white/15 border-white/20 text-white"
-                              : "bg-black/10 border-white/5 text-white/60 hover:text-white"
-                          }`}
-                        >
-                          <h6 className="font-bold font-display leading-snug truncate max-w-[200px]">{q.title}</h6>
-                          <span className="text-[10px] text-white/40 mt-1 block truncate font-mono">{courseName}</span>
-                        </button>
-                      );
-                    })
-                  ) : (
-                    store.assignments.filter(a => myCourseIds.includes(a.courseId)).map(a => {
-                      const courseName = store.courses.find(c => c.id === a.courseId)?.title || "Khóa học ẩn danh";
-                      return (
-                        <button
-                          key={a.id}
-                          type="button"
-                          onClick={() => setSelectedEssayId(a.id)}
-                          className={`w-full text-left p-3.5 rounded-xl border text-xs transition duration-150 relative block cursor-pointer ${
-                            selectedEssayId === a.id
-                              ? "bg-white/15 border-white/20 text-white"
-                              : "bg-black/10 border-white/5 text-white/60 hover:text-white"
-                          }`}
-                        >
-                          <h6 className="font-bold font-display leading-snug truncate max-w-[200px]">{a.title}</h6>
-                          <span className="text-[10px] text-white/40 mt-1 block truncate font-mono">{courseName}</span>
-                        </button>
-                      );
-                    })
-                  )}
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                  {myCourses.map(course => {
+                    const courseQuizzes = store.quizzes.filter((q: any) => q.courseId === course.id);
+                    const courseEssays = store.assignments.filter((a: any) => a.courseId === course.id);
+                    const items = assessmentType === "quiz" ? courseQuizzes : courseEssays;
+                    
+                    if (items.length === 0) return null;
+                    
+                    return (
+                      <div key={course.id} className="space-y-1.5 bg-black/20 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-[9px] text-indigo-300 font-bold uppercase tracking-wider block px-1 truncate" title={course.title}>
+                          📖 {course.title}
+                        </span>
+                        {items.map((item: any) => {
+                          const isSelected = assessmentType === "quiz" ? selectedQuizId === item.id : selectedEssayId === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                if (assessmentType === "quiz") {
+                                  setSelectedQuizId(item.id);
+                                } else {
+                                  setSelectedEssayId(item.id);
+                                }
+                              }}
+                              className={`w-full text-left p-2.5 rounded-lg border text-xs transition duration-150 relative block cursor-pointer ${
+                                isSelected
+                                  ? "bg-white/10 border-white/10 text-white font-bold"
+                                  : "bg-transparent border-transparent text-white/60 hover:text-white hover:bg-white/5"
+                              }`}
+                            >
+                              <h6 className="truncate max-w-[200px]">{item.title}</h6>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
 
-                  {assessmentType === "quiz" && store.quizzes.filter(q => myCourseIds.includes(q.courseId)).length === 0 && (
+                  {assessmentType === "quiz" && store.quizzes.filter((q: any) => myCourseIds.includes(q.courseId)).length === 0 && (
                     <p className="text-xs text-white/40 text-center py-4">Chưa có đề thi trắc nghiệm nào.</p>
                   )}
-                  {assessmentType === "essay" && store.assignments.filter(a => myCourseIds.includes(a.courseId)).length === 0 && (
+                  {assessmentType === "essay" && store.assignments.filter((a: any) => myCourseIds.includes(a.courseId)).length === 0 && (
                     <p className="text-xs text-white/40 text-center py-4">Chưa có đề thi tự luận nào.</p>
                   )}
                 </div>

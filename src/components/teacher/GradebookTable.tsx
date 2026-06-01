@@ -114,51 +114,6 @@ export default function GradebookTable(props: ComponentProps) {
     studentSubmissionsRaw
   } = props;
 
-  const enrolledStudents = store.enrollments.filter((e: any) => myCourseIds.includes(e.courseId));
-  const filteredStudents = enrolledStudents.filter((enroll: any) => {
-    const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
-    const courseObj = store.courses.find((c: any) => c.id === enroll.courseId);
-    if (!studentUser) return false;
-    return !searchTerm ||
-      studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      studentUser.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (courseObj?.title || "").toLowerCase().includes(searchTerm.toLowerCase());
-  });
-
-  const sortedStudents = [...filteredStudents].sort((a: any, b: any) => {
-    if (!gradebookSortField) return 0;
-    let valA: any = "";
-    let valB: any = "";
-
-    const studentA = store.users.find((u: any) => u.id === a.studentId);
-    const studentB = store.users.find((u: any) => u.id === b.studentId);
-    const courseA = store.courses.find((c: any) => c.id === a.courseId);
-    const courseB = store.courses.find((c: any) => c.id === b.courseId);
-
-    if (gradebookSortField === "studentName") {
-      valA = studentA?.name || "";
-      valB = studentB?.name || "";
-    } else if (gradebookSortField === "courseTitle") {
-      valA = courseA?.title || "";
-      valB = courseB?.title || "";
-    } else if (gradebookSortField === "progress") {
-      const completedA = store.lessonProgress.filter((p: any) => p.enrollmentId === a.id && p.completed).length;
-      const totalA = store.lessons.filter((l: any) => l.courseId === a.courseId).length;
-      const completedB = store.lessonProgress.filter((p: any) => p.enrollmentId === b.id && p.completed).length;
-      const totalB = store.lessons.filter((l: any) => l.courseId === b.courseId).length;
-
-      valA = totalA ? completedA / totalA : 0;
-      valB = totalB ? completedB / totalB : 0;
-    }
-
-    if (typeof valA === "string" && typeof valB === "string") {
-      return gradebookSortOrder === "asc"
-        ? valA.localeCompare(valB, "vi", { sensitivity: "base" })
-        : valB.localeCompare(valA, "vi", { sensitivity: "base" });
-    }
-    return gradebookSortOrder === "asc" ? valA - valB : valB - valA;
-  });
-
   return (
     <>
         {/* Tab 4: Student gradebook matrix table & CSV Export */}
@@ -179,78 +134,133 @@ export default function GradebookTable(props: ComponentProps) {
               </button>
             </div>
 
-            <div className="flex gap-3 bg-white/3 border border-white/5 p-3 rounded-xl text-xs">
+            <div className="flex gap-3 bg-white/3 border border-white/5 p-3 rounded-xl text-xs max-w-sm">
               <input
                 type="text"
                 placeholder="Tìm kiếm học viên theo tên hoặc email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full md:w-64 px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
+                className="w-full px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
               />
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-white/80 font-sans">
-                <thead className="bg-white/5 border-b border-white/10 text-white uppercase text-[10px] tracking-wider sticky top-0">
-                  <tr>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleGradebookSort("studentName")}>
-                      Tên Học sinh {gradebookSortField === "studentName" ? (gradebookSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleGradebookSort("courseTitle")}>
-                      Khóa học đăng ký {gradebookSortField === "courseTitle" ? (gradebookSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleGradebookSort("progress")}>
-                      Tiến độ bài học {gradebookSortField === "progress" ? (gradebookSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                    </th>
-                    <th className="p-4 font-semibold text-right flex-shrink-0">Tóm tắt trạng thái</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {sortedStudents.map((enroll, i) => {
-                    const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
-                    const courseObj = store.courses.find((c: any) => c.id === enroll.courseId);
-                    const completedLessons = store.lessonProgress.filter((p: any) => p.enrollmentId === enroll.id && p.completed).length;
-                    const totalLessons = store.lessons.filter((l: any) => l.courseId === enroll.courseId).length;
- 
-                    return (
-                      <tr key={i} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-medium text-white">
-                          <div>{studentUser?.name || "Không xác định"}</div>
-                          <div className="text-[10px] text-white/40 font-mono">{studentUser?.email || "Không xác định"}</div>
-                        </td>
-                        <td className="p-4 text-white/70 font-sans text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-semibold text-white/80 max-w-[150px] truncate">{courseObj?.title || "Không xác định"}</span>
-                            {courseObj && (
-                              <button
-                                onClick={() => setCourseDetailId(courseObj.id)}
-                                className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
-                              >
-                                Xem 👁️
-                              </button>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-white/40 font-mono uppercase">{courseObj?.category}</div>
-                        </td>
-                        <td className="p-4 text-xs font-mono">
-                          Đã hoàn thành {completedLessons}/{totalLessons} bài học
-                        </td>
-                        <td className="p-4 text-right text-[11px] text-indigo-300 font-medium">
-                          Học viên đang hoạt động
-                        </td>
-                      </tr>
-                    );
-                  })}
+            <div className="space-y-6">
+              {myCourses.map((course: any) => {
+                const courseEnrollments = store.enrollments.filter((e: any) => e.courseId === course.id);
+                
+                const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => {
+                  const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
+                  if (!studentUser) return false;
+                  return !searchTerm ||
+                    studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    studentUser.email.toLowerCase().includes(searchTerm.toLowerCase());
+                });
 
-                  {sortedStudents.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-center py-12 text-white/40 italic">
-                        {enrolledStudents.length === 0 ? "Chưa có học sinh đăng ký các khóa học này." : "Không tìm thấy học sinh nào phù hợp."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                if (courseEnrollments.length === 0) return null;
+                if (filteredCourseEnrollments.length === 0 && searchTerm) return null;
+
+                const sortedCourseEnrollments = [...filteredCourseEnrollments].sort((a: any, b: any) => {
+                  if (!gradebookSortField) return 0;
+                  let valA: any = "";
+                  let valB: any = "";
+
+                  const studentA = store.users.find((u: any) => u.id === a.studentId);
+                  const studentB = store.users.find((u: any) => u.id === b.studentId);
+
+                  if (gradebookSortField === "studentName") {
+                    valA = studentA?.name || "";
+                    valB = studentB?.name || "";
+                  } else if (gradebookSortField === "progress") {
+                    const completedA = store.lessonProgress.filter((p: any) => p.enrollmentId === a.id && p.completed).length;
+                    const totalA = store.lessons.filter((l: any) => l.courseId === a.courseId).length;
+                    const completedB = store.lessonProgress.filter((p: any) => p.enrollmentId === b.id && p.completed).length;
+                    const totalB = store.lessons.filter((l: any) => l.courseId === b.courseId).length;
+
+                    valA = totalA ? completedA / totalA : 0;
+                    valB = totalB ? completedB / totalB : 0;
+                  }
+
+                  if (typeof valA === "string" && typeof valB === "string") {
+                    return gradebookSortOrder === "asc"
+                      ? valA.localeCompare(valB, "vi", { sensitivity: "base" })
+                      : valB.localeCompare(valA, "vi", { sensitivity: "base" });
+                  }
+                  return gradebookSortOrder === "asc" ? valA - valB : valB - valA;
+                });
+
+                return (
+                  <div key={course.id} className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="text-sm font-bold text-indigo-300 font-display">📖 {course.title}</h5>
+                          <button
+                            onClick={() => setCourseDetailId(course.id)}
+                            className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                          >
+                            Xem 👁️
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-white/40">Phân loại: {course.category} · Tổng số {filteredCourseEnrollments.length} học viên</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-white/80 font-sans border-collapse">
+                        <thead className="bg-white/2 border-b border-white/5 text-white uppercase text-[9px] tracking-wider">
+                          <tr>
+                            <th className="p-3.5 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleGradebookSort("studentName")}>
+                              Tên Học sinh {gradebookSortField === "studentName" ? (gradebookSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                            </th>
+                            <th className="p-3.5 font-semibold cursor-pointer select-none hover:text-white transition" onClick={() => handleGradebookSort("progress")}>
+                              Tiến độ bài học {gradebookSortField === "progress" ? (gradebookSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                            </th>
+                            <th className="p-3.5 font-semibold text-right">Tóm tắt trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {sortedCourseEnrollments.map((enroll: any, idx: number) => {
+                            const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
+                            const completedLessons = store.lessonProgress.filter((p: any) => p.enrollmentId === enroll.id && p.completed).length;
+                            const totalLessons = store.lessons.filter((l: any) => l.courseId === enroll.courseId).length;
+
+                            return (
+                              <tr key={idx} className="hover:bg-white/2 transition-colors">
+                                <td className="p-3.5 font-medium text-white">
+                                  <div>{studentUser?.name || "Không xác định"}</div>
+                                  <div className="text-[10px] text-white/40 font-mono">{studentUser?.email || "Không xác định"}</div>
+                                </td>
+                                <td className="p-3.5 text-xs font-mono">
+                                  Đã hoàn thành {completedLessons}/{totalLessons} bài học
+                                </td>
+                                <td className="p-3.5 text-right text-[11px] text-indigo-300 font-medium">
+                                  Học viên đang hoạt động
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {myCourses.filter((course: any) => {
+                const courseEnrollments = store.enrollments.filter((e: any) => e.courseId === course.id);
+                const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => {
+                  const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
+                  if (!studentUser) return false;
+                  return !searchTerm ||
+                    studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    studentUser.email.toLowerCase().includes(searchTerm.toLowerCase());
+                });
+                return courseEnrollments.length > 0 && (filteredCourseEnrollments.length > 0 || !searchTerm);
+              }).length === 0 && (
+                <div className="text-center py-12 text-white/40 bg-white/5 border border-white/10 rounded-2xl italic">
+                  {store.enrollments.filter((e: any) => myCourseIds.includes(e.courseId)).length === 0 ? "Chưa có học sinh đăng ký các khóa học này." : "Không tìm thấy học sinh nào phù hợp."}
+                </div>
+              )}
             </div>
           </div>
         )}
