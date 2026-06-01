@@ -13,7 +13,7 @@ function assert(condition: unknown, message: string): asserts condition {
 function cookieHeader(headers: Headers) {
   const raw = headers.get("set-cookie") || "";
   return raw
-    .split(/,(?=\s*mcna_lms_)/)
+    .split(/,(?=\s*e16_lms_)/)
     .map(part => part.split(";")[0].trim())
     .filter(Boolean)
     .join("; ");
