@@ -87,7 +87,9 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
   useEffect(() => {
     if (activeSystem === "LMS") {
       const allowedLmsTabs = ["approval", "audit", "admin_guide"];
-      if (currentUser.role !== "admin") allowedLmsTabs.push("users");
+      if (currentUser.role === "manager" || currentUser.role === "super_admin") {
+        allowedLmsTabs.push("users");
+      }
       if (!allowedLmsTabs.includes(activeSubTab)) {
         setActiveSubTab("admin_guide");
       }
@@ -97,6 +99,9 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
         allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable");
       } else {
         allowedSisTabs.push("tuition");
+      }
+      if (currentUser.role === "manager" || currentUser.role === "super_admin") {
+        allowedSisTabs.push("users");
       }
       if (!allowedSisTabs.includes(activeSubTab)) {
         setActiveSubTab("admin_guide");
@@ -604,6 +609,16 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               >
                 <span className="flex items-center gap-2"><Award className="h-4 w-4" /> Duyệt & Xác thực Bằng</span>
               </button>
+              {(currentUser.role === "manager" || currentUser.role === "super_admin") && (
+                <button
+                  onClick={() => { setActiveSubTab("users"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "users" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Phân quyền người dùng</span>
+                </button>
+              )}
             </div>
             </>
             )}
@@ -634,7 +649,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   </span>
                 )}
               </button>
-              {currentUser.role !== "admin" && (
+              {(currentUser.role === "manager" || currentUser.role === "super_admin") && (
                 <button
                   onClick={() => { setActiveSubTab("users"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${

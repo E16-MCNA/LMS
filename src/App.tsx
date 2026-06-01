@@ -112,6 +112,18 @@ function AppShell() {
     }
   }, [currentUser]);
 
+  const [activeSystem, setActiveSystem] = useState<"SIS" | "LMS">("SIS");
+
+  useEffect(() => {
+    if (currentUser) {
+      if (["teacher", "student"].includes(currentUser.role)) {
+        setActiveSystem("LMS");
+      } else {
+        setActiveSystem("SIS");
+      }
+    }
+  }, [currentUser]);
+
   // Refresh reactive data from store changes
   const refreshStoreData = () => {
     setStoreData({ ...AppStore.get() });
@@ -520,8 +532,33 @@ function AppShell() {
                 </h3>
               </div>
 
-              {/* Header right spacer */}
-              <div />
+              {/* Header right: System Switcher */}
+              {["manager", "super_admin", "admin", "teacher", "student", "parent"].includes(currentUser.role) ? (
+                <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 relative z-10 backdrop-blur-xl transition duration-200 shadow-md">
+                  <button
+                    onClick={() => setActiveSystem("SIS")}
+                    className={`px-3 py-1.5 rounded-xl text-[10.5px] font-bold font-sans tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
+                      activeSystem === "SIS"
+                        ? "bg-indigo-600 text-white shadow-lg border border-indigo-400/30"
+                        : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
+                    }`}
+                  >
+                    <span>Hành chính SIS</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveSystem("LMS")}
+                    className={`px-3 py-1.5 rounded-xl text-[10.5px] font-bold font-sans tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
+                      activeSystem === "LMS"
+                        ? "bg-indigo-600 text-white shadow-lg border border-indigo-400/30"
+                        : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
+                    }`}
+                  >
+                    <span>LMS Học tập</span>
+                  </button>
+                </div>
+              ) : (
+                <div />
+              )}
             </header>
 
             {/* Inner responsive Padding page body */}
@@ -537,6 +574,7 @@ function AppShell() {
                     currentUser={currentUser}
                     onLogout={handleLogout}
                     onRefreshData={refreshStoreDataFromServer}
+                    activeSystem={activeSystem}
                   />
                 )}
                 {currentUser.role === "teacher" && (
@@ -544,6 +582,7 @@ function AppShell() {
                     currentUser={currentUser}
                     onLogout={handleLogout}
                     onRefreshData={refreshStoreDataFromServer}
+                    activeSystem={activeSystem}
                   />
                 )}
                 {currentUser.role === "student" && (
@@ -551,6 +590,7 @@ function AppShell() {
                     currentUser={currentUser}
                     onLogout={handleLogout}
                     onRefreshData={refreshStoreDataFromServer}
+                    activeSystem={activeSystem}
                   />
                 )}
                 {(currentUser.role === "finance") && (
@@ -579,6 +619,7 @@ function AppShell() {
                     currentUser={currentUser}
                     onLogout={handleLogout}
                     onRefreshData={refreshStoreDataFromServer}
+                    activeSystem={activeSystem}
                   />
                 )}
               </React.Suspense>
