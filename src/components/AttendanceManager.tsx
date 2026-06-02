@@ -384,8 +384,8 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       )}
       
       {/* Course & Session selectors */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/30 backdrop-blur-md border border-white/10 p-5 rounded-3xl text-xs shadow-xl transition-all duration-200">
-        <div className="space-y-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-950/30 backdrop-blur-md border border-white/10 p-5 rounded-3xl text-xs shadow-xl transition-all duration-200 items-end">
+        <div className={selectedCourseId ? "col-span-1 md:col-span-5 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
           <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
             1. Lựa chọn môn học / lớp học phần:
@@ -403,30 +403,34 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
         </div>
 
         {selectedCourseId && (
-          <div className="space-y-1.5">
-            <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-              2. Chọn đợt buổi học:
-            </label>
-            <div className="flex gap-2">
+          <>
+            <div className="col-span-1 md:col-span-4 space-y-1.5">
+              <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                2. Chọn đợt buổi học:
+              </label>
               <select
                 value={activeSessionId}
                 onChange={(e) => setActiveSessionId(e.target.value)}
-                className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
+                className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
               >
                 <option value="">-- Mở bảng học kỳ --</option>
                 {sessions.map(s => (
                   <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
                 ))}
               </select>
+            </div>
+            
+            <div className="col-span-1 md:col-span-3">
               <button
                 onClick={() => setShowCreateSession(true)}
-                className="px-4.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shrink-0 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98]"
+                className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
               >
-                <Plus className="h-4 w-4" /> Tạo buổi học / Gửi link điểm danh 🚀
+                <Plus className="h-4 w-4 shrink-0" />
+                <span className="truncate">Tạo buổi / Gửi link 🚀</span>
               </button>
             </div>
-          </div>
+          </>
         )}
       </div>
 
