@@ -21,6 +21,7 @@ import {
 import { LMSDataStore, User as UserType, Course, CourseSection, CourseRegistration } from "../types";
 import { AppStore } from "../store";
 import { generateId } from "../utils";
+import { api } from "../api";
 
 interface TimetableProps {
   role: "student" | "teacher" | "admin";
@@ -31,6 +32,17 @@ interface TimetableProps {
 }
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+
+const getVietnameseDayOfWeek = (date: Date): string => {
+  const day = date.getDay();
+  if (day === 0) return "Chủ Nhật";
+  if (day === 1) return "Thứ Hai";
+  if (day === 2) return "Thứ Ba";
+  if (day === 3) return "Thứ Tư";
+  if (day === 4) return "Thứ Năm";
+  if (day === 5) return "Thứ Sáu";
+  return "Thứ Bảy";
+};
 
 // Standard schedule ca slots
 const STANDARD_SLOTS = [
@@ -782,11 +794,48 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                   </div>
                                 )}
 
-                                {role === "teacher" && (
-                                  <div className="text-[10px] text-white/40 pt-1 border-t border-white/5 font-mono">
-                                    Quy mô: {item.section.maxStudents} HS max
-                                  </div>
-                                )}
+                                {role === "teacher" && (() => {
+                                  const now = new Date();
+                                  const currentDay = getVietnameseDayOfWeek(now);
+                                  const currentHourStr = now.toTimeString().slice(0, 5); // "HH:MM"
+                                  
+                                  const currentMins = timeToMins(currentHourStr);
+                                  const startMins = timeToMins(item.startTime);
+                                  
+                                  const isSameDay = item.dayOfWeek === currentDay;
+                                  const minutesElapsed = currentMins - startMins;
+                                  const isWithinTenMinutes = isSameDay && minutesElapsed >= 0 && minutesElapsed <= 10;
+                                  const remainingMinutes = 10 - minutesElapsed;
+                                  
+                                  if (isWithinTenMinutes) {
+                                    return (
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          try {
+                                            const res = await api.generateAttendanceLink({
+                                              courseId: item.section.courseId,
+                                              topic: `Điểm danh tự động theo lịch học (${item.startTime} ${item.dayOfWeek})`
+                                            });
+                                            alert(`🚀 Kích hoạt điểm danh 5 phút thành công! Mã Code: ${res.code}`);
+                                            onRefreshData();
+                                          } catch (err: any) {
+                                            alert(err.message || "Không thể kích hoạt điểm danh.");
+                                          }
+                                        }}
+                                        className="mt-2 w-full py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg transition-all duration-200 text-[10px] flex items-center justify-center gap-1 shadow-lg shadow-emerald-500/10 cursor-pointer animate-pulse font-sans"
+                                      >
+                                        ⚡ Điểm danh (còn {remainingMinutes}p)
+                                      </button>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <div className="text-[10px] text-white/40 pt-1 border-t border-white/5 font-mono">
+                                      Quy mô: {item.section.maxStudents} HS max
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             ))}
 
@@ -848,7 +897,44 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
 
               {/* Admin Actions */}
               {(role === "admin" || (role === "teacher" && slot.section.teacherId === currentUser.id)) && (
-                <div className="flex gap-2 self-end sm:self-auto">
+                <div className="flex gap-2 self-end sm:self-auto items-center">
+                  {(() => {
+                    const now = new Date();
+                    const currentDay = getVietnameseDayOfWeek(now);
+                    const currentHourStr = now.toTimeString().slice(0, 5); // "HH:MM"
+                    
+                    const currentMins = timeToMins(currentHourStr);
+                    const startMins = timeToMins(slot.startTime);
+                    
+                    const isSameDay = slot.dayOfWeek === currentDay;
+                    const minutesElapsed = currentMins - startMins;
+                    const isWithinTenMinutes = isSameDay && minutesElapsed >= 0 && minutesElapsed <= 10;
+                    const remainingMinutes = 10 - minutesElapsed;
+                    
+                    if (isWithinTenMinutes) {
+                      return (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const res = await api.generateAttendanceLink({
+                                courseId: slot.section.courseId,
+                                topic: `Điểm danh tự động theo lịch học (${slot.startTime} ${slot.dayOfWeek})`
+                              });
+                              alert(`🚀 Kích hoạt điểm danh 5 phút thành công! Mã Code: ${res.code}`);
+                              onRefreshData();
+                            } catch (err: any) {
+                              alert(err.message || "Không thể kích hoạt điểm danh.");
+                            }
+                          }}
+                          className="px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl transition-all duration-200 text-xs flex items-center gap-1 shadow-lg shadow-emerald-500/10 cursor-pointer animate-pulse shrink-0 font-sans"
+                        >
+                          ⚡ Điểm danh (còn {remainingMinutes}p)
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                   <button
                     onClick={() => handleOpenEdit(slot.section)}
                     className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-xl transition cursor-pointer text-xs flex items-center gap-1 font-semibold"
