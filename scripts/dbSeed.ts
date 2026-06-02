@@ -208,6 +208,22 @@ async function main() {
       `(id) DO UPDATE SET advisor_id = EXCLUDED.advisor_id, student_id = EXCLUDED.student_id, semester_id = EXCLUDED.semester_id, assigned_at = EXCLUDED.assigned_at`
     );
 
+    await insertBatch(
+      client,
+      "attendance_sessions",
+      ["id", "course_id", "semester_id", "teacher_id", "session_date", "date", "topic"],
+      (store.attendanceSessions || []).map(session => [session.id, session.courseId, session.semesterId, session.teacherId, session.date, session.date, session.topic]),
+      `(id) DO UPDATE SET course_id = EXCLUDED.course_id, semester_id = EXCLUDED.semester_id, teacher_id = EXCLUDED.teacher_id, session_date = EXCLUDED.session_date, date = EXCLUDED.date, topic = EXCLUDED.topic`
+    );
+
+    await insertBatch(
+      client,
+      "attendance_records",
+      ["id", "session_id", "student_id", "status", "note"],
+      (store.attendanceRecords || []).map(record => [record.id, record.sessionId, record.studentId, record.status, record.note || null]),
+      `(id) DO UPDATE SET session_id = EXCLUDED.session_id, student_id = EXCLUDED.student_id, status = EXCLUDED.status, note = EXCLUDED.note`
+    );
+
     await client.query("COMMIT");
     console.log(`Seeded Postgres database with ${store.users.filter(u => u.role === "student").length} students and ${store.courses.length} courses.`);
   } catch (error) {

@@ -118,6 +118,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
       if (!store.quizAttempts) store.quizAttempts = [];
       if (!store.submissions) store.submissions = [];
       if (!store.courseRegistrations) store.courseRegistrations = [];
+      if (!store.attendanceRecords) store.attendanceRecords = [];
 
       if (s.id === "user_student_active") {
         store.enrollments.push({
@@ -160,6 +161,11 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           registeredAt: "2025-01-05T09:00:00Z",
           credits: 4
         });
+        store.attendanceRecords.push(
+          { id: "ar_student_active_session_cs1", sessionId: "session_cs1", studentId: s.id, status: "present", note: "Tham gia đầy đủ" },
+          { id: "ar_student_active_session_cs2", sessionId: "session_cs2", studentId: s.id, status: "present", note: "Tham gia đầy đủ" },
+          { id: "ar_student_active_session_cs3", sessionId: "session_cs3", studentId: s.id, status: "present", note: "Tham gia đầy đủ" }
+        );
       }
 
       if (s.id === "user_student_on_leave") {
@@ -180,6 +186,11 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           droppedAt: "2026-02-28T10:00:00Z",
           credits: 4
         });
+        store.attendanceRecords.push(
+          { id: "ar_student_on_leave_session_cs1", sessionId: "session_cs1", studentId: s.id, status: "excused", note: "Bảo lưu có phép" },
+          { id: "ar_student_on_leave_session_cs2", sessionId: "session_cs2", studentId: s.id, status: "excused", note: "Bảo lưu có phép" },
+          { id: "ar_student_on_leave_session_cs3", sessionId: "session_cs3", studentId: s.id, status: "excused", note: "Bảo lưu có phép" }
+        );
       }
 
       if (s.id === "user_student_suspended") {
@@ -223,6 +234,19 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           gradePoint: 0.0,
           gradePostedAt: "2026-03-07T10:00:00Z"
         });
+        store.attendanceRecords.push(
+          { id: "ar_student_suspended_session_cs1", sessionId: "session_cs1", studentId: s.id, status: "absent", note: "Vắng không lý do" },
+          { id: "ar_student_suspended_session_cs2", sessionId: "session_cs2", studentId: s.id, status: "absent", note: "Vắng không lý do" },
+          { id: "ar_student_suspended_session_cs3", sessionId: "session_cs3", studentId: s.id, status: "late", note: "Đi muộn 30 phút" }
+        );
+        store.academicWarnings.push({
+          id: `warn_${s.id}_low_attendance`,
+          studentId: s.id,
+          type: "low_attendance",
+          message: "Cảnh báo chuyên cần: Tỉ lệ chuyên cần môn Full-Stack của bạn hiện tại là 33% (dưới mốc tối thiểu 80%).",
+          isResolved: false,
+          createdAt: new Date("2026-05-18T10:00:00Z").toISOString()
+        });
       }
 
       if (s.id === "user_student_graduated") {
@@ -253,6 +277,11 @@ export function backfillMegaDemoData(store: LMSDataStore) {
         store.courseRegistrations.push(
           { id: "cr_student_graduated_fsweb", studentId: s.id, sectionId: "section_cs101_01", semesterId: "sem_spring25", status: "completed", registeredAt: "2025-01-05T09:00:00Z", credits: 4, grade: "95", letterGrade: "A", gradePoint: 4.0, gradePostedAt: "2025-10-12T10:00:00Z" },
           { id: "cr_student_graduated_python", studentId: s.id, sectionId: "section_bus201_01", semesterId: "sem_spring25", status: "completed", registeredAt: "2025-01-05T09:00:00Z", credits: 3, grade: "90", letterGrade: "A", gradePoint: 4.0, gradePostedAt: "2025-10-12T10:00:00Z" }
+        );
+        store.attendanceRecords.push(
+          { id: "ar_student_graduated_session_cs1", sessionId: "session_cs1", studentId: s.id, status: "present" },
+          { id: "ar_student_graduated_session_cs2", sessionId: "session_cs2", studentId: s.id, status: "present" },
+          { id: "ar_student_graduated_session_cs3", sessionId: "session_cs3", studentId: s.id, status: "present" }
         );
         
         if (!store.officialTranscripts) store.officialTranscripts = [];
@@ -287,6 +316,11 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           droppedAt: "2026-02-28T10:00:00Z",
           credits: 4
         });
+        store.attendanceRecords.push(
+          { id: "ar_student_withdrawn_session_cs1", sessionId: "session_cs1", studentId: s.id, status: "absent" },
+          { id: "ar_student_withdrawn_session_cs2", sessionId: "session_cs2", studentId: s.id, status: "absent" },
+          { id: "ar_student_withdrawn_session_cs3", sessionId: "session_cs3", studentId: s.id, status: "absent" }
+        );
       }
     }
   });
