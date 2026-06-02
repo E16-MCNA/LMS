@@ -32,6 +32,7 @@ import GradebookTable from "./teacher/GradebookTable";
 import TeacherAnalytics from "./teacher/TeacherAnalytics";
 import Timetable from "./Timetable";
 import UserGuide from "./UserGuide";
+import AttendanceManager from "./AttendanceManager";
 import { generateId } from "../utils";
 import { useApiStore } from "../hooks/apiHooks";
 import { api } from "../api";
@@ -564,6 +565,14 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           >
             Thời khóa biểu giảng dạy
           </button>
+          <button
+            onClick={() => setActiveSubTab("attendance")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "attendance" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Điểm danh lớp học
+          </button>
         </div>
       ) : (
         <div className="flex flex-wrap border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
@@ -623,6 +632,14 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           >
             Thời khóa biểu
           </button>
+          <button
+            onClick={() => setActiveSubTab("attendance")}
+            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+              activeSubTab === "attendance" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+            }`}
+          >
+            Điểm danh lớp học
+          </button>
         </div>
       )}
 
@@ -649,6 +666,15 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
             role="teacher"
             activeSystem={activeSystem}
             onClose={() => setActiveSubTab(activeSystem === "SIS" ? "timetable" : "courses")}
+          />
+        )}
+
+        {activeSubTab === "attendance" && (
+          <AttendanceManager
+            store={store}
+            currentUser={currentUser}
+            onRefreshData={onRefreshData}
+            triggerToast={triggerToast}
           />
         )}
 

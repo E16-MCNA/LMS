@@ -23,11 +23,12 @@ interface AttendanceManagerProps {
   currentUser: User;
   onRefreshData: () => void;
   triggerToast: (msg: string) => void;
+  defaultCourseId?: string;
 }
 
-export default function AttendanceManager({ store, currentUser, onRefreshData, triggerToast }: AttendanceManagerProps) {
+export default function AttendanceManager({ store, currentUser, onRefreshData, triggerToast, defaultCourseId }: AttendanceManagerProps) {
   // Course selection
-  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState(defaultCourseId || "");
   // Session selection (or create new)
   const [activeSessionId, setActiveSessionId] = useState("");
 
@@ -122,8 +123,12 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       triggerToast("Vui lòng chọn môn học trước khi lập buổi điểm danh.");
       return;
     }
-    if (!newSessionDate || !newSessionTopic.trim()) {
-      triggerToast("Hãy nhập đầy đủ thông tin ngày tháng và chủ đề.");
+    if (checkinMethod === "manual" && !newSessionDate) {
+      triggerToast("Hãy nhập ngày tháng cho buổi điểm danh.");
+      return;
+    }
+    if (!newSessionTopic.trim()) {
+      triggerToast("Hãy nhập chủ đề/đề tài giảng dạy cho buổi điểm danh.");
       return;
     }
 
@@ -410,9 +415,9 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
               </select>
               <button
                 onClick={() => setShowCreateSession(true)}
-                className="px-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white flex items-center gap-1 transition cursor-pointer"
+                className="px-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white flex items-center gap-1 transition cursor-pointer text-xs shrink-0"
               >
-                <Plus className="h-4 w-4" /> Bắt đầu buổi học mới
+                <Plus className="h-4 w-4" /> Tạo buổi học / Gửi link điểm danh 🚀
               </button>
             </div>
           </div>
@@ -717,9 +722,15 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
                 </button>
                 <button
                   type="submit"
-                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer flex items-center gap-1"
+                  className="px-4.5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 transition cursor-pointer flex items-center gap-1"
                 >
-                  <FolderSync className="h-3.5 w-3.5" /> Xác nhận mở điểm danh
+                  {checkinMethod === "link" ? (
+                    <>🚀 Gửi link điểm danh (5 phút)</>
+                  ) : (
+                    <>
+                      <FolderSync className="h-3.5 w-3.5" /> Mở điểm danh thủ công
+                    </>
+                  )}
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@ import React from "react";
 import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings, Download, Tv, Trash, ChevronRight, TrendingUp, BarChart, Users, Clock, Search, MessageSquare, X, PlusCircle, FolderPlus, MapPin, Calendar, Trash2, AlertCircle, Layers } from "lucide-react";
 import ModalPortal from "../ModalPortal";
 import { AppStore } from "../../store";
+import AttendanceManager from "../AttendanceManager";
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 
@@ -108,6 +109,7 @@ export default function CourseBuilder(props: ComponentProps) {
   const [showSectionModal, setShowSectionModal] = React.useState(false);
   const [sectionModalMode, setSectionModalMode] = React.useState<"create" | "edit">("create");
   const [editingSectionId, setEditingSectionId] = React.useState<string | null>(null);
+  const [showAttendanceModal, setShowAttendanceModal] = React.useState(false);
 
   // Form states
   const [formSemesterId, setFormSemesterId] = React.useState("sem_spring25");
@@ -492,6 +494,22 @@ export default function CourseBuilder(props: ComponentProps) {
                       Đang chờ ban điều hành duyệt phê duyệt trước khi đưa lên danh mục công khai.
                     </div>
                   )}
+                </div>
+
+                {/* Attendance management block in Course details */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                    <span className="text-xs font-semibold text-white">Quản lý chuyên cần & Điểm danh</span>
+                  </div>
+                  <p className="text-[11px] text-white/50 leading-relaxed font-sans">
+                    Giảng viên có thể khởi động ca điểm danh tự động gửi link 5 phút hoặc tích điểm danh thủ công trực tiếp cho lớp học phần này.
+                  </p>
+                  <button
+                    onClick={() => setShowAttendanceModal(true)}
+                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-sans"
+                  >
+                    <span>Điểm danh lớp học ✍️</span>
+                  </button>
                 </div>
 
                 {/* Class sections list for this course */}
@@ -1031,6 +1049,36 @@ export default function CourseBuilder(props: ComponentProps) {
               </form>
             </div>
           </div>
+        </ModalPortal>
+      )}
+      {/* MODAL: ATTENDANCE MANAGER INTEGRATED */}
+      {showAttendanceModal && (
+        <ModalPortal>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-6 md:pt-10 overflow-y-auto">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-4xl shadow-2xl relative my-8 animate-in zoom-in-95 duration-150 text-white font-sans max-h-[90vh] overflow-y-auto">
+            <button 
+              onClick={() => setShowAttendanceModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/50 cursor-pointer font-sans"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            
+            <h3 className="text-base font-bold text-white mb-4 border-b border-white/10 pb-3 flex items-center gap-2 font-sans uppercase">
+              ✍️ Bảng Quản Lý Điểm Danh - {activeCourse.title}
+            </h3>
+            
+            <AttendanceManager
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={props.onRefreshData}
+              triggerToast={(msg: string) => {
+                if (props.triggerToast) props.triggerToast(msg);
+                else alert(msg);
+              }}
+              defaultCourseId={activeCourse.id}
+            />
+          </div>
+        </div>
         </ModalPortal>
       )}
 

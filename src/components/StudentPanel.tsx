@@ -127,6 +127,22 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
     }
   }, [activeSystem]);
 
+  // Auto-refresh store data whenever the notifications tab is opened
+  useEffect(() => {
+    if (activeSubTab === "notifications") {
+      onRefreshData();
+    }
+  }, [activeSubTab]);
+
+  // Periodic polling every 30s while on the notifications tab to catch new attendance links
+  useEffect(() => {
+    if (activeSubTab !== "notifications") return;
+    const interval = setInterval(() => {
+      onRefreshData();
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [activeSubTab]);
+
   // Payment popup state
   const [paymentGuideTx, setPaymentGuideTx] = useState<Transaction | null>(null);
 
