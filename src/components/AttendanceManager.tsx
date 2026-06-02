@@ -35,6 +35,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
   // Sorting state for nonCompliantCourses
   const [complianceSortField, setComplianceSortField] = useState<string>("courseTitle");
   const [complianceSortOrder, setComplianceSortOrder] = useState<"asc" | "desc">("asc");
+  const [complianceTab, setComplianceTab] = useState<"students" | "teachers">("students");
 
   // Sorting state for courseStudents
   const [studentSortField, setStudentSortField] = useState<string>("studentCode");
@@ -289,96 +290,155 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       {/* Giám sát tuân thủ điểm danh giảng viên (Học vụ & Admin) */}
       {(currentUser.role === "admin" || currentUser.role === "manager" || currentUser.role === "super_admin") && (
         <div className="bg-white/4 border border-white/5 p-5 rounded-2xl space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2 border-b border-white/10 gap-3">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldAlert className="h-4 w-4 text-rose-400" /> Giám sát tuân thủ điểm danh giảng viên
+              <ShieldAlert className="h-4 w-4 text-rose-400" /> Giám sát tuân thủ giảng dạy & Điểm danh
             </h4>
-            <span className="text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded font-bold font-mono">
-              Phát hiện {nonCompliantCourses.length} môn chưa điểm danh
-            </span>
+            <div className="flex gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
+              <button
+                onClick={() => setComplianceTab("students")}
+                className={`px-3 py-1 text-[10px] font-bold rounded-lg transition cursor-pointer ${
+                  complianceTab === "students" ? "bg-white/10 text-white border border-white/15" : "text-white/40 hover:text-white"
+                }`}
+              >
+                Học viên chưa điểm danh ({nonCompliantCourses.length})
+              </button>
+              <button
+                onClick={() => setComplianceTab("teachers")}
+                className={`px-3 py-1 text-[10px] font-bold rounded-lg transition cursor-pointer ${
+                  complianceTab === "teachers" ? "bg-white/10 text-white border border-white/15" : "text-white/40 hover:text-white"
+                }`}
+              >
+                Giảng viên lên lớp ({(store.teacherAttendance || []).length})
+              </button>
+            </div>
           </div>
 
-          {nonCompliantCourses.length > 0 ? (
-            <div className="space-y-3">
-              {/* Search bar */}
-              <div className="flex gap-3 bg-white/3 border border-white/5 p-3 rounded-xl text-xs max-w-sm font-sans">
-                <input
-                  type="text"
-                  placeholder="Tìm môn học chưa điểm danh..."
-                  value={complianceSearch}
-                  onChange={(e) => setComplianceSearch(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
-                />
-              </div>
+          {complianceTab === "students" ? (
+            nonCompliantCourses.length > 0 ? (
+              <div className="space-y-3">
+                {/* Search bar */}
+                <div className="flex gap-3 bg-white/3 border border-white/5 p-3 rounded-xl text-xs max-w-sm font-sans">
+                  <input
+                    type="text"
+                    placeholder="Tìm môn học chưa điểm danh..."
+                    value={complianceSearch}
+                    onChange={(e) => setComplianceSearch(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-black/25 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 font-sans"
+                  />
+                </div>
 
-              <div className="overflow-x-auto text-xs">
-                <table className="w-full text-left border-collapse font-sans">
-                  <thead>
-                    <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
-                      <th className="py-2.5 cursor-pointer select-none hover:text-white transition" onClick={() => handleComplianceSort("courseTitle")}>
-                        Tên môn học {complianceSortField === "courseTitle" ? (complianceSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                      </th>
-                      <th className="py-2.5 cursor-pointer select-none hover:text-white transition" onClick={() => handleComplianceSort("teacherName")}>
-                        Giảng viên phụ trách {complianceSortField === "teacherName" ? (complianceSortOrder === "asc" ? "▲" : "▼") : "↕"}
-                      </th>
-                      <th className="py-2.5 text-center">Trạng thái</th>
-                      <th className="py-2.5 text-right">Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-xs text-white/85">
-                    {sortedNonCompliantCourses.map(course => {
-                      const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công", email: "" };
-                      return (
-                        <tr key={course.id}>
-                          <td className="py-3 font-bold text-white">
-                            <div className="flex items-center gap-1.5">
-                              <span>{course.title} ({course.id})</span>
+                <div className="overflow-x-auto text-xs">
+                  <table className="w-full text-left border-collapse font-sans">
+                    <thead>
+                      <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
+                        <th className="py-2.5 cursor-pointer select-none hover:text-white transition" onClick={() => handleComplianceSort("courseTitle")}>
+                          Tên môn học {complianceSortField === "courseTitle" ? (complianceSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                        </th>
+                        <th className="py-2.5 cursor-pointer select-none hover:text-white transition" onClick={() => handleComplianceSort("teacherName")}>
+                          Giảng viên phụ trách {complianceSortField === "teacherName" ? (complianceSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                        </th>
+                        <th className="py-2.5 text-center">Trạng thái</th>
+                        <th className="py-2.5 text-right">Hành động</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs text-white/85">
+                      {sortedNonCompliantCourses.map(course => {
+                        const teacher = store.users.find(u => u.id === course.teacherId) || { name: "Chưa phân công", email: "" };
+                        return (
+                          <tr key={course.id}>
+                            <td className="py-3 font-bold text-white">
+                              <div className="flex items-center gap-1.5">
+                                <span>{course.title} ({course.id})</span>
+                                <button
+                                  onClick={() => setCourseDetailId(course.id)}
+                                  className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                                >
+                                  Xem 👁️
+                                </button>
+                              </div>
+                            </td>
+                            <td className="py-3">
+                              <div className="font-semibold text-white/95">{teacher.name}</div>
+                              <div className="text-[10px] text-white/40">{teacher.email || "Chưa cập nhật"}</div>
+                            </td>
+                            <td className="py-3 text-center">
+                              <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                                Chưa Điểm Danh ❌
+                              </span>
+                            </td>
+                            <td className="py-3 text-right">
                               <button
-                                onClick={() => setCourseDetailId(course.id)}
-                                className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                                onClick={async () => {
+                                  if (!course.teacherId) {
+                                    triggerToast("Môn học này chưa được phân công giảng viên!");
+                                    return;
+                                  }
+                                  try {
+                                    await api.warnTeacher({ courseId: course.id, teacherId: course.teacherId });
+                                    triggerToast(`Đã bắn mail và hệ thống cảnh cáo tới giảng viên ${teacher.name}! 📧`);
+                                    onRefreshData();
+                                  } catch (err: any) {
+                                    triggerToast(err.message || "Không thể gửi cảnh cáo.");
+                                  }
+                                }}
+                                className="px-3 py-1 bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/30 text-rose-300 font-bold rounded-lg transition cursor-pointer text-[11px]"
                               >
-                                Xem 👁️
+                                Bắn mail Cảnh cáo 📧
                               </button>
-                            </div>
-                          </td>
-                          <td className="py-3">
-                            <div className="font-semibold text-white/95">{teacher.name}</div>
-                            <div className="text-[10px] text-white/40">{teacher.email || "Chưa cập nhật"}</div>
-                          </td>
-                          <td className="py-3 text-center">
-                            <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
-                              Chưa Điểm Danh ❌
-                            </span>
-                          </td>
-                          <td className="py-3 text-right">
-                            <button
-                              onClick={async () => {
-                                if (!course.teacherId) {
-                                  triggerToast("Môn học này chưa được phân công giảng viên!");
-                                  return;
-                                }
-                                try {
-                                  await api.warnTeacher({ courseId: course.id, teacherId: course.teacherId });
-                                  triggerToast(`Đã bắn mail và hệ thống cảnh cáo tới giảng viên ${teacher.name}! 📧`);
-                                  onRefreshData();
-                                } catch (err: any) {
-                                  triggerToast(err.message || "Không thể gửi cảnh cáo.");
-                                }
-                              }}
-                              className="px-3 py-1 bg-rose-600/20 hover:bg-rose-600/35 border border-rose-500/30 text-rose-300 font-bold rounded-lg transition cursor-pointer text-[11px]"
-                            >
-                              Bắn mail Cảnh cáo 📧
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            ) : (
+              <p className="text-xs text-emerald-400 font-semibold italic">100% Giảng viên đã thực hiện điểm danh đầy đủ cho các lớp học phần! 🎉</p>
+            )
           ) : (
-            <p className="text-xs text-emerald-400 font-semibold italic">100% Giảng viên đã thực hiện điểm danh đầy đủ cho các lớp học phần! 🎉</p>
+            /* Teacher Attendance history list */
+            <div>
+              {(!store.teacherAttendance || store.teacherAttendance.length === 0) ? (
+                <p className="text-xs text-white/40 italic py-4">Chưa có giảng viên nào ghi nhận hoạt động lên lớp.</p>
+              ) : (
+                <div className="overflow-x-auto text-xs">
+                  <table className="w-full text-left border-collapse font-sans">
+                    <thead>
+                      <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
+                        <th className="py-2.5">Giảng viên</th>
+                        <th className="py-2.5">Môn học</th>
+                        <th className="py-2.5">Ca học</th>
+                        <th className="py-2.5">Ngày dạy</th>
+                        <th className="py-2.5">Thời điểm điểm danh</th>
+                        <th className="py-2.5 text-right">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-xs text-white/85">
+                      {(store.teacherAttendance || []).map((ta: any) => {
+                        const teacher = store.users.find(u => u.id === ta.teacherId) || { name: ta.teacherId, email: "" };
+                        const course = store.courses.find(c => c.id === ta.courseId) || { title: ta.courseId };
+                        return (
+                          <tr key={ta.id}>
+                            <td className="py-3 font-semibold text-white">{teacher.name}</td>
+                            <td className="py-3 text-white/70">{course.title}</td>
+                            <td className="py-3 font-mono">{ta.slotTime}</td>
+                            <td className="py-3 font-mono">{ta.classDate}</td>
+                            <td className="py-3 font-mono text-white/40">{new Date(ta.checkedInAt).toLocaleTimeString("vi-VN")}</td>
+                            <td className="py-3 text-right">
+                              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                                Lên lớp Đúng giờ ✅
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -649,10 +709,75 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
 
         </div>
       ) : (
-        <div className="py-24 text-center border border-white/5 bg-white/2 rounded-3xl text-white/40 space-y-2">
-          <BookOpen className="h-12 w-12 mx-auto text-indigo-500/30" />
-          <h4 className="text-sm font-bold text-white/80">Quản trị chuyên cần & Biểu chuyên học</h4>
-          <p className="text-xs max-w-sm mx-auto">Vui lòng chọn hoặc lựa chọn một Học phần đào tạo từ thanh công cụ HUD phía trên đầu để khởi chạy quản trị chuyên cần.</p>
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {currentUser.role === "teacher" && (
+            <div className="bg-slate-900/60 backdrop-blur-md border border-white/10 p-6 rounded-3xl space-y-4 shadow-xl">
+              <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 font-display">
+                  🔑 Lịch sử lên lớp & Điểm danh Giảng viên
+                </h4>
+                {(() => {
+                  const teacherRecords = (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === currentUser.id);
+                  const total = teacherRecords.length;
+                  const present = teacherRecords.filter((ta: any) => ta.status === "present").length;
+                  const rate = total > 0 ? Math.round((present / total) * 100) : 100;
+                  return (
+                    <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-mono">
+                      Tỉ lệ lên lớp: {rate}% ({present}/{total})
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {(() => {
+                const teacherRecords = (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === currentUser.id);
+                if (teacherRecords.length === 0) {
+                  return (
+                    <p className="text-xs text-white/40 italic py-4">Chưa có lịch sử điểm danh lên lớp nào được ghi nhận.</p>
+                  );
+                }
+                return (
+                  <div className="overflow-x-auto max-h-[300px] overflow-y-auto pr-1">
+                    <table className="w-full text-left border-collapse font-sans text-xs">
+                      <thead>
+                        <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
+                          <th className="py-2.5">Môn học</th>
+                          <th className="py-2.5">Ca học</th>
+                          <th className="py-2.5">Ngày dạy</th>
+                          <th className="py-2.5">Thời gian điểm danh</th>
+                          <th className="py-2.5 text-right">Trạng thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-white/80">
+                        {teacherRecords.map((ta: any) => {
+                          const course = store.courses.find((c: any) => c.id === ta.courseId) || { title: ta.courseId };
+                          return (
+                            <tr key={ta.id} className="hover:bg-white/2 transition duration-150">
+                              <td className="py-2.5 font-semibold text-white">{course.title}</td>
+                              <td className="py-2.5 font-mono">{ta.slotTime}</td>
+                              <td className="py-2.5 font-mono">{ta.classDate}</td>
+                              <td className="py-2.5 font-mono text-white/50">{new Date(ta.checkedInAt).toLocaleTimeString("vi-VN")}</td>
+                              <td className="py-2.5 text-right">
+                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">
+                                  Có mặt ✅
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          <div className="py-16 text-center border border-white/5 bg-white/2 rounded-3xl text-white/40 space-y-2">
+            <BookOpen className="h-10 w-10 mx-auto text-indigo-500/30" />
+            <h4 className="text-xs font-bold text-white/80 uppercase tracking-wider">Quản trị chuyên cần & Biểu chuyên học</h4>
+            <p className="text-[11px] max-w-sm mx-auto leading-relaxed">Vui lòng chọn hoặc lựa chọn một Học phần đào tạo từ thanh công cụ HUD phía trên đầu để khởi chạy quản trị chuyên cần.</p>
+          </div>
         </div>
       )}
 

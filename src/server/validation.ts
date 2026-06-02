@@ -198,5 +198,11 @@ export const schemas = {
   selfCheckin: z.object({
     sessionId: z.string().trim().min(1),
     code: z.string().trim().min(1)
+  }),
+  teacherCheckin: z.object({
+    courseId: z.string().trim().min(1),
+    sectionId: z.string().trim().min(1),
+    slotTime: z.string().trim().min(1),
+    classDate: z.string().trim().min(1)
   })
 };

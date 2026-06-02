@@ -54,7 +54,8 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     graduationApplicationsRes,
     certificatesRes,
     forumRepliesRes,
-    forumPostsRes
+    forumPostsRes,
+    teacherAttendanceRes
   ] = await Promise.all([
     db.query<DbUserRow>("SELECT * FROM users"),
     db.query("SELECT * FROM courses"),
@@ -91,7 +92,8 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     db.query("SELECT * FROM graduation_applications"),
     db.query("SELECT * FROM certificates"),
     db.query("SELECT * FROM forum_replies"),
-    db.query("SELECT * FROM forum_posts")
+    db.query("SELECT * FROM forum_posts"),
+    db.query("SELECT * FROM teacher_attendance")
   ]);
 
   const users = usersRes.rows.map(toPublicUser);
@@ -159,6 +161,17 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     return { id: row.id, courseId: row.course_id, authorId: row.author_id, title: row.title, content: row.content, replies: postReplies, createdAt: row.created_at };
   });
 
+  const teacherAttendance = teacherAttendanceRes.rows.map(row => ({
+    id: row.id,
+    teacherId: row.teacher_id,
+    courseId: row.course_id,
+    sectionId: row.section_id,
+    classDate: row.class_date,
+    slotTime: row.slot_time,
+    status: row.status,
+    checkedInAt: row.checked_in_at
+  }));
+
   const snapshot = {
     ...getInitialStore(),
     users,
@@ -195,7 +208,8 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     leaveRequests,
     graduationApplications,
     certificates,
-    forumPosts
+    forumPosts,
+    teacherAttendance
   };
 
   cachedSnapshot = snapshot;
@@ -224,7 +238,8 @@ export function limitStoreForRole(store: any, user: User) {
       lessonProgress: store.lessonProgress.filter((item: LessonProgress) => visibleEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
       quizzes: store.quizzes.filter((quiz: any) => teacherCourseIds.has(quiz.courseId)),
       assignments: store.assignments.filter((assignment: any) => teacherCourseIds.has(assignment.courseId)),
-      submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId))
+      submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId)),
+      teacherAttendance: (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === user.id)
     };
   }
 
@@ -241,7 +256,8 @@ export function limitStoreForRole(store: any, user: User) {
       tuitionFees: store.tuitionFees.filter((item: any) => item.studentId === user.id),
       academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === user.id),
       assignments: store.assignments.filter((item: any) => myCourseIds.has(item.courseId)),
-      notifications: store.notifications.filter((item: any) => item.userId === user.id)
+      notifications: store.notifications.filter((item: any) => item.userId === user.id),
+      teacherAttendance: []
     };
   }
 
@@ -260,7 +276,8 @@ export function limitStoreForRole(store: any, user: User) {
       academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === childId),
       assignments: store.assignments.filter((item: any) => childCourseIds.has(item.courseId)),
       studentProfiles: store.studentProfiles.filter((item: any) => item.userId === childId),
-      notifications: store.notifications.filter((item: any) => item.userId === user.id || item.userId === childId)
+      notifications: store.notifications.filter((item: any) => item.userId === user.id || item.userId === childId),
+      teacherAttendance: []
     };
   }
 
@@ -268,7 +285,8 @@ export function limitStoreForRole(store: any, user: User) {
     return {
       ...store,
       users: store.users.map((item: User) => ({ ...item, passwordHash: "" })),
-      notifications: store.notifications.filter((item: any) => item.userId === user.id)
+      notifications: store.notifications.filter((item: any) => item.userId === user.id),
+      teacherAttendance: []
     };
   }
 
@@ -281,6 +299,7 @@ export function limitStoreForRole(store: any, user: User) {
     submissions: [],
     tuitionFees: [],
     academicWarnings: [],
-    assignments: []
+    assignments: [],
+    teacherAttendance: []
   };
 }

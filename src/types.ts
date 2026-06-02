@@ -428,6 +428,17 @@ export interface SystemEvent {
   processed: boolean;
 }
 
+export interface TeacherAttendance {
+  id: string;
+  teacherId: string;
+  courseId: string;
+  sectionId: string;
+  classDate: string;  // "YYYY-MM-DD"
+  slotTime: string;   // e.g. "08:00 - 10:00"
+  status: "present" | "late" | "absent";
+  checkedInAt: string;
+}
+
 export interface LMSDataStore {
   users: User[];
   courses: Course[];
@@ -466,4 +477,5 @@ export interface LMSDataStore {
   leaveRequests?: LeaveRequest[];
   graduationApplications?: GraduationApplication[];
   systemEvents?: SystemEvent[];
+  teacherAttendance?: TeacherAttendance[];
 }

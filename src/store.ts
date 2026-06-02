@@ -683,7 +683,8 @@ export function getInitialStore(): LMSDataStore {
     ],
     leaveRequests: [],
     graduationApplications: [],
-    systemEvents: []
+    systemEvents: [],
+    teacherAttendance: []
   };
 }
 
@@ -826,6 +827,7 @@ export class AppStore {
           if (!this.storeInstance.leaveRequests) this.storeInstance.leaveRequests = initial.leaveRequests || [];
           if (!this.storeInstance.graduationApplications) this.storeInstance.graduationApplications = initial.graduationApplications || [];
           if (!this.storeInstance.systemEvents) this.storeInstance.systemEvents = initial.systemEvents || [];
+          if (!this.storeInstance.teacherAttendance) this.storeInstance.teacherAttendance = initial.teacherAttendance || [];
 
           // Ensure new seeded roles are present
           const rolesToBackfill = ["sale", "admin", "finance", "advisor", "parent"];

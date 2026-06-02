@@ -1575,6 +1575,45 @@ app.post("/api/attendance/self-checkin", requireAuth, requireRole(["student"]), 
   res.json({ ok: true, record });
 }));
 
+app.post("/api/attendance/teacher-checkin", requireAuth, requireRole(["teacher"]), validateBody(schemas.teacherCheckin), asyncHandler(async (req, res) => {
+  const { courseId, sectionId, slotTime, classDate } = req.body;
+  const teacherId = req.user!.id;
+
+  // Check if teacher already checked in for this section and class date
+  const existing = (await pool.query(
+    "SELECT id FROM teacher_attendance WHERE teacher_id = $1 AND section_id = $2 AND class_date = $3",
+    [teacherId, sectionId, classDate]
+  )).rows[0];
+
+  if (existing) {
+    return res.status(400).json({ error: "Giảng viên đã điểm danh cho ca học này rồi!" });
+  }
+
+  const record = {
+    id: generateId("tat"),
+    teacherId,
+    courseId,
+    sectionId,
+    classDate,
+    slotTime,
+    status: "present" as const,
+    checkedInAt: new Date().toISOString()
+  };
+
+  await pool.query(
+    `INSERT INTO teacher_attendance (id, teacher_id, course_id, section_id, class_date, slot_time, status, checked_in_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [record.id, record.teacherId, record.courseId, record.sectionId, record.classDate, record.slotTime, record.status, record.checkedInAt]
+  );
+
+  const { invalidateStoreCache } = await import("./src/server/repositories/storeSnapshot");
+  invalidateStoreCache();
+
+  await audit(req, "teacher_self_checkin", record.id, `Teacher: ${teacherId}, Section: ${sectionId}, Status: present`);
+
+  res.status(201).json({ ok: true, record });
+}));
+
 app.post("/api/attendance/warn-teacher", requireAuth, requireRole(["admin", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const { courseId, teacherId } = req.body;
   if (!courseId || !teacherId) {

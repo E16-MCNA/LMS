@@ -808,24 +808,50 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                   const remainingMinutes = 10 - minutesElapsed;
                                   
                                   if (isWithinTenMinutes) {
+                                    const classDateStr = now.toISOString().slice(0, 10);
+                                    const hasCheckedIn = (store.teacherAttendance || []).some(
+                                      (ta: any) =>
+                                        ta.teacherId === currentUser.id &&
+                                        ta.sectionId === item.section.id &&
+                                        ta.classDate === classDateStr
+                                    );
+
+                                    if (hasCheckedIn) {
+                                      return (
+                                        <div className="mt-2 w-full py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold rounded-lg text-center text-[10px] flex items-center justify-center gap-1 font-sans">
+                                          ✅ Đã lên lớp (Có mặt)
+                                        </div>
+                                      );
+                                    }
+
                                     return (
                                       <button
                                         onClick={async (e) => {
                                           e.stopPropagation();
                                           try {
+                                            // 1. Mark lecturer checked in
+                                            await api.teacherCheckin({
+                                              courseId: item.section.courseId,
+                                              sectionId: item.section.id,
+                                              slotTime: `${item.startTime} - ${item.endTime}`,
+                                              classDate: classDateStr
+                                            });
+
+                                            // 2. Activate student attendance session
                                             const res = await api.generateAttendanceLink({
                                               courseId: item.section.courseId,
                                               topic: `Điểm danh tự động theo lịch học (${item.startTime} ${item.dayOfWeek})`
                                             });
-                                            alert(`🚀 Kích hoạt điểm danh 5 phút thành công! Mã Code: ${res.code}`);
+
+                                            alert(`🚀 Điểm danh thành công!\n- Giảng viên: Đã có mặt\n- Lớp học: Kích hoạt mã code: ${res.code}`);
                                             onRefreshData();
                                           } catch (err: any) {
-                                            alert(err.message || "Không thể kích hoạt điểm danh.");
+                                            alert(err.message || "Không thể thực hiện điểm danh.");
                                           }
                                         }}
-                                        className="mt-2 w-full py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-lg transition-all duration-200 text-[10px] flex items-center justify-center gap-1 shadow-lg shadow-emerald-500/10 cursor-pointer animate-pulse font-sans"
+                                        className="mt-2 w-full py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-lg transition-all duration-200 text-[10px] flex items-center justify-center gap-1 shadow-lg shadow-orange-500/10 cursor-pointer animate-pulse font-sans"
                                       >
-                                        ⚡ Điểm danh (còn {remainingMinutes}p)
+                                        🔑 Giảng viên điểm danh (còn {remainingMinutes}p)
                                       </button>
                                     );
                                   }
@@ -912,24 +938,50 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                     const remainingMinutes = 10 - minutesElapsed;
                     
                     if (isWithinTenMinutes) {
+                      const classDateStr = now.toISOString().slice(0, 10);
+                      const hasCheckedIn = (store.teacherAttendance || []).some(
+                        (ta: any) =>
+                          ta.teacherId === currentUser.id &&
+                          ta.sectionId === slot.section.id &&
+                          ta.classDate === classDateStr
+                      );
+
+                      if (hasCheckedIn) {
+                        return (
+                          <div className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold rounded-xl text-center text-xs flex items-center justify-center gap-1 font-sans shrink-0">
+                            ✅ Đã lên lớp (Có mặt)
+                          </div>
+                        );
+                      }
+
                       return (
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
                             try {
+                              // 1. Mark lecturer checked in
+                              await api.teacherCheckin({
+                                courseId: slot.section.courseId,
+                                sectionId: slot.section.id,
+                                slotTime: `${slot.startTime} - ${slot.endTime}`,
+                                classDate: classDateStr
+                              });
+
+                              // 2. Activate student attendance session
                               const res = await api.generateAttendanceLink({
                                 courseId: slot.section.courseId,
                                 topic: `Điểm danh tự động theo lịch học (${slot.startTime} ${slot.dayOfWeek})`
                               });
-                              alert(`🚀 Kích hoạt điểm danh 5 phút thành công! Mã Code: ${res.code}`);
+
+                              alert(`🚀 Điểm danh thành công!\n- Giảng viên: Đã có mặt\n- Lớp học: Kích hoạt mã code: ${res.code}`);
                               onRefreshData();
                             } catch (err: any) {
-                              alert(err.message || "Không thể kích hoạt điểm danh.");
+                              alert(err.message || "Không thể thực hiện điểm danh.");
                             }
                           }}
-                          className="px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl transition-all duration-200 text-xs flex items-center gap-1 shadow-lg shadow-emerald-500/10 cursor-pointer animate-pulse shrink-0 font-sans"
+                          className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all duration-200 text-xs flex items-center gap-1 shadow-lg shadow-orange-500/10 cursor-pointer animate-pulse shrink-0 font-sans"
                         >
-                          ⚡ Điểm danh (còn {remainingMinutes}p)
+                          🔑 Giảng viên điểm danh (còn {remainingMinutes}p)
                         </button>
                       );
                     }
