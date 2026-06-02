@@ -720,7 +720,7 @@ function AppShell() {
               </form>
 
               {/* Seed Switchboard buttons section */}
-              <div className="border-t border-white/10 pt-5 space-y-3">
+              <div className="border-t border-white/10 pt-5 space-y-4">
                 <span className="text-[10px] font-mono font-bold tracking-wider text-white/40 block uppercase">
                   Bảng chuyển đổi nhanh Tài khoản Demo:
                 </span>
@@ -797,6 +797,97 @@ function AppShell() {
                     </div>
                     <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-sky-300" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleInstantDemoLogin("advisor@e16.local", "advisor16")}
+                    className="p-2 bg-violet-500/10 hover:bg-violet-600/20 border border-violet-400/20 text-violet-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-violet-200">Cố Vấn Học Tập</span>
+                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">advisor@e16.local</span>
+                    </div>
+                    <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-violet-300" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleInstantDemoLogin("parent@e16.local", "parent16")}
+                    className="p-2 bg-rose-500/10 hover:bg-rose-600/20 border border-rose-400/20 text-rose-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group col-span-2 sm:col-span-1"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-rose-200">Phụ Huynh</span>
+                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">parent@e16.local</span>
+                    </div>
+                    <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-rose-300" />
+                  </button>
+                </div>
+
+                <div className="border-t border-white/5 pt-3 space-y-2">
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-white/40 block uppercase">
+                    Kiểm thử trạng thái Học viên:
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleInstantDemoLogin("student_active@e16.local", "studente16")}
+                      className="p-2 bg-emerald-500/5 hover:bg-emerald-600/10 border border-emerald-500/10 text-emerald-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-emerald-300">1. Đang học (Active)</span>
+                        <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student_active</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-emerald-400 group-hover:translate-x-0.5 transition shrink-0" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInstantDemoLogin("student_on_leave@e16.local", "studente16")}
+                      className="p-2 bg-amber-500/5 hover:bg-amber-600/10 border border-amber-500/10 text-amber-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-amber-300">2. Bảo lưu (On-Leave)</span>
+                        <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student_on_leave</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-amber-400 group-hover:translate-x-0.5 transition shrink-0" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInstantDemoLogin("student_suspended@e16.local", "studente16")}
+                      className="p-2 bg-red-500/5 hover:bg-red-600/10 border border-red-500/10 text-red-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-red-300">3. Đình chỉ (Suspended)</span>
+                        <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student_suspended</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-red-400 group-hover:translate-x-0.5 transition shrink-0" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInstantDemoLogin("student_graduated@e16.local", "studente16")}
+                      className="p-2 bg-blue-500/5 hover:bg-blue-600/10 border border-blue-500/10 text-blue-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-blue-200">4. Tốt nghiệp (Graduated)</span>
+                        <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student_graduated</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-blue-400 group-hover:translate-x-0.5 transition shrink-0" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInstantDemoLogin("student_withdrawn@e16.local", "studente16")}
+                      className="p-2 bg-gray-500/5 hover:bg-gray-600/10 border border-gray-500/10 text-gray-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-gray-300">5. Thôi học (Withdrawn)</span>
+                        <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student_withdrawn</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-gray-400 group-hover:translate-x-0.5 transition shrink-0" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

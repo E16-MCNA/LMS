@@ -5,6 +5,114 @@ import { recomputeAndPersistAllGpas } from "./store";
 const credential = (password: string, salt: string) => hashPassword(password, salt);
 
 export function backfillMegaDemoData(store: LMSDataStore) {
+  // 0. Generate specific students with distinct statuses for explicit business logic testing
+  const specificStudentsData = [
+    {
+      id: "user_student_active",
+      email: "student_active@mcna.local",
+      name: "Nguyễn Văn Chủ Động (Active)",
+      status: "active" as const,
+      gpa: 3.2,
+      credits: 45,
+      notes: "Sinh viên đang học bình thường."
+    },
+    {
+      id: "user_student_on_leave",
+      email: "student_on_leave@mcna.local",
+      name: "Trần Thị Bảo Lưu (On Leave)",
+      status: "on-leave" as const,
+      gpa: 2.8,
+      credits: 30,
+      notes: "Sinh viên xin bảo lưu học kỳ này."
+    },
+    {
+      id: "user_student_suspended",
+      email: "student_suspended@mcna.local",
+      name: "Lê Văn Đình Chỉ (Suspended)",
+      status: "suspended" as const,
+      gpa: 1.8,
+      credits: 24,
+      notes: "Sinh viên bị đình chỉ học tập."
+    },
+    {
+      id: "user_student_graduated",
+      email: "student_graduated@mcna.local",
+      name: "Phạm Minh Tốt Nghiệp (Graduated)",
+      status: "graduated" as const,
+      gpa: 3.6,
+      credits: 120,
+      notes: "Sinh viên tốt nghiệp xuất sắc."
+    },
+    {
+      id: "user_student_withdrawn",
+      email: "student_withdrawn@mcna.local",
+      name: "Hoàng An Thôi Học (Withdrawn)",
+      status: "withdrawn" as const,
+      gpa: 1.5,
+      credits: 10,
+      notes: "Sinh viên đã thôi học tự nguyện."
+    }
+  ];
+
+  specificStudentsData.forEach((s, idx) => {
+    if (!store.users.some(u => u.id === s.id)) {
+      store.users.push({
+        id: s.id,
+        email: s.email,
+        passwordHash: credential("studente16", `seed_${s.id}`).hash,
+        passwordSalt: credential("studente16", `seed_${s.id}`).salt,
+        name: s.name,
+        role: "student",
+        isActive: s.status !== "suspended",
+        createdAt: new Date("2026-01-03T00:00:00Z").toISOString(),
+        phone: "09" + Math.floor(10000000 + Math.random() * 90000000)
+      });
+
+      if (!store.studentProfiles) store.studentProfiles = [];
+      store.studentProfiles.push({
+        id: `profile_${s.id}`,
+        userId: s.id,
+        studentCode: `SV202410${idx + 1}`,
+        programId: "prog_se",
+        departmentId: "dept_cs",
+        academicYear: s.status === "graduated" ? 4 : 2,
+        enrollmentDate: "2024-09-01",
+        expectedGraduation: "2028-06-30",
+        status: s.status,
+        gpa: s.gpa,
+        totalCreditsEarned: s.credits,
+        address: "Số 1 Đại Cồ Việt, Hai Bà Trưng, Hà Nội",
+        phone: "091234567" + idx,
+        dateOfBirth: "2004-03-15",
+        gender: idx % 2 === 0 ? "Nam" : "Nữ",
+        notes: s.notes
+      });
+
+      if (!store.advisorAssignments) store.advisorAssignments = [];
+      if (!store.advisorAssignments.some(aa => aa.studentId === s.id)) {
+        store.advisorAssignments.push({
+          id: `aa_${s.id}`,
+          advisorId: "user_advisor",
+          studentId: s.id,
+          semesterId: "sem_spring25",
+          assignedAt: new Date("2026-02-01T00:00:00Z").toISOString()
+        });
+      }
+
+      if (!store.academicWarnings) store.academicWarnings = [];
+      if (s.gpa < 2.0) {
+        store.academicWarnings.push({
+          id: `warn_${s.id}_low_gpa`,
+          studentId: s.id,
+          type: "low_gpa",
+          message: `Cảnh báo học tập: Điểm trung bình GPA tích lũy (${s.gpa}) ở dưới ngưỡng quy định.`,
+          isResolved: false,
+          createdAt: new Date("2026-05-15T09:00:00Z").toISOString()
+        });
+      }
+    }
+  });
+
   const currentStudentsCount = store.users.filter(u => u.role === "student").length;
   // If the directory of students is already fully seeded, do not regenerate
   if (currentStudentsCount >= 100) {
