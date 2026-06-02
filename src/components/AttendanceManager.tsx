@@ -65,6 +65,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
   const [newSessionDate, setNewSessionDate] = useState("");
   const [newSessionTopic, setNewSessionTopic] = useState("");
   const [newSessionTime, setNewSessionTime] = useState("09:00 - 11:30");
+  const [checkinMethod, setCheckinMethod] = useState<"manual" | "link">("manual");
 
   const courses = store.courses || [];
   const enrollments = store.enrollments || [];
@@ -126,24 +127,40 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       return;
     }
 
-    const combinedDate = newSessionTime.trim() ? `${newSessionDate} (${newSessionTime.trim()})` : newSessionDate;
     try {
-      const result = await api.saveAttendance({
-        courseId: selectedCourseId,
-        semesterId: curSemesterId,
-        date: combinedDate,
-        topic: newSessionTopic.trim(),
-        records: courseEnrollments.map(enroll => ({ studentId: enroll.studentId, status: "present" }))
-      }) as any;
-      setNewSessionDate("");
-      setNewSessionTopic("");
-      setNewSessionTime("09:00 - 11:30");
-      setShowCreateSession(false);
-      setActiveSessionId(result.session.id);
-      onRefreshData();
-      triggerToast("Đã khởi tạo buổi điểm danh môn học mới thành công.");
+      if (checkinMethod === "link") {
+        const result = await api.generateAttendanceLink({
+          courseId: selectedCourseId,
+          semesterId: curSemesterId,
+          topic: newSessionTopic.trim()
+        });
+        setNewSessionDate("");
+        setNewSessionTopic("");
+        setNewSessionTime("09:00 - 11:30");
+        setCheckinMethod("manual");
+        setShowCreateSession(false);
+        setActiveSessionId(result.session.id);
+        onRefreshData();
+        triggerToast(`Đã gửi link điểm danh tự động 5 phút tới cả lớp! Mã Code: ${result.code}`);
+      } else {
+        const combinedDate = newSessionTime.trim() ? `${newSessionDate} (${newSessionTime.trim()})` : newSessionDate;
+        const result = await api.saveAttendance({
+          courseId: selectedCourseId,
+          semesterId: curSemesterId,
+          date: combinedDate,
+          topic: newSessionTopic.trim(),
+          records: courseEnrollments.map(enroll => ({ studentId: enroll.studentId, status: "present" }))
+        }) as any;
+        setNewSessionDate("");
+        setNewSessionTopic("");
+        setNewSessionTime("09:00 - 11:30");
+        setShowCreateSession(false);
+        setActiveSessionId(result.session.id);
+        onRefreshData();
+        triggerToast("Đã khởi tạo buổi điểm danh môn học mới thành công.");
+      }
     } catch (err: any) {
-      triggerToast(err.message || "Không thể tạo buổi điểm danh.");
+      triggerToast(err.message || "Không thể khởi tạo.");
     }
   };
 
@@ -412,27 +429,42 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
               <div className="space-y-4">
                 {(() => {
                   const activeSession = sessions.find(s => s.id === activeSessionId);
+                  const isLinkActive = activeSession && activeSession.code && activeSession.expiresAt && new Date(activeSession.expiresAt) > new Date();
                   return (
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2 font-sans">
-                      <div>
-                        <h4 className="text-sm font-bold text-white">
-                          Chốt danh sách điểm danh: <span className="text-indigo-400 font-mono font-semibold">{activeSession?.date}</span>
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-white/40">
-                            Chủ đề buổi học: <span className="text-cyan-400 font-semibold">{activeSession?.topic}</span>
-                          </p>
-                          <button
-                            onClick={() => setCourseDetailId(selectedCourseId)}
-                            className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
-                          >
-                            Xem thông tin khóa 👁️
-                          </button>
+                    <div className="flex flex-col gap-2 border-b border-white/10 pb-3 font-sans">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h4 className="text-sm font-bold text-white">
+                            Chốt danh sách điểm danh: <span className="text-indigo-400 font-mono font-semibold">{activeSession?.date}</span>
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-white/40">
+                              Chủ đề buổi học: <span className="text-cyan-400 font-semibold">{activeSession?.topic}</span>
+                            </p>
+                            <button
+                              onClick={() => setCourseDetailId(selectedCourseId)}
+                              className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                            >
+                              Xem thông tin khóa 👁️
+                            </button>
+                          </div>
                         </div>
+                        <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded font-mono font-bold font-mono">
+                          ID: {activeSessionId.slice(0, 8)}
+                        </span>
                       </div>
-                      <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 rounded font-mono font-bold font-mono">
-                        ID: {activeSessionId.slice(0, 8)}
-                      </span>
+
+                      {activeSession && activeSession.code && (
+                        <div className="p-3 bg-indigo-950/40 border border-indigo-500/20 rounded-2xl flex flex-wrap items-center justify-between text-xs gap-3">
+                          <span className="text-indigo-300 font-semibold flex items-center gap-1">🔗 Link tự điểm danh trực tuyến (5p)</span>
+                          <span className="font-mono bg-indigo-500/10 border border-indigo-500/30 px-2.5 py-1 rounded font-black text-cyan-300 select-all tracking-wider text-sm">
+                            MÃ CODE: {activeSession.code}
+                          </span>
+                          <span className={`font-bold font-mono px-2.5 py-1 rounded-lg ${isLinkActive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                            {isLinkActive ? `🟢 Đang mở (Hết hạn: ${new Date(activeSession.expiresAt!).toLocaleTimeString("vi-VN", {hour: "2-digit", minute:"2-digit"})})` : `🔴 Đã đóng / Hết hạn`}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -604,30 +636,64 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
             </p>
 
             <form onSubmit={handleCreateSessionSubmit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-white/70 font-semibold block">Ngày học tập</label>
-                  <input
-                    type="date"
-                    required
-                    value={newSessionDate}
-                    onChange={(e) => setNewSessionDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-white/70 font-semibold block">Giờ học cụ thể</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: 09:00 - 11:30"
-                    value={newSessionTime}
-                    onChange={(e) => setNewSessionTime(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none font-mono"
-                  />
+              
+              {/* Method Selector */}
+              <div className="space-y-1.5 bg-white/3 border border-white/5 p-3 rounded-2xl">
+                <label className="text-white/70 font-semibold block mb-1 font-sans">Phương thức điểm danh</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-white/80">
+                    <input
+                      type="radio"
+                      name="checkin-method"
+                      checked={checkinMethod === "manual"}
+                      onChange={() => setCheckinMethod("manual")}
+                      className="h-4 w-4 text-indigo-500 bg-black/30 border-white/10"
+                    />
+                    <span>Thủ công (Giảng viên tích)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer font-semibold text-indigo-300">
+                    <input
+                      type="radio"
+                      name="checkin-method"
+                      checked={checkinMethod === "link"}
+                      onChange={() => setCheckinMethod("link")}
+                      className="h-4 w-4 text-indigo-500 bg-black/30 border-white/10"
+                    />
+                    <span>Gửi link tự động (5 phút)</span>
+                  </label>
                 </div>
               </div>
+
+              {checkinMethod === "manual" ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-white/70 font-semibold block">Ngày học tập</label>
+                    <input
+                      type="date"
+                      required
+                      value={newSessionDate}
+                      onChange={(e) => setNewSessionDate(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-white/70 font-semibold block">Giờ học cụ thể</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: 09:00 - 11:30"
+                      value={newSessionTime}
+                      onChange={(e) => setNewSessionTime(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-2xl text-[10.5px] leading-relaxed font-sans">
+                  ℹ️ <strong>Cơ chế Tự động:</strong> Hệ thống sẽ khởi tạo ca học và gửi một thông báo kèm liên kết tương tác đến hộp thư của tất cả sinh viên hoạt động trong lớp. Học sinh click xác nhận trong vòng <strong>5 phút</strong> để ghi nhận chuyên cần. Sau 5 phút, link sẽ hết hạn.
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-white/70 font-semibold block">Đề tài giảng dạy / Chủ đề ngày học</label>

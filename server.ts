@@ -1430,7 +1430,7 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["fin
   res.json(result);
 }));
 
-app.post("/api/attendance/sessions", requireAuth, requireRole(["admin", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
+app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });
   if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
@@ -1454,7 +1454,7 @@ app.post("/api/attendance/sessions", requireAuth, requireRole(["admin", "admin",
   res.status(201).json({ session, records });
 }));
 
-app.patch("/api/attendance/records", requireAuth, requireRole(["admin", "admin", "super_admin"]), validateBody(schemas.attendanceRecord), asyncHandler(async (req, res) => {
+app.patch("/api/attendance/records", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.attendanceRecord), asyncHandler(async (req, res) => {
   const session = (await pool.query("SELECT * FROM attendance_sessions WHERE id = $1", [req.body.sessionId])).rows[0];
   if (!session) return res.status(404).json({ error: "Attendance session not found." });
   if (req.user!.role === "teacher" && session.teacher_id !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
@@ -1472,6 +1472,107 @@ app.patch("/api/attendance/records", requireAuth, requireRole(["admin", "admin",
   await attendanceRepository.bulkMarkRecords(pool, [record]);
   await audit(req, "update_attendance_record", record.id, `${record.studentId}:${record.status}`);
   res.json(record);
+}));
+
+app.post("/api/attendance/sessions/generate-link", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.generateAttendanceLink), asyncHandler(async (req, res) => {
+  const { courseId, semesterId, topic } = req.body;
+  const course = await coursesRepository.findById(pool, courseId);
+  if (!course) return res.status(404).json({ error: "Course not found." });
+  if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+
+  // Generate unique 6-character random uppercase code
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // 5 minutes expiry
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+  const session = {
+    id: generateId("ats"),
+    courseId,
+    semesterId: semesterId || "sem_spring25",
+    teacherId: req.user!.role === "teacher" ? req.user!.id : course.teacherId,
+    date: new Date().toISOString().slice(0, 10),
+    topic,
+    code,
+    expiresAt
+  };
+
+  // Insert session into database
+  const columns = (await pool.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_sessions' AND column_name IN ('date', 'session_date')"
+  )).rows.map(row => row.column_name);
+  const sessionDateOnly = session.date.slice(0, 10);
+  
+  if (columns.includes("session_date") && columns.includes("date")) {
+    await pool.query(
+      `INSERT INTO attendance_sessions (id, course_id, semester_id, teacher_id, session_date, date, topic, code, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [session.id, session.courseId, session.semesterId, session.teacherId, sessionDateOnly, session.date, session.topic, session.code, session.expiresAt]
+    );
+  } else {
+    await pool.query(
+      `INSERT INTO attendance_sessions (id, course_id, semester_id, teacher_id, date, topic, code, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [session.id, session.courseId, session.semesterId, session.teacherId, session.date, session.topic, session.code, session.expiresAt]
+    );
+  }
+
+  // Fetch all active enrollments for this course
+  const enrollmentsRes = await pool.query(
+    "SELECT student_id FROM enrollments WHERE course_id = $1 AND status = 'active'",
+    [courseId]
+  );
+  const studentIds = enrollmentsRes.rows.map(row => row.student_id);
+
+  // Send check-in notifications to all active students in class
+  const message = `[Điểm danh trực tuyến] Môn học "${course.title}" đang tiến hành điểm danh trực tuyến. Hãy click vào đây để xác nhận có mặt (Thời hạn 5 phút).`;
+  
+  for (const studentId of studentIds) {
+    await notificationsRepository.create(pool, {
+      userId: studentId,
+      type: "attendance_link",
+      message,
+      relatedEntityType: "attendance_session",
+      relatedEntityId: session.id
+    });
+  }
+
+  await audit(req, "create_attendance_link", session.id, `Course: ${course.title}, Code: ${code}`);
+
+  res.status(201).json({ session, code, expiresAt });
+}));
+
+app.post("/api/attendance/self-checkin", requireAuth, requireRole(["student"]), validateBody(schemas.selfCheckin), asyncHandler(async (req, res) => {
+  const { sessionId, code } = req.body;
+  const session = (await pool.query("SELECT * FROM attendance_sessions WHERE id = $1", [sessionId])).rows[0];
+  if (!session) return res.status(404).json({ error: "Attendance session not found." });
+
+  if (!session.code || session.code !== code) {
+    return res.status(400).json({ error: "Mã điểm danh không chính xác hoặc không khả dụng." });
+  }
+
+  if (session.expires_at && new Date(session.expires_at) < new Date()) {
+    return res.status(400).json({ error: "Mã điểm danh đã hết hạn (Chỉ có giá trị trong 5 phút)." });
+  }
+
+  // Record presence for this student
+  const existing = (await pool.query(
+    "SELECT id FROM attendance_records WHERE session_id = $1 AND student_id = $2",
+    [sessionId, req.user!.id]
+  )).rows[0];
+
+  const record = {
+    id: existing?.id || generateId("atr"),
+    sessionId,
+    studentId: req.user!.id,
+    status: "present" as const,
+    note: "Tự điểm danh qua link"
+  };
+
+  await attendanceRepository.bulkMarkRecords(pool, [record]);
+  await audit(req, "student_self_checkin", record.id, `Student: ${req.user!.id}, Status: present`);
+  res.json({ ok: true, record });
 }));
 
 app.post("/api/attendance/warn-teacher", requireAuth, requireRole(["admin", "admin", "super_admin"]), asyncHandler(async (req, res) => {

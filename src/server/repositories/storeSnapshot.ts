@@ -117,9 +117,27 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
 
   // Missing Student Profiles, Attendance, Notifications & Transactions
   const studentProfiles = studentProfilesRes.rows.map(row => ({ id: row.id, userId: row.user_id, studentCode: row.student_code, programId: row.program_id, departmentId: row.department_id, academicYear: row.academic_year, enrollmentDate: row.enrollment_date, expectedGraduation: row.expected_graduation, status: row.status, gpa: Number(row.gpa), totalCreditsEarned: row.total_credits_earned, address: row.address || undefined, phone: row.phone || undefined, dateOfBirth: row.date_of_birth || undefined, gender: row.gender || undefined, guardianName: row.guardian_name || undefined, guardianPhone: row.guardian_phone || undefined, guardianEmail: row.guardian_email || undefined, notes: row.notes || undefined, feeHold: Boolean(row.fee_hold), academicProbation: Boolean(row.academic_probation) }));
-  const attendanceSessions = attendanceSessionsRes.rows.map(row => ({ id: row.id, courseId: row.course_id, semesterId: row.semester_id, teacherId: row.teacher_id, date: row.date || row.session_date, topic: row.topic }));
+  const attendanceSessions = attendanceSessionsRes.rows.map(row => ({
+    id: row.id,
+    courseId: row.course_id,
+    semesterId: row.semester_id,
+    teacherId: row.teacher_id,
+    date: row.date || row.session_date,
+    topic: row.topic,
+    code: row.code || undefined,
+    expiresAt: row.expires_at || undefined
+  }));
   const attendanceRecords = attendanceRecordsRes.rows.map(row => ({ id: row.id, sessionId: row.session_id, studentId: row.student_id, status: row.status, note: row.note || undefined }));
-  const notifications = notificationsRes.rows.map(row => ({ id: row.id, userId: row.user_id, type: row.type, message: row.message, isRead: Boolean(row.is_read), createdAt: row.created_at }));
+  const notifications = notificationsRes.rows.map(row => ({
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    message: row.message,
+    isRead: Boolean(row.is_read),
+    createdAt: row.created_at,
+    relatedEntityType: row.related_entity_type || undefined,
+    relatedEntityId: row.related_entity_id || undefined
+  }));
   const transactions = transactionsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, courseId: row.course_id, amount: Number(row.amount), status: row.status, paymentMethod: row.payment_method, createdAt: row.created_at, processedAt: row.processed_at || undefined, processedBy: row.processed_by || undefined, notes: row.notes || undefined }));
   const advisorNotes = advisorNotesRes.rows.map(row => ({ id: row.id, advisorId: row.advisor_id, studentId: row.student_id, content: row.content, type: row.type, createdAt: row.created_at }));
 

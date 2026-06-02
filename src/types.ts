@@ -130,6 +130,8 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
 }
 
 export interface ForumPost {
@@ -249,6 +251,8 @@ export interface AttendanceSession {
   teacherId: string;
   date: string;
   topic: string;
+  code?: string;
+  expiresAt?: string;
 }
 
 export interface AttendanceRecord {

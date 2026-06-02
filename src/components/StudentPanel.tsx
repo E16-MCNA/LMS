@@ -192,6 +192,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
   // Assignment submissions states
   const [submittingAssignmentId, setSubmittingAssignmentId] = useState<string | null>(null);
   const [submissionCodeText, setSubmissionCodeText] = useState("");
+  const [checkinCodes, setCheckinCodes] = useState<Record<string, string>>({});
 
   // Catalog filtering states
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -473,6 +474,21 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
     } catch (err: any) {
       console.error(err);
       triggerToast(err.message || "Không thể nộp bài tập lên server.");
+    }
+  };
+
+  const handleSelfCheckinSubmit = async (sessionId: string, code: string, notificationId: string) => {
+    if (!code.trim()) {
+      triggerToast("Vui lòng nhập mã điểm danh 6 ký tự!");
+      return;
+    }
+    try {
+      await api.selfCheckin({ sessionId, code: code.trim().toUpperCase() });
+      triggerToast("Điểm danh thành công! Trạng thái: Có mặt 🎉");
+      await api.markNotificationRead(notificationId);
+      void onRefreshData();
+    } catch (err: any) {
+      triggerToast(err.message || "Điểm danh thất bại.");
     }
   };
 
@@ -1002,6 +1018,29 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
                   <Bell className={`h-4 w-4 flex-shrink-0 mt-0.5 ${note.isRead ? "text-white/30" : "text-indigo-400"}`} />
                   <div className="space-y-1 text-xs flex-1 min-w-0">
                     <p className="leading-relaxed font-sans">{note.message}</p>
+                    
+                    {note.type === "attendance_link" && note.relatedEntityId && !note.isRead && (
+                      <div 
+                        onClick={(e) => e.stopPropagation()} 
+                        className="mt-2.5 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center gap-2 max-w-sm"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Mã Code (6 ký tự)"
+                          value={checkinCodes[note.id] || ""}
+                          onChange={(e) => setCheckinCodes(prev => ({ ...prev, [note.id]: e.target.value }))}
+                          maxLength={6}
+                          className="w-32 px-2.5 py-1.5 bg-black/45 text-white border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 text-center font-mono font-bold uppercase placeholder-white/20 text-xs"
+                        />
+                        <button
+                          onClick={() => handleSelfCheckinSubmit(note.relatedEntityId!, checkinCodes[note.id] || "", note.id)}
+                          className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition duration-150 text-xs shrink-0 cursor-pointer"
+                        >
+                          Xác nhận Có mặt ✍️
+                        </button>
+                      </div>
+                    )}
+                    
                     <span className="text-[10px] text-white/30 block font-mono">
                       {new Date(note.createdAt).toLocaleDateString("vi-VN")} - {new Date(note.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                     </span>

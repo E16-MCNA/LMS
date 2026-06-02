@@ -189,5 +189,14 @@ export const schemas = {
   }),
   updateStudentNotes: z.object({
     notes: z.string().min(1)
+  }),
+  generateAttendanceLink: z.object({
+    courseId: z.string().trim().min(1),
+    semesterId: z.string().trim().optional(),
+    topic: z.string().trim().min(1)
+  }),
+  selfCheckin: z.object({
+    sessionId: z.string().trim().min(1),
+    code: z.string().trim().min(1)
   })
 };
