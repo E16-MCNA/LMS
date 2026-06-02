@@ -181,6 +181,33 @@ async function main() {
       (store.transactions || []).map(t => [t.id, t.studentId, t.courseId, t.amount, t.status, t.paymentMethod, t.createdAt, t.processedAt || null, t.processedBy || null, t.notes || null])
     );
 
+    await insertBatch(
+      client,
+      "student_profiles",
+      ["id", "user_id", "student_code", "program_id", "department_id", "academic_year", "enrollment_date", "expected_graduation", "status", "gpa", "total_credits_earned", "address", "phone", "date_of_birth", "gender", "notes"],
+      (store.studentProfiles || []).map(p => [p.id, p.userId, p.studentCode, p.programId, p.departmentId, p.academicYear, p.enrollmentDate, p.expectedGraduation, p.status, p.gpa, p.totalCreditsEarned, p.address || null, p.phone || null, p.dateOfBirth || null, p.gender || null, p.notes || null]),
+      `(id) DO UPDATE SET user_id = EXCLUDED.user_id, student_code = EXCLUDED.student_code, program_id = EXCLUDED.program_id, department_id = EXCLUDED.department_id, academic_year = EXCLUDED.academic_year, enrollment_date = EXCLUDED.enrollment_date, expected_graduation = EXCLUDED.expected_graduation, status = EXCLUDED.status, gpa = EXCLUDED.gpa, total_credits_earned = EXCLUDED.total_credits_earned, address = EXCLUDED.address, phone = EXCLUDED.phone, date_of_birth = EXCLUDED.date_of_birth, gender = EXCLUDED.gender, notes = EXCLUDED.notes`
+    );
+
+    await insertBatch(
+      client,
+      "course_registrations",
+      ["id", "student_id", "section_id", "semester_id", "status", "registered_at", "dropped_at", "grade", "letter_grade", "grade_point", "credits", "is_retake", "exam_ban", "grade_posted_at"],
+      (store.courseRegistrations || []).map(r => [
+        r.id, r.studentId, r.sectionId, r.semesterId, r.status, r.registeredAt, r.droppedAt || null,
+        r.grade || null, r.letterGrade || null, r.gradePoint ?? null, r.credits, r.isRetake ? 1 : 0, r.examBan ? 1 : 0, r.gradePostedAt || null
+      ]),
+      `(id) DO UPDATE SET status = EXCLUDED.status, dropped_at = EXCLUDED.dropped_at, grade = EXCLUDED.grade, letter_grade = EXCLUDED.letter_grade, grade_point = EXCLUDED.grade_point, exam_ban = EXCLUDED.exam_ban, grade_posted_at = EXCLUDED.grade_posted_at`
+    );
+
+    await insertBatch(
+      client,
+      "advisor_assignments",
+      ["id", "advisor_id", "student_id", "semester_id", "assigned_at"],
+      (store.advisorAssignments || []).map(aa => [aa.id, aa.advisorId, aa.studentId, aa.semesterId || null, aa.assignedAt]),
+      `(id) DO UPDATE SET advisor_id = EXCLUDED.advisor_id, student_id = EXCLUDED.student_id, semester_id = EXCLUDED.semester_id, assigned_at = EXCLUDED.assigned_at`
+    );
+
     await client.query("COMMIT");
     console.log(`Seeded Postgres database with ${store.users.filter(u => u.role === "student").length} students and ${store.courses.length} courses.`);
   } catch (error) {

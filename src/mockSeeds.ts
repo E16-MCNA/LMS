@@ -110,6 +110,184 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           createdAt: new Date("2026-05-15T09:00:00Z").toISOString()
         });
       }
+
+      // Seeding detailed scores, grades, lesson progress, quiz attempts and submissions
+      if (!store.enrollments) store.enrollments = [];
+      if (!store.lessonProgress) store.lessonProgress = [];
+      if (!store.quizzes) store.quizzes = [];
+      if (!store.quizAttempts) store.quizAttempts = [];
+      if (!store.submissions) store.submissions = [];
+      if (!store.courseRegistrations) store.courseRegistrations = [];
+
+      if (s.id === "user_student_active") {
+        store.enrollments.push({
+          id: "enroll_student_active_fsweb",
+          courseId: "course_fsweb",
+          studentId: s.id,
+          status: "active",
+          enrolledAt: new Date("2026-02-15T09:00:00Z").toISOString()
+        });
+        store.lessonProgress.push(
+          { id: "progress_student_active_fs1", enrollmentId: "enroll_student_active_fsweb", lessonId: "lesson_fs1", completed: true, completedAt: new Date("2026-02-20T10:00:00Z").toISOString() },
+          { id: "progress_student_active_fs2", enrollmentId: "enroll_student_active_fsweb", lessonId: "lesson_fs2", completed: true, completedAt: new Date("2026-02-22T11:00:00Z").toISOString() }
+        );
+        store.quizAttempts.push({
+          id: "attempt_student_active_fsweb_end",
+          quizId: "quiz_fsweb",
+          studentId: s.id,
+          answers: { "q_fs1": "2", "q_fs2": "1" },
+          score: 85,
+          passed: true,
+          startedAt: new Date("2026-03-01T14:00:00Z").toISOString(),
+          submittedAt: new Date("2026-03-01T14:12:00Z").toISOString()
+        });
+        store.submissions.push({
+          id: "submit_student_active_assign_calc",
+          assignmentId: "assign_calc",
+          studentId: s.id,
+          content: "Bài làm thực hành của sinh viên Active. Đầy đủ chức năng, xử lý lỗi tốt.",
+          score: 90,
+          feedback: "Bài nộp rất xuất sắc, mã nguồn sạch đẹp.",
+          submittedAt: new Date("2026-03-05T15:00:00Z").toISOString(),
+          gradedAt: new Date("2026-03-07T10:00:00Z").toISOString()
+        });
+        store.courseRegistrations.push({
+          id: "cr_student_active_fsweb",
+          studentId: s.id,
+          sectionId: "section_cs101_01",
+          semesterId: "sem_spring25",
+          status: "registered",
+          registeredAt: "2025-01-05T09:00:00Z",
+          credits: 4
+        });
+      }
+
+      if (s.id === "user_student_on_leave") {
+        store.enrollments.push({
+          id: "enroll_student_on_leave_fsweb",
+          courseId: "course_fsweb",
+          studentId: s.id,
+          status: "active",
+          enrolledAt: new Date("2026-02-15T09:00:00Z").toISOString()
+        });
+        store.courseRegistrations.push({
+          id: "cr_student_on_leave_fsweb",
+          studentId: s.id,
+          sectionId: "section_cs101_01",
+          semesterId: "sem_spring25",
+          status: "dropped",
+          registeredAt: "2025-01-05T09:00:00Z",
+          droppedAt: "2026-02-28T10:00:00Z",
+          credits: 4
+        });
+      }
+
+      if (s.id === "user_student_suspended") {
+        store.enrollments.push({
+          id: "enroll_student_suspended_fsweb",
+          courseId: "course_fsweb",
+          studentId: s.id,
+          status: "active",
+          enrolledAt: new Date("2026-02-15T09:00:00Z").toISOString()
+        });
+        store.quizAttempts.push({
+          id: "attempt_student_suspended_fsweb_end",
+          quizId: "quiz_fsweb",
+          studentId: s.id,
+          answers: { "q_fs1": "0", "q_fs2": "0" },
+          score: 45,
+          passed: false,
+          startedAt: new Date("2026-03-01T14:00:00Z").toISOString(),
+          submittedAt: new Date("2026-03-01T14:12:00Z").toISOString()
+        });
+        store.submissions.push({
+          id: "submit_student_suspended_assign_calc",
+          assignmentId: "assign_calc",
+          studentId: s.id,
+          content: "Nộp bài sơ sài, thiếu nhiều thành phần cốt lõi.",
+          score: 35,
+          feedback: "Mã nguồn bị lỗi crash, chưa đáp ứng yêu cầu tối thiểu.",
+          submittedAt: new Date("2026-03-05T15:00:00Z").toISOString(),
+          gradedAt: new Date("2026-03-07T10:00:00Z").toISOString()
+        });
+        store.courseRegistrations.push({
+          id: "cr_student_suspended_fsweb",
+          studentId: s.id,
+          sectionId: "section_cs101_01",
+          semesterId: "sem_spring25",
+          status: "failed",
+          registeredAt: "2025-01-05T09:00:00Z",
+          credits: 4,
+          grade: "35",
+          letterGrade: "F",
+          gradePoint: 0.0,
+          gradePostedAt: "2026-03-07T10:00:00Z"
+        });
+      }
+
+      if (s.id === "user_student_graduated") {
+        store.enrollments.push(
+          { id: "enroll_student_graduated_fsweb", courseId: "course_fsweb", studentId: s.id, status: "completed", enrolledAt: new Date("2025-09-01T09:00:00Z").toISOString(), completedAt: new Date("2026-01-15T15:00:00Z").toISOString() },
+          { id: "enroll_student_graduated_python", courseId: "course_python", studentId: s.id, status: "completed", enrolledAt: new Date("2025-09-01T09:00:00Z").toISOString(), completedAt: new Date("2026-01-15T15:00:00Z").toISOString() }
+        );
+        store.lessonProgress.push(
+          { id: "progress_student_graduated_fs1", enrollmentId: "enroll_student_graduated_fsweb", lessonId: "lesson_fs1", completed: true, completedAt: new Date("2025-09-10T10:00:00Z").toISOString() },
+          { id: "progress_student_graduated_fs2", enrollmentId: "enroll_student_graduated_fsweb", lessonId: "lesson_fs2", completed: true, completedAt: new Date("2025-09-12T11:00:00Z").toISOString() },
+          { id: "progress_student_graduated_fs3", enrollmentId: "enroll_student_graduated_fsweb", lessonId: "lesson_fs3", completed: true, completedAt: new Date("2025-09-15T12:00:00Z").toISOString() },
+          { id: "progress_student_graduated_py1", enrollmentId: "enroll_student_graduated_python", lessonId: "lesson_py1", completed: true, completedAt: new Date("2025-09-20T10:00:00Z").toISOString() }
+        );
+        store.quizAttempts.push(
+          { id: "attempt_student_graduated_fsweb", quizId: "quiz_fsweb", studentId: s.id, answers: { "q_fs1": "2", "q_fs2": "1" }, score: 95, passed: true, startedAt: new Date("2025-10-01T14:00:00Z").toISOString(), submittedAt: new Date("2025-10-01T14:12:00Z").toISOString() },
+          { id: "attempt_student_graduated_python", quizId: "quiz_course_python", studentId: s.id, answers: {}, score: 90, passed: true, startedAt: new Date("2025-10-05T14:00:00Z").toISOString(), submittedAt: new Date("2025-10-05T14:12:00Z").toISOString() }
+        );
+        store.submissions.push({
+          id: "submit_student_graduated_assign_calc",
+          assignmentId: "assign_calc",
+          studentId: s.id,
+          content: "Mã nguồn đồ án tốt nghiệp xuất sắc.",
+          score: 98,
+          feedback: "Mã nguồn tuyệt vời, đạt điểm tối đa.",
+          submittedAt: new Date("2025-10-10T15:00:00Z").toISOString(),
+          gradedAt: new Date("2025-10-12T10:00:00Z").toISOString()
+        });
+        store.courseRegistrations.push(
+          { id: "cr_student_graduated_fsweb", studentId: s.id, sectionId: "section_cs101_01", semesterId: "sem_spring25", status: "completed", registeredAt: "2025-01-05T09:00:00Z", credits: 4, grade: "95", letterGrade: "A", gradePoint: 4.0, gradePostedAt: "2025-10-12T10:00:00Z" },
+          { id: "cr_student_graduated_python", studentId: s.id, sectionId: "section_bus201_01", semesterId: "sem_spring25", status: "completed", registeredAt: "2025-01-05T09:00:00Z", credits: 3, grade: "90", letterGrade: "A", gradePoint: 4.0, gradePostedAt: "2025-10-12T10:00:00Z" }
+        );
+        
+        if (!store.officialTranscripts) store.officialTranscripts = [];
+        store.officialTranscripts.push({
+          id: "transcript_student_graduated",
+          studentId: s.id,
+          cumulativeGpa: 3.6,
+          totalCredits: 120,
+          generatedAt: new Date().toISOString(),
+          entries: [
+            { courseId: "course_fsweb", courseName: "Full-Stack Web Development Bootcamp", credits: 4, grade: 95, letterGrade: "A", semesterId: "sem_spring25" },
+            { courseId: "course_python", courseName: "Introduction to Python Analytics", credits: 3, grade: 90, letterGrade: "A", semesterId: "sem_spring25" }
+          ]
+        });
+      }
+
+      if (s.id === "user_student_withdrawn") {
+        store.enrollments.push({
+          id: "enroll_student_withdrawn_fsweb",
+          courseId: "course_fsweb",
+          studentId: s.id,
+          status: "cancelled",
+          enrolledAt: new Date("2026-02-15T09:00:00Z").toISOString()
+        });
+        store.courseRegistrations.push({
+          id: "cr_student_withdrawn_fsweb",
+          studentId: s.id,
+          sectionId: "section_cs101_01",
+          semesterId: "sem_spring25",
+          status: "withdrawn",
+          registeredAt: "2025-01-05T09:00:00Z",
+          droppedAt: "2026-02-28T10:00:00Z",
+          credits: 4
+        });
+      }
     }
   });
 
