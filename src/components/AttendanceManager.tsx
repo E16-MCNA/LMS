@@ -384,13 +384,16 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       )}
       
       {/* Course & Session selectors */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/4 border border-white/5 p-4 rounded-2xl text-xs">
-        <div className="space-y-1">
-          <label className="text-white/60 font-bold block">1. Lựa chọn môn học / lớp học phần:</label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/30 backdrop-blur-md border border-white/10 p-5 rounded-3xl text-xs shadow-xl transition-all duration-200">
+        <div className="space-y-1.5">
+          <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            1. Lựa chọn môn học / lớp học phần:
+          </label>
           <select
             value={selectedCourseId}
             onChange={(e) => { setSelectedCourseId(e.target.value); setActiveSessionId(""); }}
-            className="w-full p-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+            className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all"
           >
             <option value="">-- Click chọn lớp môn học --</option>
             {courses.map(c => (
@@ -400,13 +403,16 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
         </div>
 
         {selectedCourseId && (
-          <div className="space-y-1">
-            <label className="text-white/60 font-bold block">2. Chọn đợt buổi học:</label>
+          <div className="space-y-1.5">
+            <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+              2. Chọn đợt buổi học:
+            </label>
             <div className="flex gap-2">
               <select
                 value={activeSessionId}
                 onChange={(e) => setActiveSessionId(e.target.value)}
-                className="flex-1 p-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
               >
                 <option value="">-- Mở bảng học kỳ --</option>
                 {sessions.map(s => (
@@ -415,7 +421,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
               </select>
               <button
                 onClick={() => setShowCreateSession(true)}
-                className="px-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white flex items-center gap-1 transition cursor-pointer text-xs shrink-0"
+                className="px-4.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shrink-0 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" /> Tạo buổi học / Gửi link điểm danh 🚀
               </button>
@@ -559,37 +565,63 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
                 </div>
               </div>
             ) : (
-              <div className="py-20 text-center border border-dashed border-white/10 rounded-2xl text-white/30 space-y-2">
-                <Calendar className="h-10 w-10 mx-auto text-indigo-400/30" />
-                <p className="text-xs">Chưa có thông tin đợt buổi để truy vết. Vui lòng bấm dứt điểm một buổi lưu trữ hoặc khởi tạo buổi mới.</p>
+              <div className="py-24 text-center border border-dashed border-white/10 bg-slate-950/20 backdrop-blur-sm rounded-3xl text-white/30 space-y-4 shadow-inner flex flex-col items-center justify-center transition-all duration-300">
+                <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/5 animate-pulse">
+                  <Calendar className="h-7 w-7" />
+                </div>
+                <div className="space-y-1 max-w-sm">
+                  <h5 className="text-xs font-bold text-white/70 tracking-wide font-sans">Chưa chọn đợt buổi học</h5>
+                  <p className="text-[11px] text-white/40 leading-relaxed font-sans">
+                    Vui lòng chọn một đợt học đã lưu từ ô chọn trên, hoặc bấm nút **"Tạo buổi học / Gửi link điểm danh"** màu tím để tạo buổi học mới.
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
           {/* Right Column: Attendance Statistics & alarms triggers */}
-          <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4 h-fit">
-            <div className="flex justify-between items-center pb-2 border-b border-white/10">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                <Activity className="h-4 w-4 text-emerald-400" /> Thống kê lớp học phần
+          <div className="bg-slate-900/40 backdrop-blur-md border border-white/10 p-5 rounded-3xl space-y-4.5 h-fit shadow-xl">
+            <div className="flex justify-between items-center pb-3 border-b border-white/10">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Thống kê lớp học phần
               </h4>
-              <span className="font-mono text-[10px] text-white/40">{sessions.length} buổi tổng</span>
+              <span className="font-mono text-[10px] text-white/40 bg-white/5 border border-white/5 px-2 py-0.5 rounded-full">{sessions.length} buổi tổng</span>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
               {sortedCourseStudents.map(st => {
                 const percentage = getStudentPresenceRate(st.userId);
+                
+                // Fine-tuned three-color scales
+                const barColor = percentage >= 80 ? "bg-gradient-to-r from-emerald-500 to-teal-500" : 
+                                 percentage >= 50 ? "bg-gradient-to-r from-amber-500 to-orange-500" : 
+                                 "bg-gradient-to-r from-rose-500 to-red-500";
+                                 
+                const textColor = percentage >= 80 ? "text-emerald-400" : 
+                                  percentage >= 50 ? "text-amber-400" : 
+                                  "text-rose-400";
+
                 return (
-                  <div key={st.userId} className="text-xs space-y-1.5 p-2 bg-black/20 rounded-xl border border-white/5">
-                    <div className="flex justify-between leading-tight">
-                      <span className="font-bold text-white max-w-[70%] truncate">{st.name}</span>
-                      <span className={`font-mono font-bold ${percentage >= 80 ? "text-emerald-400" : "text-red-400 animation-pulse"}`}>
+                  <div key={st.userId} className="text-xs space-y-2 p-3 bg-black/35 hover:bg-white/5 hover:-translate-y-[1px] rounded-2xl border border-white/5 hover:border-white/15 transition-all duration-200">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2 max-w-[75%]">
+                        <div className="w-6 h-6 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                          {st.name.charAt(0)}
+                        </div>
+                        <span className="font-bold text-white truncate">{st.name}</span>
+                      </div>
+                      <span className={`font-mono font-black ${textColor}`}>
                         {percentage}%
                       </span>
                     </div>
                     {/* Visual Progress bar indicators */}
-                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5">
                       <div 
-                        className={`h-full rounded-full transition-all duration-300 ${percentage >= 80 ? "bg-emerald-500" : "bg-red-400"}`}
+                        className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                         style={{ width: `${percentage}%` }}
                       ></div>
                     </div>
@@ -597,7 +629,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
                 );
               })}
               {sortedCourseStudents.length === 0 && (
-                <div className="text-center py-6 text-white/30 text-[11px]">Chưa có sinh viên đăng ký môn thi học phần này.</div>
+                <div className="text-center py-8 text-white/30 text-[11px] font-sans">Chưa có sinh viên đăng ký môn học phần này.</div>
               )}
             </div>
 
