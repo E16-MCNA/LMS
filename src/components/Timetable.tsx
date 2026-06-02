@@ -829,7 +829,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                         onClick={async (e) => {
                                           e.stopPropagation();
                                           try {
-                                            // 1. Mark lecturer checked in
+                                            // Mark lecturer checked in
                                             await api.teacherCheckin({
                                               courseId: item.section.courseId,
                                               sectionId: item.section.id,
@@ -837,13 +837,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                               classDate: classDateStr
                                             });
 
-                                            // 2. Activate student attendance session
-                                            const res = await api.generateAttendanceLink({
-                                              courseId: item.section.courseId,
-                                              topic: `Điểm danh tự động theo lịch học (${item.startTime} ${item.dayOfWeek})`
-                                            });
-
-                                            alert(`🚀 Điểm danh thành công!\n- Giảng viên: Đã có mặt\n- Lớp học: Kích hoạt mã code: ${res.code}`);
+                                            alert("🚀 Xác nhận giảng viên lên lớp (Có mặt) thành công!");
                                             onRefreshData();
                                           } catch (err: any) {
                                             alert(err.message || "Không thể thực hiện điểm danh.");
@@ -959,7 +953,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                           onClick={async (e) => {
                             e.stopPropagation();
                             try {
-                              // 1. Mark lecturer checked in
+                              // Mark lecturer checked in
                               await api.teacherCheckin({
                                 courseId: slot.section.courseId,
                                 sectionId: slot.section.id,
@@ -967,13 +961,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                 classDate: classDateStr
                               });
 
-                              // 2. Activate student attendance session
-                              const res = await api.generateAttendanceLink({
-                                courseId: slot.section.courseId,
-                                topic: `Điểm danh tự động theo lịch học (${slot.startTime} ${slot.dayOfWeek})`
-                              });
-
-                              alert(`🚀 Điểm danh thành công!\n- Giảng viên: Đã có mặt\n- Lớp học: Kích hoạt mã code: ${res.code}`);
+                              alert("🚀 Xác nhận giảng viên lên lớp (Có mặt) thành công!");
                               onRefreshData();
                             } catch (err: any) {
                               alert(err.message || "Không thể thực hiện điểm danh.");
