@@ -1008,7 +1008,11 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
                 .map((note) => (
                 <div
                   key={note.id}
-                  onClick={() => handleMarkNotificationRead(note.id)}
+                  onClick={() => {
+                    if (note.type !== "attendance_link") {
+                      handleMarkNotificationRead(note.id);
+                    }
+                  }}
                   className={`p-4 rounded-2xl border flex items-start gap-3.5 transition duration-150 cursor-pointer ${
                     note.isRead
                       ? "bg-white/5 border-white/5 text-white/50"
@@ -1019,27 +1023,43 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
                   <div className="space-y-1 text-xs flex-1 min-w-0">
                     <p className="leading-relaxed font-sans">{note.message}</p>
                     
-                    {note.type === "attendance_link" && note.relatedEntityId && !note.isRead && (
-                      <div 
-                        onClick={(e) => e.stopPropagation()} 
-                        className="mt-2.5 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center gap-2 max-w-sm"
-                      >
-                        <input
-                          type="text"
-                          placeholder="Mã Code (6 ký tự)"
-                          value={checkinCodes[note.id] || ""}
-                          onChange={(e) => setCheckinCodes(prev => ({ ...prev, [note.id]: e.target.value }))}
-                          maxLength={6}
-                          className="w-32 px-2.5 py-1.5 bg-black/45 text-white border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 text-center font-mono font-bold uppercase placeholder-white/20 text-xs"
-                        />
-                        <button
-                          onClick={() => handleSelfCheckinSubmit(note.relatedEntityId!, checkinCodes[note.id] || "", note.id)}
-                          className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition duration-150 text-xs shrink-0 cursor-pointer"
+                    {note.type === "attendance_link" && note.relatedEntityId && (() => {
+                      const hasCheckedIn = (store.attendanceRecords || []).some(
+                        r => r.sessionId === note.relatedEntityId && 
+                             r.studentId === currentUser.id && 
+                             r.status === "present"
+                      );
+                      
+                      if (hasCheckedIn) {
+                        return (
+                          <div className="mt-2.5 p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl font-bold flex items-center gap-1.5 w-fit font-sans">
+                            <span>✅ Bạn đã xác nhận điểm danh thành công!</span>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div 
+                          onClick={(e) => e.stopPropagation()} 
+                          className="mt-2.5 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center gap-2 max-w-sm"
                         >
-                          Xác nhận Có mặt ✍️
-                        </button>
-                      </div>
-                    )}
+                          <input
+                            type="text"
+                            placeholder="Mã Code (6 ký tự)"
+                            value={checkinCodes[note.id] || ""}
+                            onChange={(e) => setCheckinCodes(prev => ({ ...prev, [note.id]: e.target.value }))}
+                            maxLength={6}
+                            className="w-32 px-2.5 py-1.5 bg-black/45 text-white border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 text-center font-mono font-bold uppercase placeholder-white/20 text-xs"
+                          />
+                          <button
+                            onClick={() => handleSelfCheckinSubmit(note.relatedEntityId!, checkinCodes[note.id] || "", note.id)}
+                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition duration-150 text-xs shrink-0 cursor-pointer"
+                          >
+                            Xác nhận Có mặt ✍️
+                          </button>
+                        </div>
+                      );
+                    })()}
                     
                     <span className="text-[10px] text-white/30 block font-mono">
                       {new Date(note.createdAt).toLocaleDateString("vi-VN")} - {new Date(note.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
