@@ -86,7 +86,8 @@ export function quizFromRow(row: any): Quiz {
     title: row.title,
     passingScore: Number(row.passing_score),
     timeLimit: Number(row.time_limit),
-    maxAttempts: Number(row.max_attempts)
+    maxAttempts: Number(row.max_attempts),
+    deadline: row.deadline || undefined
   };
 }
 

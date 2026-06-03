@@ -198,6 +198,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
   const quizAnswersRef = useRef<Record<string, string>>({});
   quizAnswersRef.current = quizAnswers;
   const [quizTimeRemaining, setQuizTimeRemaining] = useState(0);
+  const [quizStartedAt, setQuizStartedAt] = useState<string | null>(null);
   const [quizFinishedState, setQuizFinishedState] = useState<{
     score: number;
     passed: boolean;
@@ -340,6 +341,14 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
 
   // Launch Quiz Parameters
   const handleStartQuiz = (quiz: Quiz) => {
+    if (quiz.deadline) {
+      const isQuizDeadlineExpired = new Date(quiz.deadline).getTime() < Date.now();
+      if (isQuizDeadlineExpired) {
+        triggerToast("Đề thi trắc nghiệm này đã hết hạn nộp bài (deadline)!");
+        return;
+      }
+    }
+
     const studentAttemptsCount = store.quizAttempts.filter(
       qa => qa.quizId === quiz.id && qa.studentId === currentUser.id
     ).length;
@@ -354,6 +363,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
     setQuizAnswers({});
     setQuizFinishedState(null);
     setQuizTimeRemaining(quiz.timeLimit * 60);
+    setQuizStartedAt(new Date().toISOString());
   };
 
   const handleSelectQuizAnswer = (questionId: string, answerValue: string) => {
@@ -379,6 +389,10 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
         const cleanAnswerList = (q.correctAnswer || "").toLowerCase().split(",").map(itm => itm.trim());
         const matched = cleanAnswerList.some(kw => studentAns.toLowerCase().includes(kw));
         if (matched) correctCount++;
+      } else if (q.type === "multiple") {
+        const sortedStudent = studentAns.split(",").map(x => x.trim()).filter(Boolean).sort().join(",");
+        const sortedCorrect = q.correctAnswer.split(",").map(x => x.trim()).filter(Boolean).sort().join(",");
+        if (sortedStudent === sortedCorrect) correctCount++;
       } else {
         // Exact option indexes selection match
         if (studentAns === q.correctAnswer) {
@@ -389,7 +403,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
 
     const finalScore = Math.round((correctCount / (questions.length || 1)) * 100);
     const passed = finalScore >= quiz.passingScore;
-    api.submitQuiz({ quizId: activeQuizId, answers, startedAt: new Date().toISOString() })
+    api.submitQuiz({ quizId: activeQuizId, answers, startedAt: quizStartedAt || new Date().toISOString() })
       .then((result: any) => {
         setQuizFinishedState({
           score: result.score,
@@ -397,6 +411,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
           correctAnswers: result.correctAnswers,
           total: result.total
         });
+        setQuizStartedAt(null);
         onRefreshData();
       })
       .catch((err: any) => triggerToast(err.message || "Không thể nộp bài trắc nghiệm."));
@@ -410,7 +425,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
       answers: quizAnswers,
       score: finalScore,
       passed,
-      startedAt: new Date().toISOString(),
+      startedAt: quizStartedAt || new Date().toISOString(),
       submittedAt: new Date().toISOString()
     };
 
@@ -584,6 +599,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
     submissionCodeText,
     handleSendAssignmentSubmit,
     quizTimeRemaining,
+    quizStartedAt,
     activeQuizId,
     setActiveQuizId,
     currentQuestionIndex,

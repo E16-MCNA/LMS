@@ -55,7 +55,8 @@ export const schemas = {
     title: z.string().trim().min(1),
     passingScore: z.coerce.number().min(0).max(100),
     timeLimit: z.coerce.number().int().min(1),
-    maxAttempts: z.coerce.number().int().min(1)
+    maxAttempts: z.coerce.number().int().min(1),
+    deadline: z.string().trim().nullish()
   }),
   addQuestion: z.object({
     text: z.string().trim().min(1),
@@ -189,6 +190,31 @@ export const schemas = {
   }),
   updateStudentNotes: z.object({
     notes: z.string().min(1)
+  }),
+  sectionScheduleSlot: z.object({
+    dayOfWeek: z.string().trim().min(1),
+    startTime: z.string().trim().min(1),
+    endTime: z.string().trim().min(1),
+    room: z.string().trim().optional()
+  }),
+  courseSection: z.object({
+    courseId: z.string().trim().min(1),
+    semesterId: z.string().trim().min(1),
+    teacherId: z.string().trim().min(1).optional(),
+    sectionCode: z.string().trim().min(1),
+    maxStudents: z.coerce.number().int().min(1),
+    schedule: z.array(z.object({
+      dayOfWeek: z.string().trim().min(1),
+      startTime: z.string().trim().min(1),
+      endTime: z.string().trim().min(1),
+      room: z.string().trim().optional()
+    })).default([]),
+    status: z.enum(["pending", "open", "closed", "cancelled"]).default("open")
+  }),
+  bulkIssueTuition: z.object({
+    semesterId: z.string().trim().min(1),
+    amount: z.coerce.number().positive().default(15000000),
+    dueDate: z.string().trim().optional()
   }),
   generateAttendanceLink: z.object({
     courseId: z.string().trim().min(1),

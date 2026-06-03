@@ -3,6 +3,7 @@ import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings
 import ModalPortal from "../ModalPortal";
 import { AppStore } from "../../store";
 import AttendanceManager from "../AttendanceManager";
+import { api } from "../../api";
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 
@@ -208,9 +209,18 @@ export default function CourseBuilder(props: ComponentProps) {
     setShowSectionModal(true);
   };
 
-  const handleDeleteSection = (id: string, code: string) => {
+  const handleDeleteSection = async (id: string, code: string) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa lớp học phần "${code}"? Tất cả thông tin lịch dạy sẽ bị hủy bỏ hoàn toàn.`)) return;
     
+    try {
+      await api.deleteCourseSection(id);
+      props.onRefreshData();
+      alert(`ðŸ—‘ï¸ ÄÃ£ xÃ³a lá»›p há»c pháº§n ${code}!`);
+    } catch (err: any) {
+      alert(err.message || "KhÃ´ng thá»ƒ xÃ³a lá»›p há»c pháº§n.");
+    }
+    return;
+
     const storeData = AppStore.get();
     storeData.courseSections = (storeData.courseSections || []).filter((s: any) => s.id !== id);
     storeData.courseRegistrations = (storeData.courseRegistrations || []).filter((r: any) => r.sectionId !== id);
@@ -221,7 +231,7 @@ export default function CourseBuilder(props: ComponentProps) {
     alert(`🗑️ Đã xóa lớp học phần ${code}!`);
   };
 
-  const handleSaveSection = (e: React.FormEvent) => {
+  const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formSectionCode.trim()) {
       alert("⚠️ Vui lòng nhập Mã lớp học phần!");
@@ -234,6 +244,28 @@ export default function CourseBuilder(props: ComponentProps) {
       alert("❗ Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra kỹ chi tiết báo đỏ!");
       return;
     }
+
+    try {
+      const payload = {
+        courseId: activeCourse.id,
+        semesterId: formSemesterId,
+        teacherId: currentUser.id,
+        sectionCode: formSectionCode,
+        maxStudents: formMaxStudents,
+        schedule: formSlots,
+        status: formStatus
+      };
+      if (sectionModalMode === "create") {
+        await api.createCourseSection(payload);
+      } else if (editingSectionId) {
+        await api.updateCourseSection(editingSectionId, payload);
+      }
+      setShowSectionModal(false);
+      props.onRefreshData();
+    } catch (err: any) {
+      alert(err.message || "KhÃ´ng thá»ƒ lÆ°u lá»›p há»c pháº§n.");
+    }
+    return;
 
     const storeData = AppStore.get();
     const generateId = (prefix: string) => `${prefix}_${Math.random().toString(36).substr(2, 9)}`;

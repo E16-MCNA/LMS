@@ -258,7 +258,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
   });
 
   // Save Modal Action
-  const handleSaveSection = (e: React.FormEvent) => {
+  const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formCourseId || !formTeacherId || !formSectionCode.trim()) {
       triggerToast("⚠️ Vui lòng nhập đầy đủ: Môn học, Giảng viên và Mã lớp!");
@@ -272,6 +272,30 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
       triggerToast("❗ Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra kỹ chi tiết báo đỏ!");
       return;
     }
+
+    try {
+      const payload = {
+        courseId: formCourseId,
+        semesterId: formSemesterId,
+        teacherId: formTeacherId,
+        sectionCode: formSectionCode,
+        maxStudents: formMaxStudents,
+        schedule: formSlots,
+        status: formStatus
+      };
+      if (modalMode === "create") {
+        await api.createCourseSection(payload);
+        triggerToast("âœ… Khá»Ÿi táº¡o lá»›p há»c pháº§n thÃ nh cÃ´ng!");
+      } else if (editingSectionId) {
+        await api.updateCourseSection(editingSectionId, payload);
+        triggerToast("âœ… Cáº­p nháº­t lá»›p há»c pháº§n thÃ nh cÃ´ng!");
+      }
+      setShowModal(false);
+      onRefreshData();
+    } catch (err: any) {
+      triggerToast(err.message || "KhÃ´ng thá»ƒ lÆ°u lá»›p há»c pháº§n.");
+    }
+    return;
 
     const storeData = AppStore.get();
     if (modalMode === "create") {
@@ -354,7 +378,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     setShowModal(true);
   };
 
-  const handleDropSection = (
+  const handleDropSection = async (
     sectionId: string,
     day: string,
     slot: typeof STANDARD_SLOTS[0],
@@ -402,6 +426,23 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
       return;
     }
 
+    try {
+      await api.updateCourseSection(sec.id, {
+        courseId: sec.courseId,
+        semesterId: sec.semesterId,
+        teacherId: sec.teacherId,
+        sectionCode: sec.sectionCode,
+        maxStudents: sec.maxStudents,
+        schedule: newSlots,
+        status: "open"
+      });
+      onRefreshData();
+      triggerToast(`âœ… ÄÃ£ phÃª duyá»‡t & xáº¿p ca lá»›p ${sec.sectionCode} vÃ o ${day} (${slot.start} - ${slot.end})!`);
+    } catch (err: any) {
+      triggerToast(err.message || "KhÃ´ng thá»ƒ xáº¿p lá»‹ch lá»›p há»c pháº§n.");
+    }
+    return;
+
     // Update section schedule and set status to open (approved)
     storeData.courseSections = sections.map((s: any) => {
       if (s.id === sec.id) {
@@ -426,9 +467,18 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
   };
 
   // Delete Section
-  const handleDeleteSection = (id: string, code: string) => {
+  const handleDeleteSection = async (id: string, code: string) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa lớp học phần "${code}"? Tất cả thông tin lịch dạy sẽ bị hủy bỏ hoàn toàn.`)) return;
     
+    try {
+      await api.deleteCourseSection(id);
+      onRefreshData();
+      triggerToast(`ðŸ—‘ï¸ ÄÃ£ xÃ³a lá»›p há»c pháº§n ${code}!`);
+    } catch (err: any) {
+      triggerToast(err.message || "KhÃ´ng thá»ƒ xÃ³a lá»›p há»c pháº§n.");
+    }
+    return;
+
     const storeData = AppStore.get();
     storeData.courseSections = (storeData.courseSections || []).filter(s => s.id !== id);
     // Also remove registrations associated with it

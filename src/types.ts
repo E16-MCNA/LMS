@@ -72,6 +72,7 @@ export interface Quiz {
   passingScore: number; // e.g. 70 for 70%
   timeLimit: number; // in mins
   maxAttempts: number;
+  deadline?: string;
 }
 
 export interface Question {

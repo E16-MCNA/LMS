@@ -10,11 +10,11 @@
  * 5. Với cookie Teacher, thử đăng nhập lại Teacher (cùng tài khoản) → phải thành công (cho phép re-login cùng user).
  */
 
-const BASE = "http://localhost:3100";
+const BASE = "http://localhost:3000";
 
 function parseCookies(headers) {
   const raw = headers.get("set-cookie") || "";
-  return raw.split(/,(?=\s*mcna_lms_)/)
+  return raw.split(/,(?=\s*e16_lms_)/)
     .map(p => p.split(";")[0].trim())
     .filter(Boolean)
     .join("; ");
@@ -54,7 +54,7 @@ async function main() {
   const r1 = await login("admin@mcna.local", "admine16");
   assert(r1.status === 200, `Admin login success (got ${r1.status})`);
   assert(r1.body.user?.role === "manager", "Admin role returned");
-  assert(r1.cookie.includes("mcna_lms_session"), "Session cookie set");
+  assert(r1.cookie.includes("e16_lms_session"), "Session cookie set");
   const adminCookie = r1.cookie;
   console.log("  Admin cookie:", adminCookie.substring(0, 40) + "...\n");
 

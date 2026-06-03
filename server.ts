@@ -11,7 +11,7 @@ import { runMigrations } from "./src/dbMigrations";
 import { pool } from "./src/server/db";
 import { redis, safeRedis } from "./src/server/redis";
 import { generateId } from "./src/server/ids";
-import { DbUserRow, toPublicUser, denormalizeRole } from "./src/server/mappers";
+import { DbUserRow, toPublicUser, denormalizeRole, tuitionFeeFromRow } from "./src/server/mappers";
 import { validateBody, schemas } from "./src/server/validation";
 import { seedAuthUsers, seedCoreLearningData } from "./src/server/seedCore";
 import { usersRepository } from "./src/server/repositories/users";
@@ -198,6 +198,74 @@ async function resolveLinkedStudent(req: AuthRequest, res: express.Response, nex
 async function audit(req: AuthRequest, action: string, target: string, detail: string) {
   if (!req.user) return;
   await auditRepository.log(pool, req.user.id, action, target, detail);
+}
+
+type SectionScheduleSlot = { dayOfWeek: string; startTime: string; endTime: string; room?: string };
+type SectionPayload = {
+  id?: string;
+  courseId: string;
+  semesterId: string;
+  teacherId: string;
+  sectionCode: string;
+  maxStudents: number;
+  schedule: SectionScheduleSlot[];
+  status: "pending" | "open" | "closed" | "cancelled";
+};
+
+async function getCourseSectionColumnSet(db: { query: (sql: string, params?: any[]) => Promise<any> }) {
+  const rows = (await db.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_name = 'course_sections'"
+  )).rows;
+  return new Set<string>(rows.map((row: any) => row.column_name));
+}
+
+async function upsertCourseSection(db: any, section: SectionPayload) {
+  const id = section.id || generateId("section");
+  const scheduleJson = JSON.stringify(section.schedule || []);
+  const columns = await getCourseSectionColumnSet(db);
+  const insertColumns = ["id", "course_id", "semester_id", "teacher_id", "section_code", "max_students", "status"];
+  const values: any[] = [id, section.courseId, section.semesterId, section.teacherId, section.sectionCode, Number(section.maxStudents), section.status];
+  const placeholders = values.map((_, index) => `$${index + 1}`);
+  const updates = [
+    "course_id = EXCLUDED.course_id",
+    "semester_id = EXCLUDED.semester_id",
+    "teacher_id = EXCLUDED.teacher_id",
+    "section_code = EXCLUDED.section_code",
+    "max_students = EXCLUDED.max_students",
+    "status = EXCLUDED.status"
+  ];
+
+  if (columns.has("schedule_json")) {
+    insertColumns.push("schedule_json");
+    values.push(scheduleJson);
+    placeholders.push(`$${values.length}`);
+    updates.push("schedule_json = EXCLUDED.schedule_json");
+  }
+  if (columns.has("schedule")) {
+    insertColumns.push("schedule");
+    values.push(scheduleJson);
+    placeholders.push(`$${values.length}::jsonb`);
+    updates.push("schedule = EXCLUDED.schedule");
+  }
+
+  const row = (await db.query(
+    `INSERT INTO course_sections (${insertColumns.join(", ")})
+     VALUES (${placeholders.join(", ")})
+     ON CONFLICT (id) DO UPDATE SET ${updates.join(", ")}
+     RETURNING *`,
+    values
+  )).rows[0];
+
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    semesterId: row.semester_id,
+    teacherId: row.teacher_id,
+    sectionCode: row.section_code,
+    maxStudents: Number(row.max_students),
+    schedule: row.schedule_json ? JSON.parse(row.schedule_json || "[]") : (typeof row.schedule === "string" ? JSON.parse(row.schedule || "[]") : row.schedule || []),
+    status: row.status
+  };
 }
 
 let isSyncing = false;
@@ -639,54 +707,26 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       }
     }
 
-    // Sync courseSections (with deletion)
+    // Sync courseSections (upsert-only)
     if (store.courseSections !== undefined) {
       const clientSections = store.courseSections || [];
-      const clientSectionIds = clientSections.map(s => s.id);
-      
-      if (clientSectionIds.length > 0) {
-        await client.query("DELETE FROM course_sections WHERE id NOT IN (" + clientSectionIds.map((_, i) => `$${i + 1}`).join(",") + ")", clientSectionIds);
-      } else {
-        await client.query("DELETE FROM course_sections");
-      }
-      
       for (const sec of clientSections) {
-        await client.query(
-          `INSERT INTO course_sections (id, course_id, semester_id, teacher_id, section_code, max_students, schedule_json, status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (id) DO UPDATE SET
-             course_id = EXCLUDED.course_id,
-             semester_id = EXCLUDED.semester_id,
-             teacher_id = EXCLUDED.teacher_id,
-             section_code = EXCLUDED.section_code,
-             max_students = EXCLUDED.max_students,
-             schedule_json = EXCLUDED.schedule_json,
-             status = EXCLUDED.status`,
-          [
-            sec.id,
-            sec.courseId,
-            sec.semesterId,
-            sec.teacherId,
-            sec.sectionCode,
-            Number(sec.maxStudents) || 30,
-            JSON.stringify(sec.schedule || []),
-            sec.status || "open"
-          ]
-        );
+        await upsertCourseSection(client, {
+          id: sec.id,
+          courseId: sec.courseId,
+          semesterId: sec.semesterId,
+          teacherId: sec.teacherId,
+          sectionCode: sec.sectionCode,
+          maxStudents: Number(sec.maxStudents) || 30,
+          schedule: sec.schedule || [],
+          status: sec.status || "open"
+        });
       }
     }
 
-    // Sync courseRegistrations (with deletion)
+    // Sync courseRegistrations (upsert-only)
     if (store.courseRegistrations !== undefined) {
       const clientRegs = store.courseRegistrations || [];
-      const clientRegIds = clientRegs.map(r => r.id);
-      
-      if (clientRegIds.length > 0) {
-        await client.query("DELETE FROM course_registrations WHERE id NOT IN (" + clientRegIds.map((_, i) => `$${i + 1}`).join(",") + ")", clientRegIds);
-      } else {
-        await client.query("DELETE FROM course_registrations");
-      }
-      
       for (const reg of clientRegs) {
         await client.query(
           `INSERT INTO course_registrations (id, student_id, section_id, semester_id, status, registered_at, dropped_at, grade, letter_grade, grade_point, credits, is_retake)
@@ -1300,6 +1340,64 @@ app.patch("/api/notifications/:id/read", requireAuth, asyncHandler(async (req, r
   res.status(204).send();
 }));
 
+app.post("/api/course-sections", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.courseSection), asyncHandler(async (req, res) => {
+  const course = await coursesRepository.findById(pool, req.body.courseId);
+  if (!course) return res.status(404).json({ error: "Course not found." });
+  const payload: SectionPayload = {
+    ...req.body,
+    teacherId: req.user!.role === "teacher" ? req.user!.id : req.body.teacherId
+  };
+  if (!payload.teacherId) return res.status(400).json({ error: "teacherId is required." });
+  if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+  const row = await upsertCourseSection(pool, payload);
+  await audit(req, "create_course_section", row.id, row.sectionCode);
+  res.status(201).json(row);
+}));
+
+app.put("/api/course-sections/:id", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.courseSection), asyncHandler(async (req, res) => {
+  const existing = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [req.params.id])).rows[0];
+  if (!existing) return res.status(404).json({ error: "Course section not found." });
+  const course = await coursesRepository.findById(pool, req.body.courseId);
+  if (!course) return res.status(404).json({ error: "Course not found." });
+  const payload: SectionPayload = {
+    ...req.body,
+    id: req.params.id,
+    teacherId: req.user!.role === "teacher" ? req.user!.id : req.body.teacherId
+  };
+  if (!payload.teacherId) return res.status(400).json({ error: "teacherId is required." });
+  if (req.user!.role === "teacher" && (existing.teacher_id !== req.user!.id || course.teacherId !== req.user!.id)) {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+  const row = await upsertCourseSection(pool, payload);
+  await audit(req, "update_course_section", row.id, row.sectionCode);
+  res.json(row);
+}));
+
+app.delete("/api/course-sections/:id", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const existing = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [req.params.id])).rows[0];
+  if (!existing) return res.status(404).json({ error: "Course section not found." });
+  if (req.user!.role === "teacher" && existing.teacher_id !== req.user!.id) {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM course_registrations WHERE section_id = $1", [req.params.id]);
+    await client.query("DELETE FROM section_schedules WHERE section_id = $1", [req.params.id]);
+    await client.query("DELETE FROM course_sections WHERE id = $1", [req.params.id]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  await audit(req, "delete_course_section", req.params.id, existing.section_code);
+  res.status(204).send();
+}));
+
 app.post("/api/course-registrations", requireAuth, requireRole(["student"]), validateBody(schemas.courseRegistration), asyncHandler(async (req, res) => {
   const result = await courseRegistrationsRepository.register(pool, req.user!.id, req.body.sectionId);
   if ("error" in result) return res.status(result.status).json({ error: result.error });
@@ -1351,7 +1449,7 @@ app.post("/api/graduation-applications", requireAuth, requireRole(["student"]), 
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   res.status(201).json(result.row);
 }));
-app.get("/api/graduation-applications", requireAuth, asyncHandler(async (req, res) => res.json(await graduationRepository.list(pool, req.user!))));
+app.get("/api/graduation-applications", requireAuth, requireRole(["student", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await graduationRepository.list(pool, req.user!))));
 app.patch("/api/graduation-applications/:id/approve", requireAuth, requireRole(["admin"]), validateBody(schemas.graduationApplicationReview), asyncHandler(async (req, res) => {
   const application = await graduationRepository.approve(pool, req.params.id, req.user!.id, req.body.note);
   if (!application) return res.status(404).json({ error: "Graduation application not found." });
@@ -1395,7 +1493,7 @@ app.patch("/api/academic-warnings/:id/resolve", requireAuth, requireRole(["advis
   res.json(warning);
 }));
 
-app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "manager", "admin", "super_admin", "student"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
+app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "manager", "admin", "super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
   const ownerStudentId = req.user!.role === "student" ? req.user!.id : undefined;
   const result = await financeRepository.payTuition(pool, req.body.feeId, req.body.paidAmount, ownerStudentId);
   if (!result) return res.status(404).json({ error: "Tuition fee not found." });
@@ -1428,6 +1526,55 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["fin
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   await audit(req, `finance_transaction_${req.body.status}`, req.params.id, req.body.notes || "");
   res.json(result);
+}));
+
+app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["finance", "manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
+  const { semesterId, amount, dueDate } = req.body;
+  const dueDateValue = dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const profiles = (await client.query(
+      "SELECT user_id FROM student_profiles WHERE status = 'active'"
+    )).rows;
+    const created: any[] = [];
+    for (const profile of profiles) {
+      const exists = (await client.query(
+        "SELECT id FROM tuition_fees WHERE student_id = $1 AND semester_id = $2",
+        [profile.user_id, semesterId]
+      )).rows[0];
+      if (exists) continue;
+      const id = generateId("tf");
+      const row = (await client.query(
+        `INSERT INTO tuition_fees (id, student_id, semester_id, amount, due_date, status, paid_amount)
+         VALUES ($1,$2,$3,$4,$5,'unpaid',0)
+         RETURNING *`,
+        [id, profile.user_id, semesterId, Number(amount), dueDateValue]
+      )).rows[0];
+      await notificationsRepository.create(client, {
+        userId: profile.user_id,
+        type: "info",
+        message: `Thông báo nộp học phí: học kỳ ${semesterId}, số tiền ${Number(amount).toLocaleString()} VND.`,
+        relatedEntityType: "tuition_fee",
+        relatedEntityId: id
+      });
+      created.push(row);
+    }
+    await client.query("COMMIT");
+    await audit(req, "bulk_issue_tuition", semesterId, `Issued ${created.length} tuition fees.`);
+    res.status(201).json({ createdCount: created.length, fees: created.map(tuitionFeeFromRow) });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}));
+
+app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["finance", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const overdue = await financeRepository.checkOverdueFees(pool);
+  await audit(req, "scan_overdue_tuition", "tuition_fees", `Found ${overdue.length} overdue fees.`);
+  res.json({ overdueCount: overdue.length, fees: overdue });
 }));
 
 app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
@@ -1642,7 +1789,7 @@ app.post("/api/attendance/warn-teacher", requireAuth, requireRole(["admin", "adm
 }));
 
 app.post("/api/store/sync", requireAuth, asyncHandler(async (req, res) => {
-  if (!["admin", "super_admin", "admin", "finance", "teacher", "manager"].includes(req.user!.role)) {
+  if (!["admin", "super_admin", "manager", "finance", "teacher"].includes(req.user!.role)) {
     return res.status(403).json({ error: "Permission denied." });
   }
   await syncClientStoreToDb(req.body || {});

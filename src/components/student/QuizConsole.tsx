@@ -124,7 +124,9 @@ export default function QuizConsole(props: ComponentProps) {
                                     const nextArray = arrayValues.includes(String(idx))
                                       ? arrayValues.filter(v => v !== String(idx))
                                       : [...arrayValues, String(idx)];
-                                    handleSelectQuizAnswer(currentQuestionObj.id, nextArray.join(","));
+                                    // Sort option index values numerically before saving to prevent order check failures
+                                    const sortedArray = nextArray.sort((a, b) => Number(a) - Number(b));
+                                    handleSelectQuizAnswer(currentQuestionObj.id, sortedArray.join(","));
                                   } else {
                                     handleSelectQuizAnswer(currentQuestionObj.id, String(idx));
                                   }

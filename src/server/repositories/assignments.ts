@@ -14,8 +14,16 @@ export const assignmentsRepository = {
   },
 
   async submit(db: Queryable, studentId: string, assignmentId: string, content: string) {
-    const assignment = (await db.query("SELECT course_id FROM assignments WHERE id = $1", [assignmentId])).rows[0];
+    const assignment = (await db.query("SELECT course_id, deadline FROM assignments WHERE id = $1", [assignmentId])).rows[0];
     if (!assignment) return { error: "Assignment not found.", status: 404 };
+
+    // Enforce deadline check
+    if (assignment.deadline) {
+      const deadlineDate = new Date(assignment.deadline);
+      if (new Date() > deadlineDate) {
+        return { error: "Không thể nộp hoặc chỉnh sửa bài tập tự luận do đã quá hạn nộp bài (deadline).", status: 400 };
+      }
+    }
 
     const enrollment = (await db.query(
       "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2 AND status IN ('active', 'completed')",

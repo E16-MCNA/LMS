@@ -8,8 +8,8 @@ export const quizzesRepository = {
   async create(db: Queryable, input: Omit<Quiz, "id">) {
     const quiz = { ...input, id: generateId("quiz") };
     await db.query(
-      "INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-      [quiz.id, quiz.courseId, quiz.lessonId || null, quiz.title, quiz.passingScore, quiz.timeLimit, quiz.maxAttempts]
+      "INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts, deadline) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+      [quiz.id, quiz.courseId, quiz.lessonId || null, quiz.title, quiz.passingScore, quiz.timeLimit, quiz.maxAttempts, quiz.deadline || null]
     );
     return quiz;
   },
@@ -55,12 +55,50 @@ export const quizzesRepository = {
     )).rows[0];
     if (!enrollment) return { error: "Active enrollment required to submit this quiz.", status: 403 };
 
+    // Enforce maxAttempts check
+    if (quiz.maxAttempts && quiz.maxAttempts > 0) {
+      const attemptsCountRes = await db.query(
+        "SELECT COUNT(*) AS count FROM quiz_attempts WHERE quiz_id = $1 AND student_id = $2",
+        [quizId, studentId]
+      );
+      const attemptCount = Number(attemptsCountRes.rows[0].count);
+      if (attemptCount >= quiz.maxAttempts) {
+        return { error: `Đã vượt quá số lượt làm bài tối đa cho phép (${quiz.maxAttempts} lượt).`, status: 403 };
+      }
+    }
+
+    // Enforce timeLimit check (timeLimit is in minutes)
+    if (quiz.timeLimit && quiz.timeLimit > 0 && startedAt) {
+      const startTime = new Date(startedAt).getTime();
+      const endTime = Date.now();
+      const elapsedMinutes = (endTime - startTime) / (1000 * 60);
+      // Give 0.2 minutes (12 seconds) grace period for network delays
+      if (elapsedMinutes > quiz.timeLimit + 0.2) {
+        return { error: `Thời gian làm bài thi trắc nghiệm đã vượt quá giới hạn cho phép (${quiz.timeLimit} phút).`, status: 403 };
+      }
+    }
+
+    // Enforce deadline check if set
+    if (quiz.deadline) {
+      const deadlineDate = new Date(quiz.deadline);
+      if (new Date() > deadlineDate) {
+        return { error: "Không thể nộp bài trắc nghiệm do đã quá hạn nộp bài (deadline).", status: 400 };
+      }
+    }
+
     const questions = await this.listQuestions(db, quizId);
     let correctCount = 0;
     for (const question of questions) {
       const studentAnswer = answers[question.id] || "";
-      if (question.type === "text" && question.correctAnswer.toLowerCase().split(",").map(key => key.trim()).some(key => studentAnswer.toLowerCase().includes(key))) correctCount++;
-      else if (question.type !== "text" && studentAnswer === question.correctAnswer) correctCount++;
+      if (question.type === "text" && question.correctAnswer.toLowerCase().split(",").map(key => key.trim()).some(key => studentAnswer.toLowerCase().includes(key))) {
+        correctCount++;
+      } else if (question.type === "multiple") {
+        const sortedStudent = studentAnswer.split(",").map(x => x.trim()).filter(Boolean).sort().join(",");
+        const sortedCorrect = question.correctAnswer.split(",").map(x => x.trim()).filter(Boolean).sort().join(",");
+        if (sortedStudent === sortedCorrect) correctCount++;
+      } else if (question.type === "single" && studentAnswer === question.correctAnswer) {
+        correctCount++;
+      }
     }
     const score = Math.round((correctCount / (questions.length || 1)) * 100);
     const passed = score >= quiz.passingScore;

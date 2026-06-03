@@ -25,6 +25,10 @@ export const courseRegistrationsRepository = {
         await client.query("ROLLBACK");
         return { error: "Section not found.", status: 404 };
       }
+      if (section.status !== 'open') {
+        await client.query("ROLLBACK");
+        return { error: "Lớp học phần này hiện không ở trạng thái mở đăng ký.", status: 403 };
+      }
 
       const existing = (await client.query(
         "SELECT * FROM course_registrations WHERE student_id = $1 AND section_id = $2 AND status IN ('registered', 'waitlisted')",
@@ -35,27 +39,92 @@ export const courseRegistrationsRepository = {
         return { error: "Student is already registered or waitlisted for this section.", status: 409 };
       }
 
-      const profile = (await client.query("SELECT fee_hold FROM student_profiles WHERE user_id = $1", [studentId])).rows[0];
-      if (profile?.fee_hold) {
+      const profile = (await client.query("SELECT fee_hold, academic_year FROM student_profiles WHERE user_id = $1", [studentId])).rows[0];
+      if (!profile) {
+        await client.query("ROLLBACK");
+        return { error: "Student profile not found.", status: 404 };
+      }
+      if (profile.fee_hold) {
         await client.query("ROLLBACK");
         return { error: "Clear outstanding fees before registering for courses.", status: 403 };
       }
 
-      const conflict = await client.query(
-        `SELECT ss2.*
+      // Check registration period open dates, allowed years matching
+      const periods = (await client.query(
+        `SELECT * FROM registration_periods 
+         WHERE semester_id = $1 
+           AND is_open = true 
+           AND NOW()::date >= start_date::date 
+           AND NOW()::date <= end_date::date`,
+        [section.semester_id]
+      )).rows;
+      if (periods.length === 0) {
+        await client.query("ROLLBACK");
+        return { error: "Kỳ đăng ký học phần hiện đang đóng hoặc không khả dụng cho học kỳ này.", status: 403 };
+      }
+      const studentYear = Number(profile.academic_year || 1);
+      const isYearAllowed = periods.some(period => {
+        const allowed = Array.isArray(period.allowed_years) ? period.allowed_years : [];
+        return allowed.map(Number).includes(studentYear);
+      });
+      if (!isYearAllowed) {
+        await client.query("ROLLBACK");
+        return { error: `Sinh viên năm ${studentYear} không được phép đăng ký trong khung giờ này.`, status: 403 };
+      }
+
+      // Check schedule conflict safely handling schedule/schedule_json column drift
+      const rawTargetSchedule = section.schedule || section.schedule_json || [];
+      const targetSchedule = Array.isArray(rawTargetSchedule)
+        ? rawTargetSchedule
+        : typeof rawTargetSchedule === "string"
+        ? JSON.parse(rawTargetSchedule)
+        : [];
+
+      const currentRegs = (await client.query(
+        `SELECT cs.* 
          FROM course_registrations cr
-         JOIN course_sections cs ON cs.id = cr.section_id
-         JOIN section_schedules ss ON ss.section_id = cs.id
-         JOIN section_schedules ss2 ON ss2.section_id = $1
-         WHERE cr.student_id = $2
-           AND cr.semester_id = $3
-           AND cr.status = 'registered'
-           AND ss.day_of_week = ss2.day_of_week
-           AND ss.start_time < ss2.end_time
-           AND ss2.start_time < ss.end_time`,
-        [sectionId, studentId, section.semester_id]
-      );
-      if (conflict.rowCount) {
+         JOIN course_sections cs ON cr.section_id = cs.id
+         WHERE cr.student_id = $1 AND cr.semester_id = $2 AND cr.status = 'registered'`,
+        [studentId, section.semester_id]
+      )).rows;
+
+      const existingSchedules = currentRegs.flatMap(r => {
+        const sched = r.schedule || r.schedule_json || [];
+        return Array.isArray(sched)
+          ? sched
+          : typeof sched === "string"
+          ? JSON.parse(sched)
+          : [];
+      });
+
+      const timeToMinutes = (timeStr: string): number => {
+        const [hrs, mins] = timeStr.split(":").map(Number);
+        return hrs * 60 + mins;
+      };
+
+      const getDay = (x: any) => (x.dayOfWeek || x.day_of_week || "").toString().toLowerCase();
+
+      let hasConflict = false;
+      for (const t of targetSchedule) {
+        for (const e of existingSchedules) {
+          const tDay = getDay(t);
+          const eDay = getDay(e);
+          if (tDay && eDay && tDay === eDay) {
+            const tStart = timeToMinutes(t.startTime || t.start_time);
+            const tEnd = timeToMinutes(t.endTime || t.end_time);
+            const eStart = timeToMinutes(e.startTime || e.start_time);
+            const eEnd = timeToMinutes(e.endTime || e.end_time);
+
+            if (Math.max(tStart, eStart) < Math.min(tEnd, eEnd)) {
+              hasConflict = true;
+              break;
+            }
+          }
+        }
+        if (hasConflict) break;
+      }
+
+      if (hasConflict) {
         await client.query("ROLLBACK");
         return { error: "Schedule conflict detected", status: 409 };
       }

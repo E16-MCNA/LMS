@@ -19,7 +19,7 @@ const pool = new pg.Pool({
 const store = getInitialStore();
 backfillMegaDemoData(store);
 
-type Row = Array<string | number | boolean | null | undefined>;
+type Row = Array<string | number | boolean | number[] | null | undefined>;
 
 async function insertBatch(
   client: pg.PoolClient,
@@ -198,6 +198,16 @@ async function main() {
         r.grade || null, r.letterGrade || null, r.gradePoint ?? null, r.credits, r.isRetake ? 1 : 0, r.examBan ? 1 : 0, r.gradePostedAt || null
       ]),
       `(id) DO UPDATE SET status = EXCLUDED.status, dropped_at = EXCLUDED.dropped_at, grade = EXCLUDED.grade, letter_grade = EXCLUDED.letter_grade, grade_point = EXCLUDED.grade_point, exam_ban = EXCLUDED.exam_ban, grade_posted_at = EXCLUDED.grade_posted_at`
+    );
+
+    await insertBatch(
+      client,
+      "registration_periods",
+      ["id", "semester_id", "name", "start_date", "end_date", "allowed_years", "is_open"],
+      (store.registrationPeriods || []).map(rp => [
+        rp.id, rp.semesterId, rp.name, rp.startDate, rp.endDate, rp.allowedYears || [1, 2, 3, 4], rp.isOpen
+      ]),
+      `(id) DO UPDATE SET end_date = EXCLUDED.end_date, is_open = EXCLUDED.is_open, allowed_years = EXCLUDED.allowed_years`
     );
 
     await insertBatch(

@@ -123,7 +123,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
   const unpaidCount = semesterFees.filter(f => f.status === "unpaid").length;
 
   // Bulk issue tuition fees
-  const handleBulkIssueTuition = () => {
+  const handleBulkIssueTuition = async () => {
     if (!selectedSemesterId) {
       triggerToast("Vui lòng chọn học kỳ để áp dụng biểu phí.");
       return;
@@ -135,6 +135,17 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
       triggerToast("Không có sinh viên đang hoạt động trong niên học khóa để lập học phí.");
       return;
     }
+
+    try {
+      const result = await api.bulkIssueTuition({ semesterId: selectedSemesterId, amount: 15000000 });
+      onRefreshData();
+      triggerToast(result.createdCount > 0
+        ? `ÄÃ£ Ä‘á»“ng loáº¡t thÃ´ng bÃ¡o ná»£ phÃ­ cho ${result.createdCount} sinh viÃªn.`
+        : "Há»c phÃ­ Ä‘Ã£ Ä‘Æ°á»£c xuáº¥t báº£n Ä‘áº§y Ä‘á»§ trÆ°á»›c Ä‘Ã³ cho há»‡ sinh viÃªn khÃ³a nÃ y.");
+    } catch (err: any) {
+      triggerToast(err.message || "KhÃ´ng thá»ƒ láº­p há»c phÃ­ hÃ ng loáº¡t.");
+    }
+    return;
 
     let createdCount = 0;
     activeProfiles.forEach(prof => {
@@ -206,7 +217,17 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
   };
 
   // Scan overdue and apply warnings
-  const handleScanOverdueWarnings = () => {
+  const handleScanOverdueWarnings = async () => {
+    try {
+      const result = await api.scanOverdueTuition();
+      onRefreshData();
+      triggerToast(result.overdueCount > 0
+        ? `ÄÃ£ rÃ  soÃ¡t vÃ  gá»­i cáº£nh bÃ¡o ná»£ xáº¥u quÃ¡ háº¡n cho ${result.overdueCount} sinh viÃªn.`
+        : "KhÃ´ng phÃ¡t hiá»‡n thÃªm trÆ°á»ng há»£p trá»… Ä‘Ã³ng há»c phÃ­ quÃ¡ sá»‘ má»‘c quy Ä‘á»‹nh.");
+    } catch (err: any) {
+      triggerToast(err.message || "KhÃ´ng thá»ƒ rÃ  soÃ¡t há»c phÃ­ quÃ¡ háº¡n.");
+    }
+    return;
     const storeData = AppStore.get();
     let warnCount = 0;
 

@@ -58,6 +58,8 @@ export default function QuizBuilder(props: ComponentProps) {
     setQuizLimit,
     quizAttempts,
     setQuizAttempts,
+    quizDeadline,
+    setQuizDeadline,
     showQuestionModal,
     setShowQuestionModal,
     qText,
@@ -501,6 +503,23 @@ export default function QuizBuilder(props: ComponentProps) {
 
             <form onSubmit={handleAddQuizSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Chọn Khóa học tương ứng</label>
+                <select
+                  required
+                  value={selectedCourseId || ""}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0f172a] text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400"
+                >
+                  <option value="" disabled>-- Chọn khóa học --</option>
+                  {myCourses.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-bold text-white/70">Tiêu đề Đề thi</label>
                 <input
                   type="text"
@@ -508,6 +527,16 @@ export default function QuizBuilder(props: ComponentProps) {
                   placeholder="Ví dụ: Bài đánh giá năng lực cuối khóa"
                   value={quizTitle}
                   onChange={(e) => setQuizTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Hạn chót Hoàn thành (Bỏ trống nếu không giới hạn)</label>
+                <input
+                  type="date"
+                  value={quizDeadline || ""}
+                  onChange={(e) => setQuizDeadline(e.target.value)}
                   className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400"
                 />
               </div>
@@ -609,7 +638,15 @@ export default function QuizBuilder(props: ComponentProps) {
                   <label className="text-xs font-bold text-white/70">Loại câu hỏi</label>
                   <select
                     value={qType}
-                    onChange={(e) => setQType(e.target.value as any)}
+                    onChange={(e) => {
+                      const newType = e.target.value as any;
+                      setQType(newType);
+                      if (newType === "text") {
+                        setQCorrect("");
+                      } else {
+                        setQCorrect("0");
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
                   >
                     <option value="single">Một đáp án đúng (Single Choice)</option>
@@ -618,39 +655,93 @@ export default function QuizBuilder(props: ComponentProps) {
                   </select>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/70">Chỉ số đáp án đúng / Từ khóa đáp án</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: 0 (Đáp án 1) hoặc 'bảo mật, kế thừa' cho dạng điền từ"
-                    value={qCorrect}
-                    onChange={(e) => setQCorrect(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
-                  />
-                </div>
+                {qType === "text" ? (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70">Từ khóa đáp án đúng (cách nhau bởi dấu phẩy)</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: bảo mật, kế thừa, đa hình"
+                      value={qCorrect}
+                      onChange={(e) => setQCorrect(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1 opacity-80">
+                    <label className="text-xs font-bold text-white/50">Đáp án trắc nghiệm đã chọn</label>
+                    <input
+                      type="text"
+                      disabled
+                      placeholder="Chọn ở danh sách bên dưới"
+                      value={
+                        qCorrect
+                          ? qCorrect
+                              .split(",")
+                              .map(idx => `Lựa chọn ${Number(idx) + 1}`)
+                              .join(", ")
+                          : "Chưa chọn đáp án nào"
+                      }
+                      className="w-full px-3 py-2 bg-black/40 text-[#60a5fa] border border-white/15 rounded-xl focus:outline-none font-bold"
+                    />
+                  </div>
+                )}
               </div>
 
               {qType !== "text" && (
                 <div className="space-y-2.5">
-                  <span className="text-xs font-bold text-white/70 block">Cung cấp các lựa chọn đáp án (Tối đa 3 lựa chọn)</span>
-                  {qOptions.map((opt, id) => (
-                    <div key={id} className="flex items-center gap-2">
-                      <span className="font-mono text-white/40">Lựa chọn {id + 1}</span>
-                      <input
-                        type="text"
-                        required
-                        placeholder={`Nội dung lựa chọn đáp án #${id + 1}`}
-                        value={opt}
-                        onChange={(e) => {
-                          const nextOpts = [...qOptions];
-                          nextOpts[id] = e.target.value;
-                          setQOptions(nextOpts);
-                        }}
-                        className="flex-1 px-3 py-1.5 bg-black/20 text-white border border-white/10 rounded-lg text-xs"
-                      />
-                    </div>
-                  ))}
+                  <span className="text-xs font-bold text-white/70 block">Cung cấp các lựa chọn đáp án (Tối đa 3 lựa chọn) và chọn đáp án đúng</span>
+                  {qOptions.map((opt, id) => {
+                    const isCorrect = qType === "multiple"
+                      ? (qCorrect || "").split(",").includes(String(id))
+                      : qCorrect === String(id);
+
+                    return (
+                      <div key={id} className="flex items-center gap-3 bg-white/2 border border-white/5 p-2 rounded-xl">
+                        {qType === "multiple" ? (
+                          <input
+                            type="checkbox"
+                            checked={isCorrect}
+                            onChange={(e) => {
+                              const currentSelected = qCorrect ? qCorrect.split(",") : [];
+                              let nextSelected;
+                              if (e.target.checked) {
+                                nextSelected = [...currentSelected, String(id)];
+                              } else {
+                                nextSelected = currentSelected.filter(v => v !== String(id));
+                              }
+                              const sorted = nextSelected.sort((a, b) => Number(a) - Number(b));
+                              setQCorrect(sorted.join(","));
+                            }}
+                            className="h-4.5 w-4.5 rounded border-white/10 text-indigo-600 focus:ring-0 focus:ring-offset-0 bg-black/40 cursor-pointer"
+                          />
+                        ) : (
+                          <input
+                            type="radio"
+                            name="correct-option-group"
+                            checked={isCorrect}
+                            onChange={() => {
+                              setQCorrect(String(id));
+                            }}
+                            className="h-4.5 w-4.5 border-white/10 text-indigo-600 focus:ring-0 focus:ring-offset-0 bg-black/40 cursor-pointer"
+                          />
+                        )}
+                        <span className="font-mono text-white/40 text-xs min-w-[70px] select-none">Lựa chọn {id + 1}</span>
+                        <input
+                          type="text"
+                          required
+                          placeholder={`Nội dung lựa chọn đáp án #${id + 1}`}
+                          value={opt}
+                          onChange={(e) => {
+                            const nextOpts = [...qOptions];
+                            nextOpts[id] = e.target.value;
+                            setQOptions(nextOpts);
+                          }}
+                          className="flex-1 px-3 py-1.5 bg-black/20 text-white border border-white/10 rounded-lg text-xs"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -692,6 +783,23 @@ export default function QuizBuilder(props: ComponentProps) {
             </h3>
 
             <form onSubmit={handleAddAssignmentSubmit} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Chọn Khóa học tương ứng</label>
+                <select
+                  required
+                  value={selectedCourseId || ""}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0f172a] text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400"
+                >
+                  <option value="" disabled>-- Chọn khóa học --</option>
+                  {myCourses.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-white/70">Tiêu đề Thử thách bài tập</label>
                 <input

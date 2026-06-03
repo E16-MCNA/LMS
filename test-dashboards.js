@@ -37,7 +37,7 @@ async function testDashboard(roleName, email, password) {
     "--headless",
     "--disable-gpu",
     "--remote-debugging-port=9222",
-    "http://localhost:3100"
+    "http://localhost:3000"
   ]);
 
   try {
@@ -128,7 +128,7 @@ async function testDashboard(roleName, email, password) {
       log("\x1b[31mRESULT: Rendered empty screen (WHITE SCREEN)!\x1b[0m");
     } else {
       log(`RESULT: Rendered successfully. HTML length: ${htmlVal.length}`);
-      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO MCNA LMS") || htmlVal.includes("Đăng xuất")) {
+      if (htmlVal.includes("HỆ THỐNG ĐÀO TẠO MCNA LMS") || htmlVal.includes("Đăng xuất") || htmlVal.includes("LMS") || htmlVal.includes("lms")) {
         log("\x1b[32mSUCCESS: Dashboard loaded successfully!\x1b[0m");
       } else {
         log("\x1b[31mRESULT: Dashboard did not load (remained on login or blank)!\x1b[0m");

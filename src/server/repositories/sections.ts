@@ -4,8 +4,8 @@ import { Queryable } from "../db";
 export const sectionsRepository = {
   async createSection(db: Queryable, section: CourseSection): Promise<CourseSection> {
     await db.query(
-      `INSERT INTO course_sections (id, course_id, semester_id, teacher_id, section_code, max_students, schedule_json, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      `INSERT INTO course_sections (id, course_id, semester_id, teacher_id, section_code, max_students, schedule, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`,
       [section.id, section.courseId, section.semesterId, section.teacherId, section.sectionCode, section.maxStudents, JSON.stringify(section.schedule), section.status]
     );
     return section;
@@ -15,16 +15,23 @@ export const sectionsRepository = {
     const res = courseId
       ? await db.query("SELECT * FROM course_sections WHERE course_id = $1", [courseId])
       : await db.query("SELECT * FROM course_sections");
-    return res.rows.map(row => ({
-      id: row.id,
-      courseId: row.course_id,
-      semesterId: row.semester_id,
-      teacherId: row.teacher_id,
-      sectionCode: row.section_code,
-      maxStudents: row.max_students,
-      schedule: JSON.parse(row.schedule_json || "[]"),
-      status: row.status
-    }));
+    return res.rows.map(row => {
+      const sched = row.schedule || row.schedule_json || [];
+      return {
+        id: row.id,
+        courseId: row.course_id,
+        semesterId: row.semester_id,
+        teacherId: row.teacher_id,
+        sectionCode: row.section_code,
+        maxStudents: row.max_students,
+        schedule: Array.isArray(sched)
+          ? sched
+          : typeof sched === "string"
+          ? JSON.parse(sched)
+          : [],
+        status: row.status
+      };
+    });
   },
 
   async registerToSection(db: Queryable, reg: CourseRegistration): Promise<CourseRegistration> {
@@ -38,9 +45,15 @@ export const sectionsRepository = {
 
   async conflictCheck(db: Queryable, studentId: string, sectionId: string): Promise<boolean> {
     // 1. Get schedule of target section
-    const targetRes = await db.query("SELECT schedule_json FROM course_sections WHERE id = $1", [sectionId]);
+    const targetRes = await db.query("SELECT * FROM course_sections WHERE id = $1", [sectionId]);
     if (!targetRes.rows[0]) return false;
-    const targetSchedule = JSON.parse(targetRes.rows[0].schedule_json || "[]") as CourseSection["schedule"];
+    const targetRow = targetRes.rows[0];
+    const schedTarget = targetRow.schedule || targetRow.schedule_json || [];
+    const targetSchedule = Array.isArray(schedTarget)
+      ? schedTarget
+      : typeof schedTarget === "string"
+      ? JSON.parse(schedTarget)
+      : [];
 
     // 2. Get schedules of student's already registered sections in same semester
     const secRes = await db.query("SELECT semester_id FROM course_sections WHERE id = $1", [sectionId]);
@@ -48,14 +61,21 @@ export const sectionsRepository = {
     if (!semId) return false;
 
     const currentRegs = await db.query(
-      `SELECT cs.schedule_json 
+      `SELECT cs.* 
        FROM course_registrations cr
        JOIN course_sections cs ON cr.section_id = cs.id
        WHERE cr.student_id = $1 AND cr.semester_id = $2 AND cr.status = 'registered'`,
       [studentId, semId]
     );
 
-    const existingSchedules = currentRegs.rows.flatMap(r => JSON.parse(r.schedule_json || "[]") as CourseSection["schedule"]);
+    const existingSchedules = currentRegs.rows.flatMap(r => {
+      const sched = r.schedule || r.schedule_json || [];
+      return Array.isArray(sched)
+        ? sched
+        : typeof sched === "string"
+        ? JSON.parse(sched)
+        : [];
+    });
 
     // 3. Compare day of week and overlapping times
     for (const t of targetSchedule) {

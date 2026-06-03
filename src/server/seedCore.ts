@@ -199,23 +199,24 @@ export async function seedCoreLearningData(db: Queryable) {
     }
   }
 
-  if (Number((await db.query("SELECT COUNT(*) AS count FROM registration_periods")).rows[0].count) === 0) {
-    for (const period of store.registrationPeriods || []) {
-      await db.query(
-        `INSERT INTO registration_periods (id, semester_id, name, start_date, end_date, allowed_years, is_open)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (id) DO NOTHING`,
-        [
-          period.id,
-          period.semesterId,
-          period.name,
-          period.startDate,
-          period.endDate,
-          period.allowedYears || [1, 2, 3, 4],
-          period.isOpen
-        ]
-      );
-    }
+  for (const period of store.registrationPeriods || []) {
+    await db.query(
+      `INSERT INTO registration_periods (id, semester_id, name, start_date, end_date, allowed_years, is_open)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (id) DO UPDATE SET
+         end_date = EXCLUDED.end_date,
+         is_open = EXCLUDED.is_open,
+         allowed_years = EXCLUDED.allowed_years`,
+      [
+        period.id,
+        period.semesterId,
+        period.name,
+        period.startDate,
+        period.endDate,
+        period.allowedYears || [1, 2, 3, 4],
+        period.isOpen
+      ]
+    );
   }
 
   if (Number((await db.query("SELECT COUNT(*) AS count FROM course_registrations")).rows[0].count) === 0) {

@@ -144,7 +144,18 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
   const advisorNotes = advisorNotesRes.rows.map(row => ({ id: row.id, advisorId: row.advisor_id, studentId: row.student_id, content: row.content, type: row.type, createdAt: row.created_at }));
 
   // Missing registration & requests
-  const courseSections = courseSectionsRes.rows.map(row => ({ id: row.id, courseId: row.course_id, semesterId: row.semester_id, teacherId: row.teacher_id, sectionCode: row.section_code, maxStudents: row.max_students, schedule: typeof row.schedule === "string" ? JSON.parse(row.schedule || "[]") : row.schedule || JSON.parse(row.schedule_json || "[]"), status: row.status }));
+  const courseSections = courseSectionsRes.rows.map(row => ({
+    id: row.id,
+    courseId: row.course_id,
+    semesterId: row.semester_id,
+    teacherId: row.teacher_id,
+    sectionCode: row.section_code,
+    maxStudents: row.max_students,
+    schedule: row.schedule_json
+      ? JSON.parse(row.schedule_json || "[]")
+      : (typeof row.schedule === "string" ? JSON.parse(row.schedule || "[]") : row.schedule || []),
+    status: row.status
+  }));
   const registrationPeriods = registrationPeriodsRes.rows.map(row => ({ id: row.id, semesterId: row.semester_id, name: row.name, startDate: row.start_date, endDate: row.end_date, allowedYears: Array.isArray(row.allowed_years) ? row.allowed_years.map(Number) : JSON.parse(row.allowed_years_json || '[]'), isOpen: Boolean(row.is_open) }));
   const courseRegistrations = courseRegistrationsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, sectionId: row.section_id, semesterId: row.semester_id, status: row.status, registeredAt: row.registered_at, droppedAt: row.dropped_at || undefined, grade: row.grade || undefined, letterGrade: row.letter_grade || undefined, gradePoint: row.grade_point === null ? undefined : Number(row.grade_point), credits: row.credits, isRetake: Boolean(row.is_retake) }));
   const scholarships = scholarshipsRes.rows.map(row => ({ id: row.id, name: row.name, type: row.type, amount: row.amount === null ? undefined : Number(row.amount), discountPercent: row.discount_percent === null ? undefined : Number(row.discount_percent), semesterId: row.semester_id, conditions: row.conditions }));

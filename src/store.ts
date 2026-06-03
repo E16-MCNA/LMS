@@ -634,9 +634,9 @@ export function getInitialStore(): LMSDataStore {
         semesterId: "sem_spring25",
         name: "Đăng ký học kỳ Mùa Xuân 2025",
         startDate: "2024-12-01",
-        endDate: "2025-01-31",
+        endDate: "2026-12-31",
         allowedYears: [1, 2, 3, 4],
-        isOpen: false
+        isOpen: true
       }
     ],
     courseRegistrations: [
@@ -876,7 +876,7 @@ export class AppStore {
     
     if (typeof sessionStorage !== "undefined") {
       const role = sessionStorage.getItem("e16_lms_role");
-      if (role && !["manager", "super_admin", "admin", "finance"].includes(role)) {
+      if (role && !["manager", "super_admin", "admin", "finance", "teacher"].includes(role)) {
         // Skip calling /api/store/sync as this role does not have permission
         return;
       }

@@ -49,6 +49,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
 
   // Local active sub-module state
   const [activeSubTab, setActiveSubTab] = useState<string>("teacher_guide");
+  const [showSidebar, setShowSidebar] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -93,6 +94,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   const [quizPassing, setQuizPassing] = useState(70);
   const [quizLimit, setQuizLimit] = useState(15);
   const [quizAttempts, setQuizAttempts] = useState(3);
+  const [quizDeadline, setQuizDeadline] = useState("");
 
   // Add Question state
   const [showQuestionModal, setShowQuestionModal] = useState(false);
@@ -297,13 +299,15 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         title: quizTitle,
         passingScore: quizPassing,
         timeLimit: quizLimit,
-        maxAttempts: quizAttempts
+        maxAttempts: quizAttempts,
+        deadline: quizDeadline || null
       }) as Quiz;
       setSelectedQuizId(created.id);
       setQuizTitle("");
       setQuizPassing(70);
       setQuizLimit(15);
       setQuizAttempts(3);
+      setQuizDeadline("");
       setShowQuizModal(false);
       onRefreshData();
       triggerToast("Course final assessment criteria mapped successfully.");
@@ -320,7 +324,8 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
       title: quizTitle,
       passingScore: quizPassing,
       timeLimit: quizLimit,
-      maxAttempts: quizAttempts
+      maxAttempts: quizAttempts,
+      deadline: quizDeadline || undefined
     };
 
     storeData.quizzes.push(newQuiz);
@@ -330,7 +335,8 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
       title: quizTitle,
       passingScore: quizPassing,
       timeLimit: quizLimit,
-      maxAttempts: quizAttempts
+      maxAttempts: quizAttempts,
+      deadline: quizDeadline || null
     }).catch(err => console.warn("Failed to create quiz on server:", err));
 
     AppStore.log(currentUser.id, "create_quiz", newQuiz.title, `Added assessment linked to course: ${selectedCourseId}`);
@@ -340,6 +346,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     setQuizPassing(70);
     setQuizLimit(15);
     setQuizAttempts(3);
+    setQuizDeadline("");
     setShowQuizModal(false);
     onRefreshData();
     triggerToast("Course final assessment criteria mapped successfully.");
@@ -501,7 +508,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     showCourseModal, setShowCourseModal, courseModalMode, courseTitle, setCourseTitle, courseDesc, setCourseDesc,
     courseCategory, setCourseCategory, courseThumb, setCourseThumb, coursePrice, setCoursePrice, courseLevel, setCourseLevel, courseTags, setCourseTags,
     showLessonModal, setShowLessonModal, lessonTitle, setLessonTitle, lessonContent, setLessonContent, lessonVideo, setLessonVideo, lessonDuration, setLessonDuration,
-    showQuizModal, setShowQuizModal, quizTitle, setQuizTitle, quizPassing, setQuizPassing, quizLimit, setQuizLimit, quizAttempts, setQuizAttempts,
+    showQuizModal, setShowQuizModal, quizTitle, setQuizTitle, quizPassing, setQuizPassing, quizLimit, setQuizLimit, quizAttempts, setQuizAttempts, quizDeadline, setQuizDeadline,
     showQuestionModal, setShowQuestionModal, qText, setQText, qType, setQType, qOptions, setQOptions, qCorrect, setQCorrect,
     showAssignModal, setShowAssignModal, assignTitle, setAssignTitle, assignDesc, setAssignDesc, assignDeadline, setAssignDeadline, assignMaxScore, setAssignMaxScore,
     activeSubmissionId, setActiveSubmissionId, gradingScore, setGradingScore, gradingFeedback, setGradingFeedback,
@@ -546,139 +553,204 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         )}
       </div>
 
-      {/* Main tab control buttons */}
-      {activeSystem === "SIS" ? (
-        <div className="flex border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
+      {/* Side-by-side dashboard layout: sidebar navigation on the left, workspace canvas on the right */}
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-8 items-start">
+        {/* Mobile: sidebar toggle bar */}
+        <div className="lg:hidden w-full">
           <button
-            onClick={() => setActiveSubTab("teacher_guide")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "teacher_guide" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
+            onClick={() => setShowSidebar(s => !s)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-xs text-white/70 hover:text-white hover:bg-white/8 transition cursor-pointer"
           >
-            Hướng dẫn sử dụng
-          </button>
-          <button
-            onClick={() => setActiveSubTab("timetable")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "timetable" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Thời khóa biểu giảng dạy
-          </button>
-          <button
-            onClick={() => setActiveSubTab("attendance")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "attendance" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Điểm danh lớp học
+            <span className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+              <span className="font-semibold">Menu điều hướng</span>
+              <span className="text-white/40">— đang xem: <strong className="text-indigo-300">{{
+                teacher_guide: "Hướng dẫn sử dụng",
+                courses: "Chương trình Đào tạo",
+                quizzes: "Đề thi & Đánh giá",
+                assignments: "Bài tập & Chấm điểm",
+                gradebook: "Sổ điểm Tổng hợp",
+                analytics: "Báo cáo Hiệu suất",
+                timetable: "Thời khóa biểu giảng dạy",
+                attendance: "Điểm danh lớp học",
+              }[activeSubTab] || activeSubTab}</strong></span>
+            </span>
+            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${showSidebar ? "rotate-90" : ""}`} />
           </button>
         </div>
-      ) : (
-        <div className="flex flex-wrap border-b border-white/10 bg-white/5 rounded-2xl p-1 gap-1">
-          <button
-            onClick={() => setActiveSubTab("teacher_guide")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "teacher_guide" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Hướng dẫn sử dụng
-          </button>
-          <button
-            onClick={() => { setActiveSubTab("courses"); setSelectedCourseId(null); }}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "courses" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Chương trình Đào tạo
-          </button>
-          <button
-            onClick={() => setActiveSubTab("quizzes")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "quizzes" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Đề thi & Đánh giá
-          </button>
-          <button
-            onClick={() => setActiveSubTab("assignments")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "assignments" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Bài tập & Chấm điểm
-          </button>
-          <button
-            onClick={() => setActiveSubTab("gradebook")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "gradebook" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Sổ điểm Tổng hợp
-          </button>
-          <button
-            onClick={() => setActiveSubTab("analytics")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "analytics" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Báo cáo Hiệu suất
-          </button>
-          <button
-            onClick={() => setActiveSubTab("timetable")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "timetable" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Thời khóa biểu
-          </button>
-          <button
-            onClick={() => setActiveSubTab("attendance")}
-            className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
-              activeSubTab === "attendance" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
-            }`}
-          >
-            Điểm danh lớp học
-          </button>
+
+        {/* Left Navigation Sidebar */}
+        <div className={`w-full lg:w-64 xl:w-72 flex flex-col gap-4 shrink-0 ${showSidebar ? "block" : "hidden"} lg:flex lg:flex-col`}>
+          <div className="bg-white/3 border border-white/10 rounded-3xl p-3 flex flex-col gap-1 w-full text-xs">
+            <span className="text-[10px] text-white/40 uppercase tracking-widest px-3 py-2 font-bold font-mono border-b border-white/5 mb-1.5">
+              {activeSystem === "SIS" ? "HỒ SƠ HỌC VỤ SIS" : "GIẢNG DẠY LMS"}
+            </span>
+            
+            {activeSystem === "SIS" ? (
+              <>
+                <button
+                  onClick={() => { setActiveSubTab("teacher_guide"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "teacher_guide" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <HelpCircle className={`h-4.5 w-4.5 ${activeSubTab === "teacher_guide" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Hướng dẫn sử dụng</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("timetable"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "timetable" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Clock className={`h-4.5 w-4.5 ${activeSubTab === "timetable" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Thời khóa biểu giảng dạy</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("attendance"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "attendance" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "attendance" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Điểm danh lớp học</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => { setActiveSubTab("teacher_guide"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "teacher_guide" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <HelpCircle className={`h-4.5 w-4.5 ${activeSubTab === "teacher_guide" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Hướng dẫn sử dụng</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("courses"); setSelectedCourseId(null); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "courses" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <BookOpen className={`h-4.5 w-4.5 ${activeSubTab === "courses" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Chương trình Đào tạo</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("quizzes"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "quizzes" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <FileText className={`h-4.5 w-4.5 ${activeSubTab === "quizzes" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Đề thi & Đánh giá</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("assignments"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "assignments" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Edit className={`h-4.5 w-4.5 ${activeSubTab === "assignments" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Bài tập & Chấm điểm</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("gradebook"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "gradebook" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Award className={`h-4.5 w-4.5 ${activeSubTab === "gradebook" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Sổ điểm Tổng hợp</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("analytics"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "analytics" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <BarChart className={`h-4.5 w-4.5 ${activeSubTab === "analytics" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Báo cáo Hiệu suất</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("timetable"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "timetable" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Clock className={`h-4.5 w-4.5 ${activeSubTab === "timetable" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Thời khóa biểu</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("attendance"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "attendance" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "attendance" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Điểm danh lớp học</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Active Panel View Canvas */}
-      <div className="relative bg-white/5 border border-white/10 rounded-3xl p-6">
+        {/* Active Panel View Canvas */}
+        <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl p-6 min-w-0 w-full">
+          <CourseBuilder {...teacherPanelProps} />
+          <QuizBuilder {...teacherPanelProps} />
+          <AssignmentGrader {...teacherPanelProps} />
+          <GradebookTable {...teacherPanelProps} />
+          <TeacherAnalytics {...teacherPanelProps} />
 
-        <CourseBuilder {...teacherPanelProps} />
-        <QuizBuilder {...teacherPanelProps} />
-        <AssignmentGrader {...teacherPanelProps} />
-        <GradebookTable {...teacherPanelProps} />
-        <TeacherAnalytics {...teacherPanelProps} />
+          {activeSubTab === "timetable" && (
+            <Timetable
+              role="teacher"
+              currentUser={currentUser}
+              store={store}
+              onRefreshData={onRefreshData}
+            />
+          )}
 
-        {activeSubTab === "timetable" && (
-          <Timetable
-            role="teacher"
-            currentUser={currentUser}
-            store={store}
-            onRefreshData={onRefreshData}
-          />
-        )}
+          {activeSubTab === "teacher_guide" && (
+            <UserGuide
+              role="teacher"
+              activeSystem={activeSystem}
+              onClose={() => setActiveSubTab(activeSystem === "SIS" ? "timetable" : "courses")}
+            />
+          )}
 
-        {activeSubTab === "teacher_guide" && (
-          <UserGuide
-            role="teacher"
-            activeSystem={activeSystem}
-            onClose={() => setActiveSubTab(activeSystem === "SIS" ? "timetable" : "courses")}
-          />
-        )}
-
-        {activeSubTab === "attendance" && (
-          <AttendanceManager
-            store={store}
-            currentUser={currentUser}
-            onRefreshData={onRefreshData}
-            triggerToast={triggerToast}
-          />
-        )}
-
-
+          {activeSubTab === "attendance" && (
+            <AttendanceManager
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={onRefreshData}
+              triggerToast={triggerToast}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

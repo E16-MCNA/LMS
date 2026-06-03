@@ -375,14 +375,30 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                   ).length === currentLearningLessons.length;
 
                   if (checkQuiz && isAllSessionsRead) {
+                    const isQuizDeadlineExpired = checkQuiz.deadline ? new Date(checkQuiz.deadline).getTime() < Date.now() : false;
+
                     return (
-                      <div className="pt-2 border-t border-white/5 mt-4">
-                        <button
-                          onClick={() => handleStartQuiz(checkQuiz)}
-                          className="w-full py-3 bg-[#16a34a] hover:bg-opacity-95 text-slate-950 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/10"
-                        >
-                          <Award className="h-4 w-4" /> Làm bài Đánh giá Cuối khóa
-                        </button>
+                      <div className="pt-2 border-t border-white/5 mt-4 space-y-2">
+                        {checkQuiz.deadline && !isQuizDeadlineExpired && (
+                          <div className="text-[10px] text-white/40 text-center font-mono">
+                            Hạn nộp bài thi: {new Date(checkQuiz.deadline).toLocaleDateString("vi-VN")}
+                          </div>
+                        )}
+                        {isQuizDeadlineExpired ? (
+                          <button
+                            disabled
+                            className="w-full py-3 bg-red-600/20 text-red-400 border border-red-500/20 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-not-allowed"
+                          >
+                            <BadgeAlert className="h-4.5 w-4.5" /> Đã quá hạn làm bài thi trắc nghiệm ({new Date(checkQuiz.deadline).toLocaleDateString("vi-VN")})
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleStartQuiz(checkQuiz)}
+                            className="w-full py-3 bg-[#16a34a] hover:bg-opacity-95 text-slate-950 font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/10"
+                          >
+                            <Award className="h-4 w-4" /> Làm bài Đánh giá Cuối khóa
+                          </button>
+                        )}
                       </div>
                     );
                   }

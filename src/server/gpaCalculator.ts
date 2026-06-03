@@ -24,14 +24,20 @@ export async function recalculateGPA(pool: Pool, studentId: string): Promise<{ g
     [studentId]
   );
 
-  const totalCredits = rows.reduce((sum, row) => sum + Number(row.credits), 0);
+  // GPA is calculated based on all graded courses (including F)
+  const totalCreditsAttempted = rows.reduce((sum, row) => sum + Number(row.credits), 0);
   const weightedSum = rows.reduce((sum, row) => sum + Number(row.grade_point) * Number(row.credits), 0);
-  const gpa = totalCredits > 0 ? Math.round((weightedSum / totalCredits) * 100) / 100 : 0;
+  const gpa = totalCreditsAttempted > 0 ? Math.round((weightedSum / totalCreditsAttempted) * 100) / 100 : 0;
+
+  // Credits earned only includes passed courses (grade_point > 0)
+  const totalCreditsEarned = rows
+    .filter(row => Number(row.grade_point || 0) > 0)
+    .reduce((sum, row) => sum + Number(row.credits), 0);
 
   await pool.query(
     "UPDATE student_profiles SET gpa = $1, total_credits_earned = $2 WHERE user_id = $3",
-    [gpa, totalCredits, studentId]
+    [gpa, totalCreditsEarned, studentId]
   );
 
-  return { gpa, credits: totalCredits };
+  return { gpa, credits: totalCreditsEarned };
 }
