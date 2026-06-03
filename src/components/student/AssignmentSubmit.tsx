@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { BookOpen, GraduationCap, CheckCircle, Bookmark, Award, Send, Clock, Play, Check, Lock, User, Search, ChevronRight, ArrowRight, HelpCircle, FileCheck, AlertCircle, X, FileText, CreditCard, Phone, Calendar, Home, Shield, Activity, DollarSign, Printer, FileSpreadsheet, Cpu, BadgeAlert } from "lucide-react";
-import { AppStore } from "../../store";
+import { api } from "../../api";
 import ModalPortal from "../ModalPortal";
 
 interface ComponentProps {
@@ -82,27 +82,44 @@ export default function AssignmentSubmit(props: ComponentProps) {
     setSubmissionFile(e.target.files?.[0] || null);
   };
 
-  const handleSubmitWithFile = (e: React.FormEvent) => {
+  const handleSubmitWithFileUpload = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingAssignment) return;
     const hasText = submissionCodeText.trim().length > 0;
-    const hasFile = submissionFile !== null;
+    const selectedFile = submissionFile;
+    const hasFile = selectedFile !== null;
     if (!hasText && !hasFile && !existingAttachment) {
-      triggerToast("Vui lòng nhập nội dung bài làm hoặc đính kèm tệp.");
+      triggerToast("Vui long nhap noi dung bai lam hoac dinh kem tep.");
       return;
     }
-    // Build combined content including file reference
-    let finalContent = submissionCodeText.trim().replace(/\s*\[Tệp đính kèm:[^\]]+\]/g, "").trim();
-    if (hasFile) {
-      finalContent += (finalContent ? "\n\n" : "") + `[Tệp đính kèm: ${submissionFile!.name} (${(submissionFile!.size / 1024).toFixed(1)} KB)]`;
-    } else if (existingAttachment) {
-      finalContent += (finalContent ? "\n\n" : "") + `[Tệp đính kèm: ${existingAttachment}]`;
-    }
-    
-    setSubmissionFile(null);
-    setExistingAttachment(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+
     setIsSubmittingAssignment(true);
-    Promise.resolve(handleSendAssignmentSubmit(e, finalContent)).finally(() => setIsSubmittingAssignment(false));
+    try {
+      let attachmentUrl = existingAttachment || undefined;
+      if (selectedFile) {
+        const uploaded = await api.uploadFile(selectedFile);
+        attachmentUrl = uploaded.url;
+      }
+
+      let finalContent = submissionCodeText.trim().replace(/\s*\[Attachment:[^\]]+\]/g, "").trim();
+      if (selectedFile) {
+        finalContent += (finalContent ? "\n\n" : "") + `[Attachment: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(1)} KB)]`;
+      } else if (attachmentUrl) {
+        finalContent += (finalContent ? "\n\n" : "") + `[Attachment: ${attachmentUrl}]`;
+      }
+
+      const ok = await handleSendAssignmentSubmit(e, finalContent, attachmentUrl);
+      if (ok !== false) {
+        setSubmissionFile(null);
+        setExistingAttachment(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || "Khong the upload tep dinh kem.");
+    } finally {
+      setIsSubmittingAssignment(false);
+    }
   };
 
   return (
@@ -195,7 +212,7 @@ export default function AssignmentSubmit(props: ComponentProps) {
               Vui lòng soạn thảo hoặc dán mã nguồn, câu trả lời, nhận xét phân tích hoặc liên kết sản phẩm của bạn vào khung bên dưới. Sau khi hoàn thành, giảng viên sẽ chấm điểm và để lại nhận xét góp ý.
             </p>
 
-            <form onSubmit={handleSubmitWithFile} className="space-y-4">
+            <form onSubmit={handleSubmitWithFileUpload} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-white/70">Nội dung bài làm (văn bản / mã nguồn)</label>
                 <textarea

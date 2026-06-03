@@ -52,7 +52,15 @@ async function checkGPAWarnings() {
   const students = await pool.query("SELECT user_id FROM student_profiles WHERE status = 'active'");
   for (const row of students.rows) {
     const studentId = row.user_id;
-    const { gpa } = await recalculateGPA(pool, studentId);
+    const { gpa, attemptedCredits } = await recalculateGPA(pool, studentId);
+    if (attemptedCredits === 0) {
+      await pool.query(
+        "UPDATE academic_warnings SET is_resolved = true, resolved_at = $2 WHERE student_id = $1 AND type = 'low_gpa' AND is_resolved = false",
+        [studentId, new Date().toISOString()]
+      );
+      await pool.query("UPDATE student_profiles SET academic_probation = false WHERE user_id = $1", [studentId]);
+      continue;
+    }
     if (gpa < 2.0) {
       await pool.query(
         `INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at)

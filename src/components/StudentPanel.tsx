@@ -472,18 +472,19 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
   };
 
   // Send assignment files
-  const handleSendAssignmentSubmit = async (e: React.FormEvent, overrideContent?: string) => {
+  const handleSendAssignmentSubmit = async (e: React.FormEvent, overrideContent?: string, attachmentUrl?: string) => {
     e.preventDefault();
     const contentToUse = overrideContent !== undefined ? overrideContent : submissionCodeText;
     if (!submittingAssignmentId || !contentToUse.trim()) {
       triggerToast("Vui lòng nhập nội dung bài làm hoặc đính kèm tệp.");
-      return;
+      return false;
     }
 
     try {
       const submitted = await api.submitAssignment({
         assignmentId: submittingAssignmentId,
-        content: contentToUse
+        content: contentToUse,
+        attachmentUrl
       });
       const localStore = AppStore.get();
       const existingIndex = localStore.submissions.findIndex(
@@ -502,9 +503,11 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
       setSubmissionCodeText("");
       setSubmittingAssignmentId(null);
       void onRefreshData();
+      return true;
     } catch (err: any) {
       console.error(err);
       triggerToast(err.message || "Không thể nộp bài tập lên server.");
+      return false;
     }
   };
 

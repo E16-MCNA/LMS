@@ -40,6 +40,21 @@ export const api = {
   getAcademicDashboard: () => apiFetch("/api/dashboard/academic"),
   getAdvisorDashboard: () => apiFetch("/api/dashboard/advisor"),
   getParentDashboard: () => apiFetch("/api/dashboard/parent"),
+  uploadFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const csrfToken = sessionStorage.getItem("mcna_lms_csrf") || sessionStorage.getItem("e16_lms_csrf");
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+      },
+      body: formData
+    });
+    if (!response.ok) throw new Error("File upload failed");
+    return response.json() as Promise<{ url: string }>;
+  },
   getCourses: () => apiFetch("/api/courses"),
   createCourse: (payload: unknown) => apiFetch("/api/courses", { method: "POST", body: JSON.stringify(payload) }),
   submitCourse: (courseId: string) => apiFetch(`/api/courses/${courseId}/submit`, { method: "POST" }),
@@ -56,7 +71,7 @@ export const api = {
   deleteQuestion: (questionId: string) => apiFetch(`/api/questions/${questionId}`, { method: "DELETE" }),
   submitQuiz: (payload: { quizId: string; answers: Record<string, string>; startedAt?: string }) => apiFetch("/api/quizzes/submit", { method: "POST", body: JSON.stringify(payload) }),
   createAssignment: (payload: unknown) => apiFetch("/api/assignments", { method: "POST", body: JSON.stringify(payload) }),
-  submitAssignment: (payload: { assignmentId: string; content: string }) => apiFetch<LMSDataStore["submissions"][number]>("/api/assignments/submit", { method: "POST", body: JSON.stringify(payload) }),
+  submitAssignment: (payload: { assignmentId: string; content: string; attachmentUrl?: string }) => apiFetch<LMSDataStore["submissions"][number]>("/api/assignments/submit", { method: "POST", body: JSON.stringify(payload) }),
   gradeAssignment: (payload: { submissionId: string; score: number; feedback: string }) => apiFetch("/api/assignments/grade", { method: "POST", body: JSON.stringify(payload) }),
   createUser: (payload: unknown) => apiFetch("/api/admin/users", { method: "POST", body: JSON.stringify(payload) }),
   setUserStatus: (userId: string, isActive: boolean) => apiFetch(`/api/admin/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ isActive }) }),

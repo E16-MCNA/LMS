@@ -4,9 +4,12 @@ import { notifyAdvisorOf, notifyParentOf, notifyRole, notifyStudent, notifyUsers
 
 export function registerEventHandlers() {
   eventBus.on("grade.saved", async ({ studentId, courseRegistrationId, grade }, pool) => {
-    const { gpa, credits } = await recalculateGPA(pool, studentId);
+    const { gpa, credits, attemptedCredits } = await recalculateGPA(pool, studentId);
     const profile = (await pool.query("SELECT program_id FROM student_profiles WHERE user_id = $1", [studentId])).rows[0];
-    if (gpa < 2.0) {
+    if (attemptedCredits === 0) {
+      await pool.query("UPDATE academic_warnings SET is_resolved = true, resolved_at = $2 WHERE student_id = $1 AND type = 'low_gpa' AND is_resolved = false", [studentId, new Date().toISOString()]);
+      await pool.query("UPDATE student_profiles SET academic_probation = false WHERE user_id = $1", [studentId]);
+    } else if (gpa < 2.0) {
       await pool.query(
         `INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at)
          VALUES ($1,$2,'low_gpa',$3,false,$4)

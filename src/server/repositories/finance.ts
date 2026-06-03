@@ -22,7 +22,7 @@ export const financeRepository = {
   },
 
   async payTuition(db: Queryable, feeId: string, paidAmount: number, ownerStudentId?: string) {
-    const fee = (await db.query("SELECT * FROM tuition_fees WHERE id = $1", [feeId])).rows[0];
+    const fee = (await db.query("SELECT * FROM tuition_fees WHERE id = $1 FOR UPDATE", [feeId])).rows[0];
     if (!fee) return null;
     if (ownerStudentId && fee.student_id !== ownerStudentId) return null;
     if (paidAmount <= 0) return null;
@@ -54,12 +54,15 @@ export const financeRepository = {
   },
 
   async reviewTransaction(db: Queryable, txId: string, status: "approved" | "rejected", reviewerId: string, notes?: string) {
-    const tx = (await db.query("SELECT * FROM transactions WHERE id = $1", [txId])).rows[0];
+    const tx = (await db.query("SELECT * FROM transactions WHERE id = $1 FOR UPDATE", [txId])).rows[0];
     if (!tx) return null;
     if (tx.status !== "pending") return { error: "Transaction already reviewed.", status: 409 };
 
     const processedAt = new Date().toISOString();
-    const finalNotes = notes || (status === "approved" ? "Payment matched and enrollment activated." : "Payment rejected by finance.");
+    const isTuitionPayment = typeof tx.notes === "string" && tx.notes.startsWith("tuition_fee_pay:");
+    const tuitionFeeId = isTuitionPayment ? tx.notes.split("|")[0].replace("tuition_fee_pay:", "").trim() : null;
+    const reviewNote = notes || (status === "approved" ? "Payment matched and enrollment activated." : "Payment rejected by finance.");
+    const finalNotes = isTuitionPayment ? `${tx.notes} | ${reviewNote}` : reviewNote;
     const row = (await db.query(
       `UPDATE transactions
        SET status = $2, processed_at = $3, processed_by = $4, notes = $5
@@ -70,7 +73,6 @@ export const financeRepository = {
 
     if (status === "approved") {
       // Only activate enrollment for course-registration transactions (not semester tuition payments)
-      const isTuitionPayment = tx.notes && tx.notes.startsWith("tuition_fee_pay:");
       if (!isTuitionPayment && tx.course_id) {
         await db.query(
           `UPDATE enrollments
@@ -79,12 +81,11 @@ export const financeRepository = {
           [tx.student_id, tx.course_id]
         );
       }
-      if (isTuitionPayment) {
-        const feeId = tx.notes.replace("tuition_fee_pay:", "");
-        await this.payTuition(db, feeId, Number(tx.amount));
+      if (tuitionFeeId) {
+        const paid = await this.payTuition(db, tuitionFeeId, Number(tx.amount));
+        if (!paid) return { error: "Tuition fee not found or invalid.", status: 404 };
       }
     } else {
-      const isTuitionPayment = tx.notes && tx.notes.startsWith("tuition_fee_pay:");
       if (!isTuitionPayment && tx.course_id) {
         await db.query(
           `UPDATE enrollments

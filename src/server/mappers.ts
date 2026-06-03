@@ -87,7 +87,8 @@ export function quizFromRow(row: any): Quiz {
     passingScore: Number(row.passing_score),
     timeLimit: Number(row.time_limit),
     maxAttempts: Number(row.max_attempts),
-    deadline: row.deadline || undefined
+    deadline: row.deadline || undefined,
+    attachmentUrl: row.attachment_url || undefined
   };
 }
 
@@ -98,7 +99,8 @@ export function questionFromRow(row: any): Question {
     text: row.text,
     type: row.type,
     options: row.options_json ? JSON.parse(row.options_json) : [],
-    correctAnswer: row.correct_answer
+    correctAnswer: row.correct_answer,
+    createdAt: row.created_at
   };
 }
 
@@ -122,7 +124,8 @@ export function assignmentFromRow(row: any): Assignment {
     title: row.title,
     description: row.description,
     deadline: row.deadline,
-    maxScore: Number(row.max_score)
+    maxScore: Number(row.max_score),
+    attachmentUrl: row.attachment_url || undefined
   };
 }
 
@@ -132,10 +135,11 @@ export function submissionFromRow(row: any): Submission {
     assignmentId: row.assignment_id,
     studentId: row.student_id,
     content: row.content,
-    score: row.score === null || row.score === undefined ? undefined : Number(row.score),
+    score: row.score !== null ? row.score : undefined,
     feedback: row.feedback || undefined,
     submittedAt: row.submitted_at,
-    gradedAt: row.graded_at || undefined
+    gradedAt: row.graded_at || undefined,
+    attachmentUrl: row.attachment_url || undefined
   };
 }
 

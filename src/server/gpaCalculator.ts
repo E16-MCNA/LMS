@@ -13,7 +13,7 @@ export function toGradePoint(letterGrade: string): number {
   return map[letterGrade] ?? 0.0;
 }
 
-export async function recalculateGPA(pool: Pool, studentId: string): Promise<{ gpa: number; credits: number }> {
+export async function recalculateGPA(pool: Pool, studentId: string): Promise<{ gpa: number; credits: number; attemptedCredits: number }> {
   const { rows } = await pool.query(
     `SELECT grade_point, credits
      FROM course_registrations
@@ -39,5 +39,5 @@ export async function recalculateGPA(pool: Pool, studentId: string): Promise<{ g
     [gpa, totalCreditsEarned, studentId]
   );
 
-  return { gpa, credits: totalCreditsEarned };
+  return { gpa, credits: totalCreditsEarned, attemptedCredits: totalCreditsAttempted };
 }

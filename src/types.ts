@@ -73,6 +73,7 @@ export interface Quiz {
   timeLimit: number; // in mins
   maxAttempts: number;
   deadline?: string;
+  attachmentUrl?: string;
 }
 
 export interface Question {
@@ -82,6 +83,7 @@ export interface Question {
   type: "single" | "multiple" | "text";
   options: string[]; // only for single or multiple
   correctAnswer: string; // indices comma-separated for multi, or text
+  createdAt?: string;
 }
 
 export interface QuizAttempt {
@@ -102,6 +104,7 @@ export interface Assignment {
   description: string;
   deadline: string;
   maxScore: number;
+  attachmentUrl?: string;
 }
 
 export interface Submission {
@@ -113,6 +116,7 @@ export interface Submission {
   feedback?: string;
   submittedAt: string;
   gradedAt?: string;
+  attachmentUrl?: string;
 }
 
 export interface Certificate {

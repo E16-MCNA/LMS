@@ -1,17 +1,34 @@
 import express from "express";
 import path from "path";
+import multer from "multer";
+import fs from "fs";
+
+// Setup multer for file uploads
+const uploadDir = path.join(process.cwd(), "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname.replace(/[^a-zA-Z0-9.-]/g, ''));
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB limit
+
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import { getInitialStore } from "./src/store";
 import { hashPassword, verifyPassword } from "./src/authHash";
-import { LMSDataStore, StudentProfile, User } from "./src/types";
+import { LMSDataStore, User } from "./src/types";
 import { runMigrations } from "./src/dbMigrations";
-import { pool } from "./src/server/db";
+import { pool, Queryable } from "./src/server/db";
 import { redis, safeRedis } from "./src/server/redis";
 import { generateId } from "./src/server/ids";
-import { DbUserRow, toPublicUser, denormalizeRole, tuitionFeeFromRow } from "./src/server/mappers";
+import { DbUserRow, toPublicUser, tuitionFeeFromRow } from "./src/server/mappers";
 import { validateBody, schemas } from "./src/server/validation";
 import { seedAuthUsers, seedCoreLearningData } from "./src/server/seedCore";
 import { usersRepository } from "./src/server/repositories/users";
@@ -32,7 +49,9 @@ import { graduationRepository } from "./src/server/repositories/graduation";
 import { scholarshipsRepository } from "./src/server/repositories/scholarships";
 import { notificationsRepository } from "./src/server/repositories/notifications";
 import { attendanceRepository } from "./src/server/repositories/attendance";
+import { eventBus } from "./src/server/eventBus";
 import { registerEventHandlers } from "./src/server/eventHandlers";
+import { toGradePoint, toLetterGrade } from "./src/server/gpaCalculator";
 import { startScheduler } from "./src/server/scheduler";
 
 dotenv.config();
@@ -50,6 +69,14 @@ const JWT_SECRET_VALUE = JWT_SECRET || "dev-only-e16-lms-secret-do-not-use-in-pr
 const csrfSafeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 app.use(express.json({ limit: "10mb" }));
+
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
+
+app.post("/api/upload", requireCsrf, requireAuth, upload.single("file"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
+
 
 // Middleware tự động xóa cache khi có bất kỳ yêu cầu thay đổi dữ liệu nào
 app.use((req, _res, next) => {
@@ -200,6 +227,117 @@ async function audit(req: AuthRequest, action: string, target: string, detail: s
   await auditRepository.log(pool, req.user.id, action, target, detail);
 }
 
+async function maybePostFinalCourseGrade(db: Queryable, studentId: string, courseId: string) {
+  const assignments = (await db.query(
+    `SELECT a.id, a.max_score, s.score
+     FROM assignments a
+     LEFT JOIN LATERAL (
+       SELECT score
+       FROM submissions
+       WHERE assignment_id = a.id
+         AND student_id = $2
+         AND score IS NOT NULL
+       ORDER BY graded_at DESC NULLS LAST, submitted_at DESC
+       LIMIT 1
+     ) s ON true
+     WHERE a.course_id = $1`,
+    [courseId, studentId]
+  )).rows;
+
+  const quizzes = (await db.query(
+    `SELECT q.id, qa.score
+     FROM quizzes q
+     LEFT JOIN LATERAL (
+       SELECT score
+       FROM quiz_attempts
+       WHERE quiz_id = q.id
+         AND student_id = $2
+       ORDER BY score DESC, submitted_at DESC
+       LIMIT 1
+     ) qa ON true
+     WHERE q.course_id = $1`,
+    [courseId, studentId]
+  )).rows;
+
+  if (assignments.length === 0 && quizzes.length === 0) return null;
+
+  let assignmentPercent: number | null = null;
+  if (assignments.length > 0) {
+    if (assignments.some((row: any) => row.score === null || row.score === undefined)) return null;
+    assignmentPercent = assignments.reduce((sum: number, row: any) => {
+      const maxScore = Math.max(1, Number(row.max_score || 1));
+      return sum + (Number(row.score) / maxScore) * 100;
+    }, 0) / assignments.length;
+  }
+
+  let quizPercent: number | null = null;
+  if (quizzes.length > 0) {
+    if (quizzes.some((row: any) => row.score === null || row.score === undefined)) return null;
+    quizPercent = quizzes.reduce((sum: number, row: any) => sum + Number(row.score || 0), 0) / quizzes.length;
+  }
+
+  const rawFinalScore = assignmentPercent !== null && quizPercent !== null
+    ? assignmentPercent * 0.3 + quizPercent * 0.7
+    : assignmentPercent ?? quizPercent;
+  if (rawFinalScore === null || rawFinalScore === undefined) return null;
+
+  const finalScore = Math.round(rawFinalScore * 100) / 100;
+  const letterGrade = toLetterGrade(finalScore);
+  const gradePoint = toGradePoint(letterGrade);
+  const postedAt = new Date().toISOString();
+  const updated = (await db.query(
+    `WITH target_registration AS (
+       SELECT cr.id
+       FROM course_registrations cr
+       JOIN course_sections cs ON cs.id = cr.section_id
+       WHERE cr.student_id = $1
+         AND cs.course_id = $2
+         AND cr.status NOT IN ('dropped', 'waitlisted', 'withdrawn')
+       ORDER BY cr.registered_at DESC
+       LIMIT 1
+     )
+     UPDATE course_registrations cr
+     SET grade = $3,
+         letter_grade = $4,
+         grade_point = $5,
+         grade_posted_at = $6
+     FROM target_registration target
+     WHERE cr.id = target.id
+       AND (
+         cr.grade IS DISTINCT FROM $3
+         OR cr.letter_grade IS DISTINCT FROM $4
+         OR cr.grade_point IS DISTINCT FROM $5
+         OR cr.grade_posted_at IS NULL
+       )
+     RETURNING cr.id`,
+    [studentId, courseId, finalScore, letterGrade, gradePoint, postedAt]
+  )).rows;
+
+  for (const row of updated) {
+    await eventBus.emit("grade.saved", { studentId, courseRegistrationId: row.id, grade: letterGrade }, pool);
+  }
+
+  return { studentId, courseId, finalScore, letterGrade, gradePoint, registrationIds: updated.map((row: any) => row.id) };
+}
+
+async function maybePostFinalCourseGradeForQuiz(db: Queryable, studentId: string, quizId: string) {
+  const quiz = (await db.query("SELECT course_id FROM quizzes WHERE id = $1", [quizId])).rows[0];
+  if (!quiz) return null;
+  return maybePostFinalCourseGrade(db, studentId, quiz.course_id);
+}
+
+async function maybePostFinalCourseGradeForSubmission(db: Queryable, submissionId: string) {
+  const submission = (await db.query(
+    `SELECT s.student_id, a.course_id
+     FROM submissions s
+     JOIN assignments a ON a.id = s.assignment_id
+     WHERE s.id = $1`,
+    [submissionId]
+  )).rows[0];
+  if (!submission) return null;
+  return maybePostFinalCourseGrade(db, submission.student_id, submission.course_id);
+}
+
 type SectionScheduleSlot = { dayOfWeek: string; startTime: string; endTime: string; room?: string };
 type SectionPayload = {
   id?: string;
@@ -271,13 +409,6 @@ async function upsertCourseSection(db: any, section: SectionPayload) {
 let isSyncing = false;
 const syncQueue: (() => void)[] = [];
 
-const safeDateStr = (d: any) => {
-  if (!d) return null;
-  const dateObj = d instanceof Date ? d : new Date(d);
-  if (isNaN(dateObj.getTime())) return null;
-  return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-};
-
 async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
   // Serialize syncs to prevent PostgreSQL deadlocks on concurrent saves
   await new Promise<void>((resolve) => {
@@ -294,149 +425,8 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     try {
       await client.query("BEGIN");
 
-      // Fetch existing users to skip identical inserts/updates
-      const dbUsersRes = await client.query("SELECT id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id FROM users");
-      const dbUsersMap = new Map<string, any>(dbUsersRes.rows.map(r => [r.id, r]));
-
-      for (const user of store.users || []) {
-        if (user.role === "parent") continue;
-
-        const dbUser = dbUsersMap.get(user.id);
-        const emailLower = user.email.toLowerCase();
-        const clientRoleDenorm = denormalizeRole(user.role);
-
-        // Determine if dirty
-        const isDirty = !dbUser ||
-          dbUser.email !== emailLower ||
-          dbUser.name !== user.name ||
-          dbUser.role !== clientRoleDenorm ||
-          Boolean(dbUser.is_active) !== Boolean(user.isActive) ||
-          (dbUser.phone || null) !== (user.phone || null) ||
-          (dbUser.linked_student_id || null) !== (user.linkedStudentId || null) ||
-          (user.passwordHash && dbUser.password_hash !== user.passwordHash) ||
-          (user.passwordSalt && dbUser.password_salt !== user.passwordSalt);
-
-        if (isDirty) {
-          await client.query(
-            `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, phone, linked_student_id, created_at)
-             VALUES ($1,$2,COALESCE(NULLIF($3, ''), 'client-sync-placeholder'),$4,$5,$6,$7,$8,$9,$10)
-             ON CONFLICT (id) DO UPDATE SET
-               email = EXCLUDED.email,
-               name = EXCLUDED.name,
-               role = EXCLUDED.role,
-               is_active = EXCLUDED.is_active,
-               phone = EXCLUDED.phone,
-               linked_student_id = EXCLUDED.linked_student_id,
-               password_hash = COALESCE(NULLIF($11, ''), users.password_hash),
-               password_salt = COALESCE(EXCLUDED.password_salt, users.password_salt)`,
-            [
-              user.id,
-              emailLower,
-              user.passwordHash || "",
-              user.passwordSalt || null,
-              user.name,
-              clientRoleDenorm,
-              Boolean(user.isActive),
-              user.phone || null,
-              user.linkedStudentId || null,
-              user.createdAt || new Date().toISOString(),
-              user.passwordHash || ""
-            ]
-          );
-        }
-      }
-
-      // Fetch existing profiles to skip identical inserts/updates
-      const dbProfilesRes = await client.query("SELECT id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth, gender, guardian_name, guardian_phone, guardian_email, notes, fee_hold, academic_probation FROM student_profiles");
-      const dbProfilesMap = new Map<string, any>(dbProfilesRes.rows.map(r => [r.id, r]));
-
-      for (const profile of store.studentProfiles || []) {
-        const dbProfile = dbProfilesMap.get(profile.id);
-
-        const isDirty = !dbProfile ||
-          dbProfile.user_id !== profile.userId ||
-          dbProfile.student_code !== profile.studentCode ||
-          dbProfile.program_id !== profile.programId ||
-          dbProfile.department_id !== profile.departmentId ||
-          Number(dbProfile.academic_year) !== Number(profile.academicYear) ||
-          safeDateStr(dbProfile.enrollment_date) !== safeDateStr(profile.enrollmentDate) ||
-          safeDateStr(dbProfile.expected_graduation) !== safeDateStr(profile.expectedGraduation) ||
-          dbProfile.status !== profile.status ||
-        Number(dbProfile.gpa) !== Number(profile.gpa) ||
-        Number(dbProfile.total_credits_earned) !== Number(profile.totalCreditsEarned) ||
-        dbProfile.address !== (profile.address || null) ||
-        dbProfile.phone !== (profile.phone || null) ||
-        safeDateStr(dbProfile.date_of_birth) !== safeDateStr(profile.dateOfBirth) ||
-        dbProfile.gender !== (profile.gender || null) ||
-        dbProfile.guardian_name !== (profile.guardianName || null) ||
-        dbProfile.guardian_phone !== (profile.guardianPhone || null) ||
-        dbProfile.guardian_email !== (profile.guardianEmail || null) ||
-        dbProfile.notes !== (profile.notes || null);
-
-      if (isDirty) {
-        await client.query(
-          `INSERT INTO student_profiles (
-            id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
-            expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth,
-            gender, guardian_name, guardian_phone, guardian_email, notes
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-          ON CONFLICT (id) DO UPDATE SET
-            user_id = EXCLUDED.user_id,
-            student_code = EXCLUDED.student_code,
-            program_id = EXCLUDED.program_id,
-            department_id = EXCLUDED.department_id,
-            academic_year = EXCLUDED.academic_year,
-            enrollment_date = EXCLUDED.enrollment_date,
-            expected_graduation = EXCLUDED.expected_graduation,
-            status = EXCLUDED.status,
-            gpa = EXCLUDED.gpa,
-            total_credits_earned = EXCLUDED.total_credits_earned,
-            address = EXCLUDED.address,
-            phone = EXCLUDED.phone,
-            date_of_birth = EXCLUDED.date_of_birth,
-            gender = EXCLUDED.gender,
-            guardian_name = EXCLUDED.guardian_name,
-            guardian_phone = EXCLUDED.guardian_phone,
-            guardian_email = EXCLUDED.guardian_email,
-            notes = EXCLUDED.notes`,
-          [
-            profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId,
-            profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status,
-            profile.gpa, profile.totalCreditsEarned, profile.address || null, profile.phone || null,
-            profile.dateOfBirth || null, profile.gender || null, profile.guardianName || null,
-            profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null
-          ]
-        );
-      }
-    }
-
-    for (const user of (store.users || []).filter(item => item.role === "student")) {
-      const hasProfile = (store.studentProfiles || []).some(profile => profile.userId === user.id);
-      if (!hasProfile) {
-        const hasDbProfile = dbProfilesRes.rows.some(r => r.user_id === user.id);
-        if (!hasDbProfile) {
-          const profile: StudentProfile = {
-            id: generateId("profile"),
-            userId: user.id,
-            studentCode: `SV${new Date().getFullYear()}${user.id.slice(-4).toUpperCase()}`,
-            programId: "prog_se",
-            departmentId: "dept_cs",
-            academicYear: 1,
-            enrollmentDate: new Date().toISOString().slice(0, 10),
-            expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
-            status: "active",
-            gpa: 0,
-            totalCreditsEarned: 0
-          };
-          await client.query(
-            `INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-             ON CONFLICT (id) DO NOTHING`,
-            [profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId, profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status, profile.gpa, profile.totalCreditsEarned]
-          );
-        }
-      }
-    }
+      // Legacy snapshots are not trusted for identities or student records.
+      // users and student_profiles are written only through scoped API routes.
 
     // Fetch existing courses to skip identical updates
     const dbCoursesRes = await client.query("SELECT id, status, rejection_reason FROM courses");
@@ -631,15 +621,16 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       const clientQuizzes = store.quizzes || [];
       for (const q of clientQuizzes) {
         await client.query(
-          `INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
+          `INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts, attachment_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (id) DO UPDATE SET
              course_id = EXCLUDED.course_id,
              lesson_id = EXCLUDED.lesson_id,
              title = EXCLUDED.title,
              passing_score = EXCLUDED.passing_score,
              time_limit = EXCLUDED.time_limit,
-             max_attempts = EXCLUDED.max_attempts`,
+             max_attempts = EXCLUDED.max_attempts,
+             attachment_url = EXCLUDED.attachment_url`,
           [
             q.id,
             q.courseId,
@@ -647,7 +638,8 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
             q.title,
             Number(q.passingScore) || 70,
             Number(q.timeLimit) || 15,
-            Number(q.maxAttempts) || 3
+            Number(q.maxAttempts) || 3,
+            q.attachmentUrl || null
           ]
         );
       }
@@ -658,54 +650,29 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       const clientQuestions = store.questions || [];
       for (const qst of clientQuestions) {
         await client.query(
-          `INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (id) DO UPDATE SET
              quiz_id = EXCLUDED.quiz_id,
              text = EXCLUDED.text,
              type = EXCLUDED.type,
              options_json = EXCLUDED.options_json,
-             correct_answer = EXCLUDED.correct_answer`,
+             correct_answer = EXCLUDED.correct_answer,
+             created_at = COALESCE(questions.created_at, EXCLUDED.created_at)`,
           [
             qst.id,
             qst.quizId,
             qst.text,
             qst.type,
             JSON.stringify(qst.options || []),
-            qst.correctAnswer
+            qst.correctAnswer,
+            qst.createdAt || new Date().toISOString()
           ]
         );
       }
     }
 
-    // Sync submissions (upsert-only)
-    if (store.submissions !== undefined) {
-      const clientSubmissions = store.submissions || [];
-      for (const sub of clientSubmissions) {
-        await client.query(
-          `INSERT INTO submissions (id, assignment_id, student_id, content, score, feedback, submitted_at, graded_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (id) DO UPDATE SET
-             assignment_id = EXCLUDED.assignment_id,
-             student_id = EXCLUDED.student_id,
-             content = EXCLUDED.content,
-             score = EXCLUDED.score,
-             feedback = EXCLUDED.feedback,
-             submitted_at = EXCLUDED.submitted_at,
-             graded_at = EXCLUDED.graded_at`,
-          [
-            sub.id,
-            sub.assignmentId,
-            sub.studentId,
-            sub.content,
-            sub.score === undefined || sub.score === null ? null : Number(sub.score),
-            sub.feedback || null,
-            sub.submittedAt,
-            sub.gradedAt || null
-          ]
-        );
-      }
-    }
+    // Sync submissions bypassed (server-managed only)
 
     // Sync courseSections (upsert-only)
     if (store.courseSections !== undefined) {
@@ -724,42 +691,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       }
     }
 
-    // Sync courseRegistrations (upsert-only)
-    if (store.courseRegistrations !== undefined) {
-      const clientRegs = store.courseRegistrations || [];
-      for (const reg of clientRegs) {
-        await client.query(
-          `INSERT INTO course_registrations (id, student_id, section_id, semester_id, status, registered_at, dropped_at, grade, letter_grade, grade_point, credits, is_retake)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-           ON CONFLICT (id) DO UPDATE SET
-             student_id = EXCLUDED.student_id,
-             section_id = EXCLUDED.section_id,
-             semester_id = EXCLUDED.semester_id,
-             status = EXCLUDED.status,
-             registered_at = EXCLUDED.registered_at,
-             dropped_at = EXCLUDED.dropped_at,
-             grade = EXCLUDED.grade,
-             letter_grade = EXCLUDED.letter_grade,
-             grade_point = EXCLUDED.grade_point,
-             credits = EXCLUDED.credits,
-             is_retake = EXCLUDED.is_retake`,
-          [
-            reg.id,
-            reg.studentId,
-            reg.sectionId,
-            reg.semesterId,
-            reg.status,
-            reg.registeredAt,
-            reg.droppedAt || null,
-            reg.grade === undefined || reg.grade === null ? null : Number(reg.grade),
-            reg.letterGrade || null,
-            reg.gradePoint === undefined || reg.gradePoint === null ? null : Number(reg.gradePoint),
-            Number(reg.credits) || 3,
-            Boolean(reg.isRetake)
-          ]
-        );
-      }
-    }
+    // Sync courseRegistrations bypassed (server-managed only)
 
     await client.query("COMMIT");
     } catch (error) {
@@ -1189,6 +1121,7 @@ app.post("/api/quizzes/submit", requireAuth, requireRole(["student"]), validateB
   const result = await quizzesRepository.submitAttempt(pool, req.body.quizId, req.user!.id, req.body.answers, req.body.startedAt);
   if (!result) return res.status(404).json({ error: "Quiz not found." });
   if ("error" in result) return res.status(result.status).json({ error: result.error });
+  await maybePostFinalCourseGradeForQuiz(pool, req.user!.id, req.body.quizId);
   await audit(req, "submit_quiz_attempt", result.row.quizId, `Score ${result.row.score}.`);
   res.status(201).json(result.row);
 }));
@@ -1200,24 +1133,26 @@ app.post("/api/assignments", requireAuth, requireRole(["teacher", "admin", "supe
   res.status(201).json(assignment);
 }));
 app.post("/api/assignments/submit", requireAuth, requireRole(["student"]), validateBody(schemas.submitAssignment), asyncHandler(async (req, res) => {
-  const result = await assignmentsRepository.submit(pool, req.user!.id, req.body.assignmentId, req.body.content);
+  const result = await assignmentsRepository.submit(pool, req.user!.id, req.body.assignmentId, req.body.content, req.body.attachmentUrl);
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   await audit(req, "submit_assignment", result.row.id, result.row.assignmentId);
   res.status(201).json(result.row);
 }));
+
 app.post("/api/assignments/grade", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.gradeAssignment), asyncHandler(async (req, res) => {
   const submission = await assignmentsRepository.findSubmissionForGrading(pool, req.body.submissionId);
   if (!submission) return res.status(404).json({ error: "Submission not found." });
   if (req.user!.role === "teacher" && submission.teacher_id !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
   if (req.body.score > Number(submission.max_score)) return res.status(400).json({ error: "Invalid score." });
   const result = await assignmentsRepository.grade(pool, req.body.submissionId, req.body.score, req.body.feedback);
+  await maybePostFinalCourseGradeForSubmission(pool, req.body.submissionId);
   await audit(req, "grade_assignment", req.body.submissionId, `Score ${req.body.score}.`);
   res.json(result);
 }));
 
-app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin", "sale"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
-  if (req.user!.role === "sale" && req.body.role !== "student") {
-    return res.status(403).json({ error: "Lễ tân chỉ có quyền đăng ký học viên (student)." });
+app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin", "sale", "admin"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
+  if ((req.user!.role === "sale" || req.user!.role === "admin") && req.body.role !== "student") {
+    return res.status(403).json({ error: "Chỉ có quyền đăng ký học viên (student)." });
   }
   const credential = hashPassword(req.body.password);
   const user: User = {
@@ -1241,8 +1176,8 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin",
         "profile_" + created.id,
         created.id,
         "SV2025" + created.id.slice(-4).toUpperCase(),
-        "prog_se",
-        "dept_cs",
+        req.body.programId || "prog_se",
+        req.body.departmentId || "dept_cs",
         1,
         new Date().toISOString().slice(0, 10),
         "2029-06-30",
@@ -1256,11 +1191,11 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin",
   res.status(201).json(created);
 }));
 
-app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin", "sale"]), asyncHandler(async (req, res) => {
+app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin", "sale", "admin"]), asyncHandler(async (req, res) => {
   const user = await usersRepository.findById(pool, req.params.id);
   if (!user) return res.status(404).json({ error: "User not found." });
-  if (req.user!.role === "sale" && user.role !== "student") {
-    return res.status(403).json({ error: "Lễ tân chỉ có quyền reset mật khẩu học viên." });
+  if ((req.user!.role === "sale" || req.user!.role === "admin") && user.role !== "student") {
+    return res.status(403).json({ error: "Chỉ có quyền reset mật khẩu học viên." });
   }
   const defaultNewPass = "studente16";
   const credential = hashPassword(defaultNewPass);
@@ -1503,27 +1438,70 @@ app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "manager", "ad
 
 app.post("/api/tuition/confirm-transfer", requireAuth, requireRole(["student"]), validateBody(schemas.confirmTransfer), asyncHandler(async (req, res) => {
   const { feeId, amount } = req.body;
-  const fee = (await pool.query(
-    "SELECT id, student_id, amount, paid_amount FROM tuition_fees WHERE id = $1",
+  const client = await pool.connect();
+  let txId = "";
+  try {
+  await client.query("BEGIN");
+  const fee = (await client.query(
+    "SELECT id, student_id, amount, paid_amount FROM tuition_fees WHERE id = $1 FOR UPDATE",
     [feeId]
   )).rows[0];
-  if (!fee || fee.student_id !== req.user!.id) return res.status(404).json({ error: "Tuition fee not found." });
+  if (!fee || fee.student_id !== req.user!.id) {
+    await client.query("ROLLBACK");
+    return res.status(404).json({ error: "Tuition fee not found." });
+  }
   const remaining = Math.max(0, Number(fee.amount) - Number(fee.paid_amount || 0));
-  if (remaining <= 0 || Number(amount) > remaining) return res.status(400).json({ error: "Invalid transfer amount." });
-  const txId = generateId("tx");
-  await pool.query(
+  const tuitionNote = `tuition_fee_pay:${feeId}`;
+  const pendingAmount = Number((await client.query(
+    `SELECT COALESCE(SUM(amount), 0) AS total
+     FROM transactions
+     WHERE student_id = $1
+       AND status = 'pending'
+       AND (notes = $2 OR notes LIKE $2 || ' |%')`,
+    [req.user!.id, tuitionNote]
+  )).rows[0]?.total || 0);
+  if (remaining <= 0 || Number(amount) + pendingAmount > remaining) {
+    await client.query("ROLLBACK");
+    return res.status(400).json({ error: "Invalid transfer amount." });
+  }
+  txId = generateId("tx");
+  await client.query(
     `INSERT INTO transactions (id, student_id, course_id, amount, status, payment_method, created_at, notes)
      VALUES ($1, $2, NULL, $3, 'pending', 'Chuyển khoản Ngân hàng (QR)', $4, $5)`,
-    [txId, req.user!.id, Number(amount), new Date().toISOString(), `tuition_fee_pay:${feeId}`]
+    [txId, req.user!.id, Number(amount), new Date().toISOString(), tuitionNote]
   );
+  await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
   await audit(req, "request_tuition_confirm", feeId, `Pending bank transfer of ${amount} for tuition.`);
   res.json({ ok: true, transactionId: txId });
 }));
 
 app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["finance", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
-  const result = await financeRepository.reviewTransaction(pool, req.params.id, req.body.status, req.user!.id, req.body.notes);
-  if (!result) return res.status(404).json({ error: "Transaction not found." });
-  if ("error" in result) return res.status(result.status).json({ error: result.error });
+  const client = await pool.connect();
+  let result: any;
+  try {
+    await client.query("BEGIN");
+    result = await financeRepository.reviewTransaction(client, req.params.id, req.body.status, req.user!.id, req.body.notes);
+    if (!result) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Transaction not found." });
+    }
+    if ("error" in result) {
+      await client.query("ROLLBACK");
+      return res.status(result.status).json({ error: result.error });
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
   await audit(req, `finance_transaction_${req.body.status}`, req.params.id, req.body.notes || "");
   res.json(result);
 }));
@@ -1788,10 +1766,7 @@ app.post("/api/attendance/warn-teacher", requireAuth, requireRole(["admin", "adm
   res.json({ ok: true });
 }));
 
-app.post("/api/store/sync", requireAuth, asyncHandler(async (req, res) => {
-  if (!["admin", "super_admin", "manager", "finance", "teacher"].includes(req.user!.role)) {
-    return res.status(403).json({ error: "Permission denied." });
-  }
+app.post("/api/store/sync", requireAuth, requireRole(["admin", "super_admin", "manager"]), asyncHandler(async (req, res) => {
   await syncClientStoreToDb(req.body || {});
   await audit(req, "store_sync", "store", "Client store changes synchronized into Postgres.");
   res.json({ ok: true, mode: "postgres-synchronized" });

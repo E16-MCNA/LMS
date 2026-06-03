@@ -23,7 +23,9 @@ export const schemas = {
     name: z.string().trim().min(1),
     role: z.enum(["manager", "super_admin", "teacher", "student", "sale", "admin", "finance", "advisor", "parent"]),
     phone: z.string().trim().optional(),
-    linkedStudentId: z.string().trim().optional()
+    linkedStudentId: z.string().trim().optional(),
+    programId: z.string().trim().optional(),
+    departmentId: z.string().trim().optional()
   }),
   setUserActive: z.object({
     isActive: z.boolean()
@@ -81,11 +83,13 @@ export const schemas = {
     title: z.string().trim().min(1),
     description: z.string().trim().min(1),
     deadline: z.string().trim().min(1),
-    maxScore: z.coerce.number().min(1)
+    maxScore: z.coerce.number().min(1),
+    attachmentUrl: z.string().trim().optional()
   }),
   submitAssignment: z.object({
     assignmentId: z.string().trim().min(1),
-    content: z.string().trim().min(1)
+    content: z.string().trim().min(1),
+    attachmentUrl: z.string().trim().optional()
   }),
   gradeAssignment: z.object({
     submissionId: z.string().trim().min(1),

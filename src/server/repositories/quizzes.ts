@@ -15,10 +15,10 @@ export const quizzesRepository = {
   },
 
   async addQuestion(db: Queryable, input: Omit<Question, "id">) {
-    const question = { ...input, id: generateId("question") };
+    const question = { ...input, id: generateId("question"), createdAt: input.createdAt || new Date().toISOString() };
     await db.query(
-      "INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer) VALUES ($1,$2,$3,$4,$5,$6)",
-      [question.id, question.quizId, question.text, question.type, JSON.stringify(question.options || []), question.correctAnswer]
+      "INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [question.id, question.quizId, question.text, question.type, JSON.stringify(question.options || []), question.correctAnswer, question.createdAt]
     );
     return question;
   },

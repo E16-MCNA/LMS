@@ -7,13 +7,13 @@ export const assignmentsRepository = {
   async create(db: Queryable, input: Omit<Assignment, "id">) {
     const assignment = { ...input, id: generateId("assign") };
     await db.query(
-      "INSERT INTO assignments (id, course_id, title, description, deadline, max_score) VALUES ($1,$2,$3,$4,$5,$6)",
-      [assignment.id, assignment.courseId, assignment.title, assignment.description, assignment.deadline, assignment.maxScore]
+      "INSERT INTO assignments (id, course_id, title, description, deadline, max_score, attachment_url) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [assignment.id, assignment.courseId, assignment.title, assignment.description, assignment.deadline, assignment.maxScore, assignment.attachmentUrl]
     );
     return assignment;
   },
 
-  async submit(db: Queryable, studentId: string, assignmentId: string, content: string) {
+  async submit(db: Queryable, studentId: string, assignmentId: string, content: string, attachmentUrl?: string) {
     const assignment = (await db.query("SELECT course_id, deadline FROM assignments WHERE id = $1", [assignmentId])).rows[0];
     if (!assignment) return { error: "Assignment not found.", status: 404 };
 
@@ -38,16 +38,16 @@ export const assignmentsRepository = {
 
     if (existing) {
       const submittedAt = new Date().toISOString();
-      await db.query(
-        "UPDATE submissions SET content = $1, submitted_at = $2 WHERE id = $3",
-        [content, submittedAt, existing.id]
-      );
-      return { row: { id: existing.id, assignmentId, studentId, content, submittedAt } };
+      const updated = (await db.query(
+        "UPDATE submissions SET content = $1, submitted_at = $2, attachment_url = COALESCE($4, attachment_url) WHERE id = $3 RETURNING attachment_url",
+        [content, submittedAt, existing.id, attachmentUrl || null]
+      )).rows[0];
+      return { row: { id: existing.id, assignmentId, studentId, content, submittedAt, attachmentUrl: updated?.attachment_url || undefined } };
     } else {
-      const submission: Submission = { id: generateId("sub"), assignmentId, studentId, content, submittedAt: new Date().toISOString() };
+      const submission: Submission = { id: generateId("sub"), assignmentId, studentId, content, submittedAt: new Date().toISOString(), attachmentUrl };
       await db.query(
-        "INSERT INTO submissions (id, assignment_id, student_id, content, submitted_at) VALUES ($1,$2,$3,$4,$5)",
-        [submission.id, assignmentId, studentId, content, submission.submittedAt]
+        "INSERT INTO submissions (id, assignment_id, student_id, content, submitted_at, attachment_url) VALUES ($1,$2,$3,$4,$5,$6)",
+        [submission.id, assignmentId, studentId, content, submission.submittedAt, attachmentUrl || null]
       );
       return { row: submission };
     }

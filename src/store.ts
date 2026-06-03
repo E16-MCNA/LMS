@@ -870,13 +870,15 @@ export class AppStore {
     return this.storeInstance!;
   }
 
-  public static save(store: LMSDataStore): void {
+  public static save(store: LMSDataStore, skipSync: boolean = false): void {
     this.storeInstance = store;
     localStorage.removeItem(STORAGE_KEY);
-    
+
+    if (skipSync) return;
+
     if (typeof sessionStorage !== "undefined") {
       const role = sessionStorage.getItem("e16_lms_role");
-      if (role && !["manager", "super_admin", "admin", "finance", "teacher"].includes(role)) {
+      if (role && !["manager", "super_admin", "admin"].includes(role)) {
         // Skip calling /api/store/sync as this role does not have permission
         return;
       }
@@ -914,8 +916,9 @@ export class AppStore {
       detail,
       createdAt: new Date().toISOString()
     };
+    if (!store.auditLogs) store.auditLogs = [];
     store.auditLogs.unshift(logItem); // Add to beginning of log
-    this.save(store);
+    this.save(store, true);
   }
 
   public static notify(userId: string, type: string, message: string): void {
@@ -928,7 +931,8 @@ export class AppStore {
       isRead: false,
       createdAt: new Date().toISOString()
     };
+    if (!store.notifications) store.notifications = [];
     store.notifications.unshift(notification);
-    this.save(store);
+    this.save(store, true);
   }
 }

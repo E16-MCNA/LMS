@@ -63,7 +63,7 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     db.query("SELECT * FROM enrollments"),
     db.query("SELECT * FROM lesson_progress"),
     db.query("SELECT * FROM quizzes"),
-    db.query("SELECT * FROM questions"),
+    db.query("SELECT * FROM questions ORDER BY created_at ASC"),
     db.query("SELECT * FROM quiz_attempts"),
     db.query("SELECT * FROM assignments"),
     db.query("SELECT * FROM submissions"),
@@ -140,7 +140,7 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     relatedEntityType: row.related_entity_type || undefined,
     relatedEntityId: row.related_entity_id || undefined
   }));
-  const transactions = transactionsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, courseId: row.course_id, amount: Number(row.amount), status: row.status, paymentMethod: row.payment_method, createdAt: row.created_at, processedAt: row.processed_at || undefined, processedBy: row.processed_by || undefined, notes: row.notes || undefined }));
+  const transactions = transactionsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, courseId: row.course_id || "", amount: Number(row.amount), status: row.status, paymentMethod: row.payment_method, createdAt: row.created_at, processedAt: row.processed_at || undefined, processedBy: row.processed_by || undefined, notes: row.notes || undefined }));
   const advisorNotes = advisorNotesRes.rows.map(row => ({ id: row.id, advisorId: row.advisor_id, studentId: row.student_id, content: row.content, type: row.type, createdAt: row.created_at }));
 
   // Missing registration & requests
