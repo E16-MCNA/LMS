@@ -120,6 +120,8 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
   const [newUserName, setNewUserName] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<"student" | "teacher" | "manager" | "admin" | "finance" | "sale" | "advisor">("student");
+  const [newStudentProgramId, setNewStudentProgramId] = useState("");
+  const [newStudentDepartmentId, setNewStudentDepartmentId] = useState("");
   const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Course rejection states
@@ -166,6 +168,8 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
       return;
     }
 
+    const roleToSubmit = currentUser.role === "admin" ? "student" : newUserRole;
+
     const exists = store.users.find(u => u.email.toLowerCase() === newUserEmail.toLowerCase());
     if (exists) {
       triggerToast("Email đăng ký này tài khoản đã tồn tại.");
@@ -177,11 +181,15 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
         email: newUserEmail.toLowerCase().trim(),
         password: newUserPassword,
         name: newUserName.trim(),
-        role: newUserRole
+        role: roleToSubmit,
+        programId: roleToSubmit === "student" && newStudentProgramId ? newStudentProgramId : undefined,
+        departmentId: roleToSubmit === "student" && newStudentDepartmentId ? newStudentDepartmentId : undefined
       });
       setNewUserEmail("");
       setNewUserName("");
       setNewUserPassword("");
+      setNewStudentProgramId("");
+      setNewStudentDepartmentId("");
       setShowAddUserModal(false);
       onRefreshData();
       triggerToast("Đã lưu trữ và thiết lập tài khoản thành công.");
@@ -216,6 +224,10 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
 
       const [name, email, role] = columns;
       const cleanRole = role.toLowerCase() as any;
+      if (currentUser.role === "admin" && cleanRole !== "student") {
+        errorCount++;
+        return;
+      }
       const roleValidated = ["student", "teacher", "manager", "admin", "finance", "sale", "advisor"].includes(cleanRole);
       const emailUnique = !storeData.users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
@@ -1174,9 +1186,10 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               <div className="space-y-1">
                 <label className="text-white/60">Phân hệ Quyền</label>
                 <select
-                  value={newUserRole}
+                  value={currentUser.role === "admin" ? "student" : newUserRole}
                   onChange={(e) => setNewUserRole(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none"
+                  disabled={currentUser.role === "admin"}
+                  className={`w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none ${currentUser.role === "admin" ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <option value="student" className="bg-slate-900">Sinh Viên (Student)</option>
                   <option value="teacher" className="bg-slate-900">Giảng Viên (Teacher)</option>
@@ -1186,6 +1199,37 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   <option value="sale" className="bg-slate-900">Sale (sale)</option>
                 </select>
               </div>
+
+              {(currentUser.role === "admin" || newUserRole === "student") && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-white/60">Khoa / Viện (Tùy chọn)</label>
+                    <select
+                      value={newStudentDepartmentId}
+                      onChange={(e) => setNewStudentDepartmentId(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none text-sm"
+                    >
+                      <option value="" className="bg-slate-900">-- Mặc định --</option>
+                      {store.departments?.map((d: any) => (
+                        <option key={d.id} value={d.id} className="bg-slate-900">{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-white/60">Chuyên ngành (Tùy chọn)</label>
+                    <select
+                      value={newStudentProgramId}
+                      onChange={(e) => setNewStudentProgramId(e.target.value)}
+                      className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none text-sm"
+                    >
+                      <option value="" className="bg-slate-900">-- Mặc định --</option>
+                      {store.programs?.map((p: any) => (
+                        <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 text-xs pt-2">
                 <button

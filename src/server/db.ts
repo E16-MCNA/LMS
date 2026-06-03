@@ -11,7 +11,7 @@ export const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   max: 30, // Tăng kích thước connection pool lên 30 để phục vụ song song tốt hơn
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,
   ssl: process.env.DATABASE_URL.includes("supabase.co") ? { rejectUnauthorized: false } : undefined
 });
 

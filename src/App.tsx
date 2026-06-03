@@ -162,6 +162,14 @@ function AppShell() {
     }
   };
 
+  const updateStore = (updater: (draft: LMSDataStore) => void) => {
+    const currentStore = AppStore.get();
+    updater(currentStore);
+    const newStore = { ...currentStore };
+    setStoreData(newStore);
+    queryClient.setQueryData(["store"], newStore);
+  };
+
   // Auth Operations
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -583,6 +591,7 @@ function AppShell() {
                     onLogout={handleLogout}
                     onRefreshData={refreshStoreDataFromServer}
                     activeSystem={activeSystem}
+                    updateStore={updateStore}
                   />
                 )}
                 {currentUser.role === "student" && (

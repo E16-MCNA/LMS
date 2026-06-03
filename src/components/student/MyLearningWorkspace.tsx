@@ -85,8 +85,11 @@ export default function MyLearningWorkspace(props: ComponentProps) {
   const getCourseSessions = () => {
     const courseLessons = currentLearningLessons || [];
     const courseAssignments = store.assignments.filter((a: any) => a.courseId === learningCourseId) || [];
+    const courseSessionsData = store.attendanceSessions
+      .filter((s: any) => s.courseId === learningCourseId)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    const numSessions = Math.max(courseLessons.length, 1);
+    const numSessions = Math.max(courseLessons.length, courseSessionsData.length, 1);
     return Array.from({ length: numSessions }, (_, idx) => {
       const sessionNum = idx + 1;
       // Lesson index matches the session index
@@ -101,10 +104,13 @@ export default function MyLearningWorkspace(props: ComponentProps) {
         }
         return (aIdx % numSessions) === idx;
       });
+      const attendanceSession = courseSessionsData[idx];
       
       return {
         number: sessionNum,
         title: `Buổi học ${sessionNum}`,
+        date: attendanceSession?.date,
+        topic: attendanceSession?.topic,
         lessons: lessonsInSession,
         assignments: assignmentsInSession
       };
@@ -248,10 +254,17 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                             isExpanded ? "from-indigo-950/40 to-indigo-900/10 border-l-4 border-indigo-500" : "from-white/5 to-white/[0.02]"
                           } hover:from-white/10 hover:to-white/5 text-xs font-bold text-white transition-all duration-300 cursor-pointer`}
                         >
-                          <span className="flex items-center gap-2">
-                            <Calendar className="h-4.5 w-4.5 text-indigo-400" />
-                            <span>{session.title}</span>
-                          </span>
+                          <div className="flex flex-col text-left gap-0.5">
+                            <span className="flex items-center gap-2">
+                              <Calendar className="h-4.5 w-4.5 text-indigo-400" />
+                              <span className="text-[13px]">{session.title} {session.topic && `- ${session.topic}`}</span>
+                            </span>
+                            {session.date ? (
+                              <span className="text-[10px] text-indigo-300/80 font-mono ml-6.5">⏰ Ngày giờ: {new Date(session.date).toLocaleString()}</span>
+                            ) : (
+                              <span className="text-[10px] text-amber-300/80 font-mono ml-6.5 italic">⏳ Chờ phòng Đào tạo xếp lịch</span>
+                            )}
+                          </div>
                           <ChevronRight className={`h-4 w-4 text-white/40 transition-transform duration-300 ${isExpanded ? "rotate-90" : ""}`} />
                         </button>
 

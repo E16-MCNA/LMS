@@ -60,6 +60,9 @@ export function percentToGradePoint(letterGrade: string): number {
 export type CourseGradeInputs = {
   quizScores: number[];
   assignmentScoresPercent: number[];
+  hasCourseQuizzes: boolean;
+  hasCourseAssignments: boolean;
+  isPending: boolean;
 };
 
 export type CourseGradeResult = {
@@ -73,11 +76,17 @@ export type CourseGradeResult = {
 };
 
 export function calculateCourseGradePercent(input: CourseGradeInputs): CourseGradeResult {
-  const assignmentAvg = input.assignmentScoresPercent.length > 0
-    ? Math.round(input.assignmentScoresPercent.reduce((sum, score) => sum + score, 0) / input.assignmentScoresPercent.length)
+  // Calculate averages correctly: if the course has items, but the array is empty, it means the student got 0 on all.
+  const assignmentAvg = input.hasCourseAssignments
+    ? (input.assignmentScoresPercent.length > 0
+        ? Math.round(input.assignmentScoresPercent.reduce((sum, score) => sum + score, 0) / input.assignmentScoresPercent.length)
+        : 0)
     : null;
-  const quizAvg = input.quizScores.length > 0
-    ? Math.round(input.quizScores.reduce((sum, score) => sum + score, 0) / input.quizScores.length)
+
+  const quizAvg = input.hasCourseQuizzes
+    ? (input.quizScores.length > 0
+        ? Math.round(input.quizScores.reduce((sum, score) => sum + score, 0) / input.quizScores.length)
+        : 0)
     : null;
 
   let finalPercent: number | null = null;
@@ -95,21 +104,21 @@ export function calculateCourseGradePercent(input: CourseGradeInputs): CourseGra
       hasGrades: false,
       assignmentAvg,
       quizAvg,
-      letterGrade: null,
+      letterGrade: input.isPending ? "IP" : null,
       gradePoint: null,
       countsForGpa: false
     };
   }
 
-  const letterGrade = percentToLetterGrade(finalPercent);
+  const letterGrade = input.isPending ? "IP" : percentToLetterGrade(finalPercent);
   return {
     finalPercent,
     hasGrades: true,
     assignmentAvg,
     quizAvg,
     letterGrade,
-    gradePoint: percentToGradePoint(letterGrade),
-    countsForGpa: finalPercent >= 60
+    gradePoint: input.isPending ? null : percentToGradePoint(letterGrade),
+    countsForGpa: input.isPending ? false : finalPercent >= 60
   };
 }
 
@@ -118,29 +127,44 @@ export function collectCourseGradeInputs(
   studentId: string,
   courseId: string
 ): CourseGradeInputs {
+  let isPending = false;
+
   const courseQuizzes = store.quizzes.filter((quiz: Quiz) => quiz.courseId === courseId);
   const quizScores = courseQuizzes
     .map((quiz) => {
       const attempts = store.quizAttempts.filter(
         (attempt: QuizAttempt) => attempt.studentId === studentId && attempt.quizId === quiz.id
       );
-      return attempts.length > 0 ? Math.max(...attempts.map((attempt) => attempt.score)) : null;
+      if (attempts.length > 0) return Math.max(...attempts.map((attempt) => attempt.score));
+      if (quiz.deadline && new Date(quiz.deadline) > new Date()) {
+        isPending = true;
+        return null;
+      }
+      return 0;
     })
     .filter((score): score is number => score !== null);
 
   const courseAssignments = store.assignments.filter((assignment: Assignment) => assignment.courseId === courseId);
-  const assignmentScoresPercent = store.submissions
-    .filter(
-      (submission: Submission) =>
-        submission.studentId === studentId &&
-        courseAssignments.some((assignment) => assignment.id === submission.assignmentId) &&
-        submission.score !== undefined
-    )
-    .map((submission) => {
-      const assignment = store.assignments.find((item) => item.id === submission.assignmentId);
-      const maxScore = assignment?.maxScore || 100;
-      return Math.round(((submission.score || 0) / maxScore) * 100);
-    });
+  const assignmentScoresPercent = courseAssignments
+    .map((assignment) => {
+      const submission = store.submissions.find(s => s.assignmentId === assignment.id && s.studentId === studentId);
+      if (submission && submission.score !== undefined) {
+        const maxScore = assignment.maxScore || 100;
+        return Math.round((submission.score / maxScore) * 100);
+      }
+      if (assignment.deadline && new Date(assignment.deadline) > new Date()) {
+        isPending = true;
+        return null;
+      }
+      return 0; // Ungraded or unsubmitted gets 0
+    })
+    .filter((score): score is number => score !== null);
 
-  return { quizScores, assignmentScoresPercent };
+  return { 
+    quizScores, 
+    assignmentScoresPercent,
+    hasCourseQuizzes: courseQuizzes.length > 0,
+    hasCourseAssignments: courseAssignments.length > 0,
+    isPending
+  };
 }

@@ -183,7 +183,7 @@ export default function StudentAcademics(props: ComponentProps) {
     return sum;
   }, 0);
 
-  const gradedCourses = uniqueCourseGrades.filter(c => c.isCompleted || c.grade > 0);
+  const gradedCourses = uniqueCourseGrades.filter(c => c.letterGrade !== "IP" && (c.isCompleted || c.grade > 0));
   const calculatedGpa = gradedCourses.length > 0
     ? gradedCourses.reduce((sum, c) => sum + (c.scale4Val * c.credits), 0) / gradedCourses.reduce((sum, c) => sum + c.credits, 0)
     : 0.0;
@@ -1088,16 +1088,22 @@ export default function StudentAcademics(props: ComponentProps) {
                         <td className="py-3 text-center font-mono font-bold text-cyan-400">
                           {g.finalExamGrade !== null ? g.finalExamGrade : "-"}
                         </td>
-                        <td className="py-3 text-center font-mono font-bold text-white font-sans">{g.grade}</td>
-                        <td className="py-3 text-center font-mono font-bold text-amber-400">{g.scale4Val.toFixed(1)}</td>
+                        <td className="py-3 text-center font-mono font-bold text-white font-sans">
+                          {g.letterGrade === "IP" ? "-" : g.grade}
+                        </td>
+                        <td className="py-3 text-center font-mono font-bold text-amber-400">
+                          {g.letterGrade === "IP" ? "-" : g.scale4Val.toFixed(1)}
+                        </td>
                         <td className="py-3 text-right font-black font-mono">
                           <span className={`px-2.5 py-0.5 rounded text-[10px] ${
                             g.letterGrade === "A" ? "bg-emerald-500/10 text-emerald-400" :
                             g.letterGrade === "B" ? "bg-blue-500/10 text-blue-400" :
                             g.letterGrade === "C" ? "bg-cyan-500/10 text-cyan-400" :
-                            g.letterGrade === "D" ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
+                            g.letterGrade === "D" ? "bg-yellow-500/10 text-yellow-500" : 
+                            g.letterGrade === "IP" ? "bg-slate-500/10 text-slate-300 border border-slate-500/20" :
+                            "bg-red-500/10 text-red-500"
                           }`}>
-                            Xếp loại {g.letterGrade}
+                            {g.letterGrade === "IP" ? "Đang học" : `Xếp loại ${g.letterGrade}`}
                           </span>
                         </td>
                       </tr>

@@ -42,9 +42,10 @@ interface TeacherPanelProps {
   onLogout: () => void;
   onRefreshData: () => void;
   activeSystem?: "SIS" | "LMS";
+  updateStore?: (updater: (draft: LMSDataStore) => void) => void;
 }
 
-export default function TeacherPanel({ currentUser, onLogout, onRefreshData, activeSystem = "LMS" }: TeacherPanelProps) {
+export default function TeacherPanel({ currentUser, onLogout, onRefreshData, activeSystem = "LMS", updateStore }: TeacherPanelProps) {
   const { store, isLoading, isError } = useApiStore();
 
   // Local active sub-module state
@@ -95,6 +96,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   const [quizLimit, setQuizLimit] = useState(15);
   const [quizAttempts, setQuizAttempts] = useState(3);
   const [quizDeadline, setQuizDeadline] = useState("");
+  const [quizAttachmentUrl, setQuizAttachmentUrl] = useState("");
 
   // Add Question state
   const [showQuestionModal, setShowQuestionModal] = useState(false);
@@ -109,6 +111,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   const [assignDesc, setAssignDesc] = useState("");
   const [assignDeadline, setAssignDeadline] = useState("");
   const [assignMaxScore, setAssignMaxScore] = useState(100);
+  const [assignAttachmentUrl, setAssignAttachmentUrl] = useState("");
 
   // Grading submission state
   const [activeSubmissionId, setActiveSubmissionId] = useState<string | null>(null);
@@ -238,7 +241,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   };
 
   // Add Lesson to current Course
-  const handleAddLessonSubmit = (e: React.FormEvent) => {
+  const handleAddLessonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCourseId) return;
     if (!lessonTitle.trim() || !lessonContent.trim()) {
@@ -246,42 +249,40 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
       return;
     }
 
-    const storeData = AppStore.get();
-    const currentLessons = storeData.lessons.filter(l => l.courseId === selectedCourseId);
-    const orderNum = currentLessons.length + 1;
+    const orderNum = (store.lessons.filter(l => l.courseId === selectedCourseId)).length + 1;
 
-    const newLesson: Lesson = {
-      id: generateId("lesson"),
-      courseId: selectedCourseId,
-      title: lessonTitle,
-      content: lessonContent,
-      videoUrl: lessonVideo,
-      order: orderNum,
-      duration: lessonDuration
-    };
+    try {
+      const created = await api.addLesson({
+        courseId: selectedCourseId,
+        title: lessonTitle,
+        content: lessonContent,
+        videoUrl: lessonVideo || undefined,
+        order: orderNum,
+        duration: lessonDuration
+      }) as Lesson;
 
-    storeData.lessons.push(newLesson);
+      if (updateStore) {
+        updateStore(draft => {
+          draft.lessons.push(created);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.lessons.push(created);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
 
-    api.addLesson({
-      courseId: selectedCourseId,
-      title: lessonTitle,
-      content: lessonContent,
-      videoUrl: lessonVideo || undefined,
-      order: orderNum,
-      duration: lessonDuration
-    }).catch(err => console.warn("Failed to add lesson on server:", err));
-
-    AppStore.log(currentUser.id, "add_lesson", newLesson.title, `Added learning module inside course: ${selectedCourseId}`);
-    AppStore.save(storeData);
-
-    // Reset fields
-    setLessonTitle("");
-    setLessonContent("");
-    setLessonVideo("");
-    setLessonDuration("15 mins");
-    setShowLessonModal(false);
-    onRefreshData();
-    triggerToast("Module successfully published inside course.");
+      AppStore.log(currentUser.id, "add_lesson", created.title, `Added learning module inside course: ${selectedCourseId}`);
+      
+      setLessonTitle("");
+      setLessonContent("");
+      setLessonVideo("");
+      setLessonDuration("15 mins");
+      setShowLessonModal(false);
+      triggerToast("Module successfully published inside course.");
+    } catch (err: any) {
+      triggerToast(err.message || "Failed to add lesson on server.");
+    }
   };
 
   // Create Quiz linked to Course
@@ -302,58 +303,36 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         maxAttempts: quizAttempts,
         deadline: quizDeadline || null
       }) as Quiz;
+
+      if (updateStore) {
+        updateStore(draft => {
+          draft.quizzes.push(created);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.quizzes.push(created);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
+
+      AppStore.log(currentUser.id, "create_quiz", created.title, `Added assessment linked to course: ${selectedCourseId}`);
+
       setSelectedQuizId(created.id);
       setQuizTitle("");
       setQuizPassing(70);
       setQuizLimit(15);
       setQuizAttempts(3);
       setQuizDeadline("");
+      setQuizAttachmentUrl("");
       setShowQuizModal(false);
-      onRefreshData();
       triggerToast("Course final assessment criteria mapped successfully.");
-      return;
     } catch (err: any) {
       triggerToast(err.message || "Failed to create quiz on server.");
-      return;
     }
-
-    const storeData = AppStore.get();
-    const newQuiz: Quiz = {
-      id: generateId("quiz"),
-      courseId: selectedCourseId,
-      title: quizTitle,
-      passingScore: quizPassing,
-      timeLimit: quizLimit,
-      maxAttempts: quizAttempts,
-      deadline: quizDeadline || undefined
-    };
-
-    storeData.quizzes.push(newQuiz);
-
-    api.createQuiz({
-      courseId: selectedCourseId,
-      title: quizTitle,
-      passingScore: quizPassing,
-      timeLimit: quizLimit,
-      maxAttempts: quizAttempts,
-      deadline: quizDeadline || null
-    }).catch(err => console.warn("Failed to create quiz on server:", err));
-
-    AppStore.log(currentUser.id, "create_quiz", newQuiz.title, `Added assessment linked to course: ${selectedCourseId}`);
-    AppStore.save(storeData);
-
-    setQuizTitle("");
-    setQuizPassing(70);
-    setQuizLimit(15);
-    setQuizAttempts(3);
-    setQuizDeadline("");
-    setShowQuizModal(false);
-    onRefreshData();
-    triggerToast("Course final assessment criteria mapped successfully.");
   };
 
   // Add question to active Quiz
-  const handleAddQuestionSubmit = (e: React.FormEvent) => {
+  const handleAddQuestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedQuizId) return;
     if (!qText.trim()) {
@@ -361,36 +340,37 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
       return;
     }
 
-    const storeData = AppStore.get();
     const cleanedOptions = qType !== "text" ? qOptions.filter(o => o.trim() !== "") : [];
 
-    const newQuestion: Question = {
-      id: generateId("question"),
-      quizId: selectedQuizId,
-      text: qText,
-      type: qType,
-      options: cleanedOptions,
-      correctAnswer: qCorrect
-    };
+    try {
+      const created = await api.addQuestion(selectedQuizId, {
+        text: qText,
+        type: qType,
+        options: cleanedOptions,
+        correctAnswer: qCorrect
+      }) as Question;
 
-    storeData.questions.push(newQuestion);
+      if (updateStore) {
+        updateStore(draft => {
+          draft.questions.push(created);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.questions.push(created);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
 
-    api.addQuestion(selectedQuizId, {
-      text: qText,
-      type: qType,
-      options: cleanedOptions,
-      correctAnswer: qCorrect
-    }).catch(err => console.warn("Failed to add question on server:", err));
+      AppStore.log(currentUser.id, "add_quiz_question", created.text, `Added question mapping inside quiz ID: ${selectedQuizId}`);
 
-    AppStore.log(currentUser.id, "add_quiz_question", newQuestion.text, `Added question mapping inside quiz ID: ${selectedQuizId}`);
-    AppStore.save(storeData);
-
-    setQText("");
-    setQOptions(["", "", ""]);
-    setQCorrect("0");
-    setShowQuestionModal(false);
-    onRefreshData();
-    triggerToast("Question prompt mapped into standard checks.");
+      setQText("");
+      setQOptions(["", "", ""]);
+      setQCorrect("0");
+      setShowQuestionModal(false);
+      triggerToast("Question prompt mapped into standard checks.");
+    } catch (err: any) {
+      triggerToast(err.message || "Failed to add question on server.");
+    }
   };
 
   // Create Assignment
@@ -403,22 +383,33 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     }
 
     try {
-      await api.createAssignment({
+      const created = await api.createAssignment({
         courseId: selectedCourseId,
         title: assignTitle,
         description: assignDesc,
         deadline: assignDeadline,
         maxScore: Number(assignMaxScore)
-      });
+      }) as Assignment;
 
-      AppStore.log(currentUser.id, "create_assignment", assignTitle, `Added task outline inside course: ${selectedCourseId}`);
+      if (updateStore) {
+        updateStore(draft => {
+          draft.assignments.push(created);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.assignments.push(created);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
+
+      AppStore.log(currentUser.id, "create_assignment", created.title, `Added task outline inside course: ${selectedCourseId}`);
 
       setAssignTitle("");
       setAssignDesc("");
       setAssignDeadline("");
       setAssignMaxScore(100);
+      setAssignAttachmentUrl("");
       setShowAssignModal(false);
-      await onRefreshData();
       triggerToast("Course Assignment challenge configured.");
     } catch (err: any) {
       triggerToast(err.message || "Failed to create assignment on server.");
@@ -437,19 +428,26 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         feedback: gradingFeedback
       });
 
-      // Log and notify student
-      const storeData = AppStore.get();
-      const sub = storeData.submissions.find(s => s.id === activeSubmissionId);
-      if (sub) {
-        const chal = storeData.assignments.find(a => a.id === sub.assignmentId);
-        const maxScore = chal?.maxScore || 100;
-        AppStore.log(currentUser.id, "grade_assignment", sub.id, `Graded score ${gradingScore} with feedback: ${gradingFeedback}`);
-        AppStore.notify(sub.studentId, "success", `Bài làm của bạn cho bài tập "${chal?.title || "Không tên"}" đã được chấm điểm! Điểm số: ${gradingScore}/${maxScore}. Nhận xét: ${gradingFeedback}`);
+      if (updateStore) {
+        updateStore(draft => {
+          const sub = draft.submissions.find(s => s.id === activeSubmissionId);
+          if (sub) {
+            sub.score = Number(gradingScore);
+            sub.feedback = gradingFeedback;
+            sub.gradedAt = new Date().toISOString();
+            
+            const chal = draft.assignments.find(a => a.id === sub.assignmentId);
+            const maxScore = chal?.maxScore || 100;
+            AppStore.log(currentUser.id, "grade_assignment", sub.id, `Graded score ${gradingScore} with feedback: ${gradingFeedback}`);
+            AppStore.notify(sub.studentId, "success", `Bài làm của bạn cho bài tập "${chal?.title || "Không tên"}" đã được chấm điểm! Điểm số: ${gradingScore}/${maxScore}. Nhận xét: ${gradingFeedback}`);
+          }
+        });
+      } else {
+        await onRefreshData();
       }
 
       setActiveSubmissionId(null);
       setGradingFeedback("");
-      await onRefreshData();
       triggerToast("Đã cập nhật điểm số và nhận xét thành công!");
     } catch (err: any) {
       console.error("Failed to grade assignment on server:", err);
@@ -508,13 +506,14 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     showCourseModal, setShowCourseModal, courseModalMode, courseTitle, setCourseTitle, courseDesc, setCourseDesc,
     courseCategory, setCourseCategory, courseThumb, setCourseThumb, coursePrice, setCoursePrice, courseLevel, setCourseLevel, courseTags, setCourseTags,
     showLessonModal, setShowLessonModal, lessonTitle, setLessonTitle, lessonContent, setLessonContent, lessonVideo, setLessonVideo, lessonDuration, setLessonDuration,
-    showQuizModal, setShowQuizModal, quizTitle, setQuizTitle, quizPassing, setQuizPassing, quizLimit, setQuizLimit, quizAttempts, setQuizAttempts, quizDeadline, setQuizDeadline,
+    showQuizModal, setShowQuizModal, quizTitle, setQuizTitle, quizPassing, setQuizPassing, quizLimit, setQuizLimit, quizAttempts, setQuizAttempts, quizDeadline, setQuizDeadline, quizAttachmentUrl, setQuizAttachmentUrl,
     showQuestionModal, setShowQuestionModal, qText, setQText, qType, setQType, qOptions, setQOptions, qCorrect, setQCorrect,
-    showAssignModal, setShowAssignModal, assignTitle, setAssignTitle, assignDesc, setAssignDesc, assignDeadline, setAssignDeadline, assignMaxScore, setAssignMaxScore,
+    showAssignModal, setShowAssignModal, assignTitle, setAssignTitle, assignDesc, setAssignDesc, assignDeadline, setAssignDeadline, assignMaxScore, setAssignMaxScore, assignAttachmentUrl, setAssignAttachmentUrl,
     activeSubmissionId, setActiveSubmissionId, gradingScore, setGradingScore, gradingFeedback, setGradingFeedback,
     store, currentUser, myCourses, myCourseIds, handleOpenCreateCourse, handleOpenEditCourse, handleSaveCourse,
     handleSubmitCourseForApproval, handleAddLessonSubmit, handleAddQuizSubmit, handleAddQuestionSubmit, handleAddAssignmentSubmit,
-    handleGradeSubmission, handleExportCSVGradebook, activeCourse, lessons, courseQuizzes, courseAssignments, myAssignments, studentSubmissionsRaw
+    handleGradeSubmission, handleExportCSVGradebook, activeCourse, lessons, courseQuizzes, courseAssignments, myAssignments, studentSubmissionsRaw, updateStore,
+    triggerToast
   };
 
   return (

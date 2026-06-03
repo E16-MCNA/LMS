@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings, Download, Tv, Trash, ChevronRight, TrendingUp, BarChart, Users, Clock, Search, MessageSquare, X, PlusCircle, FolderPlus } from "lucide-react";
 import { AppStore } from "../../store";
 import { generateId } from "../../utils";
-import { Question } from "../../types";
+import { Question, LMSDataStore } from "../../types";
 import { api } from "../../api";
 import ModalPortal from "../ModalPortal";
 
@@ -12,6 +12,29 @@ interface ComponentProps {
 
 export default function QuizBuilder(props: ComponentProps) {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, setter: (url: string) => void) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    if (file.size > 20 * 1024 * 1024) {
+      if (triggerToast) triggerToast("Tệp tải lên vượt quá giới hạn 20MB.");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      if (triggerToast) triggerToast("Đang tải tệp lên...");
+      const res = await api.uploadFile(file);
+      setter(res.url);
+      if (triggerToast) triggerToast("Tải tệp thành công.");
+    } catch (err) {
+      console.error(err);
+      if (triggerToast) triggerToast("Lỗi tải tệp lên.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [assessmentType, setAssessmentType] = useState<"quiz" | "essay">("quiz");
   const [selectedEssayId, setSelectedEssayId] = useState<string | null>(null);
   const {
@@ -107,7 +130,8 @@ export default function QuizBuilder(props: ComponentProps) {
     myAssignments,
     studentSubmissionsRaw,
     onRefreshData,
-    triggerToast
+    triggerToast,
+    updateStore
   } = props;
 
   const handleStartEditQuestion = (qst: Question) => {
@@ -123,10 +147,16 @@ export default function QuizBuilder(props: ComponentProps) {
     if (!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này khỏi đề thi không?")) return;
     try {
       await api.deleteQuestion(qstId);
-      const storeData = AppStore.get();
-      storeData.questions = storeData.questions.filter(q => q.id !== qstId);
-      AppStore.save(storeData);
-      onRefreshData();
+      if (updateStore) {
+        updateStore((draft: LMSDataStore) => {
+          draft.questions = draft.questions.filter(q => q.id !== qstId);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.questions = storeData.questions.filter(q => q.id !== qstId);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
       triggerToast("Đã xóa câu hỏi thành công.");
     } catch (err: any) {
       console.error("Failed to delete question:", err);
@@ -136,7 +166,7 @@ export default function QuizBuilder(props: ComponentProps) {
 
   const handleQuestionFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedQuizId) return;
+    if (!selectedQuizId || isSubmitting) return;
     if (!qText.trim()) {
       triggerToast("Vui lòng nhập nội dung câu hỏi.");
       return;
@@ -145,6 +175,17 @@ export default function QuizBuilder(props: ComponentProps) {
     const storeData = AppStore.get();
     const cleanedOptions = qType !== "text" ? qOptions.filter((o: string) => o.trim() !== "") : [];
 
+    if (qType !== "text") {
+      const correctIndices = qCorrect.split(",").map(Number);
+      for (const idx of correctIndices) {
+        if (qOptions[idx] === undefined || qOptions[idx].trim() === "") {
+          triggerToast(`Lựa chọn đáp án đúng (Lựa chọn ${idx + 1}) không được để trống.`);
+          return;
+        }
+      }
+    }
+
+    setIsSubmitting(true);
     try {
       if (editingQuestionId) {
         // Edit mode on Backend
@@ -155,18 +196,37 @@ export default function QuizBuilder(props: ComponentProps) {
           correctAnswer: qCorrect
         });
 
-        storeData.questions = storeData.questions.map(q => {
-          if (q.id === editingQuestionId) {
-            return {
-              ...q,
-              text: qText,
-              type: qType,
-              options: cleanedOptions,
-              correctAnswer: qCorrect
-            };
-          }
-          return q;
-        });
+        if (updateStore) {
+          updateStore((draft: LMSDataStore) => {
+            draft.questions = draft.questions.map(q => {
+              if (q.id === editingQuestionId) {
+                return {
+                  ...q,
+                  text: qText,
+                  type: qType,
+                  options: cleanedOptions,
+                  correctAnswer: qCorrect
+                };
+              }
+              return q;
+            });
+          });
+        } else {
+          storeData.questions = storeData.questions.map(q => {
+            if (q.id === editingQuestionId) {
+              return {
+                ...q,
+                text: qText,
+                type: qType,
+                options: cleanedOptions,
+                correctAnswer: qCorrect
+              };
+            }
+            return q;
+          });
+          AppStore.save(storeData);
+          onRefreshData();
+        }
         AppStore.log(currentUser.id, "edit_quiz_question", qText, `Edited question ID: ${editingQuestionId} inside quiz: ${selectedQuizId}`);
         triggerToast("Đã cập nhật câu hỏi thành công.");
       } else {
@@ -178,7 +238,15 @@ export default function QuizBuilder(props: ComponentProps) {
           correctAnswer: qCorrect
         });
 
-        storeData.questions.push(newQuestion as any);
+        if (updateStore) {
+          updateStore((draft: LMSDataStore) => {
+            draft.questions.push(newQuestion as any);
+          });
+        } else {
+          storeData.questions.push(newQuestion as any);
+          AppStore.save(storeData);
+          onRefreshData();
+        }
         AppStore.log(currentUser.id, "add_quiz_question", qText, `Added question mapping inside quiz ID: ${selectedQuizId}`);
         triggerToast("Đã thêm câu hỏi mới thành công.");
       }
@@ -188,11 +256,11 @@ export default function QuizBuilder(props: ComponentProps) {
       setQCorrect("0");
       setEditingQuestionId(null);
       setShowQuestionModal(false);
-      onRefreshData();
-      return;
     } catch (err: any) {
       console.error("Failed to save question:", err);
       triggerToast(`Lỗi lưu câu hỏi: ${err.message || "Không thể kết nối máy chủ."}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -729,7 +797,7 @@ export default function QuizBuilder(props: ComponentProps) {
                         <span className="font-mono text-white/40 text-xs min-w-[70px] select-none">Lựa chọn {id + 1}</span>
                         <input
                           type="text"
-                          required
+                          required={id < 2}
                           placeholder={`Nội dung lựa chọn đáp án #${id + 1}`}
                           value={opt}
                           onChange={(e) => {
@@ -755,9 +823,11 @@ export default function QuizBuilder(props: ComponentProps) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {editingQuestionId ? "Cập nhật câu hỏi" : "Thêm Câu hỏi"}
+                  {isSubmitting && <div className="w-3.5 h-3.5 border-2 border-indigo-950 border-t-transparent rounded-full animate-spin"></div>}
+                  {editingQuestionId ? (isSubmitting ? "Đang cập nhật..." : "Cập nhật câu hỏi") : (isSubmitting ? "Đang thêm..." : "Thêm Câu hỏi")}
                 </button>
               </div>
             </form>
@@ -816,7 +886,7 @@ export default function QuizBuilder(props: ComponentProps) {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-white/70">Hạn chót Hoàn thành</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     required
                     value={assignDeadline}
                     onChange={(e) => setAssignDeadline(e.target.value)}

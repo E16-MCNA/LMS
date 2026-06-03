@@ -48,6 +48,8 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("studente16"); // default password per BRD or auto-generated
+  const [regProgramId, setRegProgramId] = useState("");
+  const [regDepartmentId, setRegDepartmentId] = useState("");
 
   // Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -110,7 +112,9 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
         password: regPassword,
         name: regName.trim(),
         role: "student",
-        phone: regPhone.trim() || undefined
+        phone: regPhone.trim() || undefined,
+        programId: regProgramId || undefined,
+        departmentId: regDepartmentId || undefined
       });
 
       showToast("Đã tạo tài khoản học viên thành công!");
@@ -120,6 +124,8 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
       setRegEmail("");
       setRegPhone("");
       setRegPassword("studente16");
+      setRegProgramId("");
+      setRegDepartmentId("");
       onRefreshData();
       setActiveTab("search");
     } catch (err: any) {
@@ -423,6 +429,35 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
                   placeholder="Mật khẩu truy cập"
                   className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 h-10 font-mono"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-white/70 block">Khoa / Viện (Tùy chọn)</label>
+                  <select
+                    value={regDepartmentId}
+                    onChange={(e) => setRegDepartmentId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 h-10"
+                  >
+                    <option value="" className="bg-slate-900">-- Mặc định --</option>
+                    {store.departments?.map((d: any) => (
+                      <option key={d.id} value={d.id} className="bg-slate-900">{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-white/70 block">Chuyên ngành (Tùy chọn)</label>
+                  <select
+                    value={regProgramId}
+                    onChange={(e) => setRegProgramId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 h-10"
+                  >
+                    <option value="" className="bg-slate-900">-- Mặc định --</option>
+                    {store.programs?.map((p: any) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <button
