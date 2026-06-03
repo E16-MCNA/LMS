@@ -2,11 +2,20 @@ import express from "express";
 import path from "path";
 import multer from "multer";
 import fs from "fs";
+import os from "os";
 
 // Setup multer for file uploads
-const uploadDir = path.join(process.cwd(), "public", "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+let uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "public", "uploads");
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (error) {
+  console.warn(`Could not create ${uploadDir}, falling back to OS temp dir for uploads.`);
+  uploadDir = path.join(os.tmpdir(), "lms_uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
 }
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -70,7 +79,7 @@ const csrfSafeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 app.use(express.json({ limit: "10mb" }));
 
-app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
+app.use("/uploads", express.static(uploadDir));
 
 app.post("/api/upload", requireCsrf, requireAuth, upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
