@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS forum_replies (
 CREATE TABLE IF NOT EXISTS system_events (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
-  payload_json TEXT NOT NULL DEFAULT '{}',
+  payload jsonb NOT NULL DEFAULT '{}',
   triggered_at TEXT NOT NULL,
   processed BOOLEAN NOT NULL DEFAULT FALSE
 );

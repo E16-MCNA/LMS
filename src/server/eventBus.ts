@@ -27,7 +27,7 @@ class EventBus {
       const triggeredAt = new Date().toISOString();
       const payloadJson = JSON.stringify(payload || {});
       await pool.query(
-        `INSERT INTO system_events (id, type, payload_json, triggered_at, processed)
+        `INSERT INTO system_events (id, type, payload, triggered_at, processed)
          VALUES ($1, $2, $3, $4, $5)`,
         [eventId, event, payloadJson, triggeredAt, false]
       );
