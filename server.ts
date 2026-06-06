@@ -2189,6 +2189,7 @@ app.post("/api/attendance/warn-teacher", requireAuth, requireRole(["admin", "adm
 
 app.post("/api/store/sync", requireAuth, requireRole(["admin", "super_admin", "manager"]), asyncHandler(async (req, res) => {
   await syncClientStoreToDb(req.body || {});
+  invalidateStoreCache();
   await audit(req, "store_sync", "store", "Client store changes synchronized into Postgres.");
   res.json({ ok: true, mode: "postgres-synchronized" });
 }));

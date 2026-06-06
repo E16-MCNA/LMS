@@ -900,11 +900,15 @@ export class AppStore {
       })
       .then(async (res) => {
         this.syncPromise = null;
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Đồng bộ thất bại: status ${res.status}`);
+        }
         return res.json();
       })
-      .catch(() => {
+      .catch((err) => {
         this.syncPromise = null;
-        return undefined;
+        throw err;
       });
       return this.syncPromise;
     }

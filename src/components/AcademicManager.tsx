@@ -27,10 +27,16 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   const [activeTab, setActiveTab] = useState<"years" | "semesters" | "departments" | "programs">(initialTab ?? "years");
 
   const persistFromSnapshot = async (mutator: (data: LMSDataStore) => void) => {
-    const next = structuredClone(store);
-    mutator(next);
-    await AppStore.save(next);
-    onRefreshData();
+    try {
+      const next = structuredClone(store);
+      mutator(next);
+      await AppStore.save(next);
+      onRefreshData();
+    } catch (err: any) {
+      console.error("Lỗi đồng bộ dữ liệu SIS:", err);
+      triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
+      onRefreshData();
+    }
   };
 
   // Sync activeTab when initialTab prop changes (sidebar click)
