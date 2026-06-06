@@ -38,6 +38,12 @@ export async function safeRedis<T>(operation: () => Promise<T>, fallback: T): Pr
         throw connErr;
       }
     }
+
+    if (redis.status !== "ready") {
+      isRedisUnavailable = true;
+      return fallback;
+    }
+
     const result = await operation();
     isRedisUnavailable = false;
     return result;
