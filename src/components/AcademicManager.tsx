@@ -209,10 +209,70 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   };
 
   const handleDeleteSemester = (id: string) => {
+    // Check if any course sections are linked
+    const linkedSections = (store.courseSections || []).filter(s => s.semesterId === id);
+    if (linkedSections.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có các lớp học phần đang được lên lịch.");
+      return;
+    }
+    // Check if any tuition fees are linked
+    const linkedTuition = (store.tuitionFees || []).filter(f => f.semesterId === id);
+    if (linkedTuition.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có thông tin học phí đang ràng buộc.");
+      return;
+    }
+    // Check if any registrations are linked
+    const linkedRegistrations = (store.courseRegistrations || []).filter(r => r.semesterId === id);
+    if (linkedRegistrations.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có học viên đã đăng ký môn học trong học kỳ này.");
+      return;
+    }
+    if (!window.confirm("Bạn có chắc chắn muốn xóa học kỳ này?")) return;
     persistFromSnapshot((storeData) => {
       storeData.semesters = storeData.semesters.filter(s => s.id !== id);
     });
     triggerToast("Đã loại bỏ học kỳ khỏi danh sách.");
+  };
+
+  const handleDeleteDept = (id: string) => {
+    // Check if any program is linked to this department
+    const linkedProgs = store.programs.filter(p => p.departmentId === id);
+    if (linkedProgs.length > 0) {
+      triggerToast("Không thể xóa khoa vì có các ngành đào tạo đang thuộc khoa này.");
+      return;
+    }
+    // Check if any student is linked to this department
+    const linkedStudents = store.studentProfiles.filter(sp => sp.departmentId === id);
+    if (linkedStudents.length > 0) {
+      triggerToast("Không thể xóa khoa vì có học sinh/sinh viên đang thuộc khoa này.");
+      return;
+    }
+    if (!window.confirm("Bạn có chắc chắn muốn xóa khoa này?")) return;
+    persistFromSnapshot((storeData) => {
+      storeData.departments = storeData.departments.filter(d => d.id !== id);
+    });
+    triggerToast("Đã xóa khoa thành công.");
+  };
+
+  const handleDeleteProg = (id: string) => {
+    // Check if any program_courses is linked to this program
+    const linkedCourses = store.programCourses.filter(pc => pc.programId === id);
+    if (linkedCourses.length > 0) {
+      triggerToast("Không thể xóa ngành học vì có các môn học đang ghim trong khung đào tạo.");
+      return;
+    }
+    // Check if any student is linked to this program
+    const linkedStudents = store.studentProfiles.filter(sp => sp.programId === id);
+    if (linkedStudents.length > 0) {
+      triggerToast("Không thể xóa ngành học vì có học sinh/sinh viên đang thuộc ngành này.");
+      return;
+    }
+    if (!window.confirm("Bạn có chắc chắn muốn xóa ngành học này?")) return;
+    persistFromSnapshot((storeData) => {
+      storeData.programs = storeData.programs.filter(p => p.id !== id);
+    });
+    triggerToast("Đã xóa ngành học thành công.");
+    if (selectedProgramId === id) setSelectedProgramId(null);
   };
 
   // Department Actions
@@ -699,6 +759,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                     <th className="py-2.5 px-3 text-right cursor-pointer select-none hover:text-white transition" onClick={() => handleDeptsSort("progsCount")}>
                       Lượng Ngành {deptsSortField === "progsCount" ? (deptsSortOrder === "asc" ? "▲" : "▼") : "↕"}
                     </th>
+                    {currentUser.role !== "admin" && <th className="py-2.5 px-3 text-right">Thao tác</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -735,12 +796,23 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                         </td>
                         <td className="py-3 px-3 text-white/70">{head ? head.name : "Chưa bộ chỉ định"}</td>
                         <td className="py-3 px-3 text-right font-mono font-semibold text-white/80">{progsCount} ngành</td>
+                        {currentUser.role !== "admin" && (
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              onClick={() => handleDeleteDept(d.id)}
+                              className="p-1 text-red-400 hover:bg-red-500/10 rounded transition cursor-pointer"
+                              title="Xóa khoa"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
                   {departments.filter(d => d.name.toLowerCase().includes(academicSearch.toLowerCase()) || d.code.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-white/40 italic">Không tìm thấy khoa nào phù hợp.</td>
+                      <td colSpan={currentUser.role === "admin" ? 4 : 5} className="py-8 text-center text-white/40 italic">Không tìm thấy khoa nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -832,7 +904,21 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                       <span className="font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-1.5 py-0.5 rounded text-[10px]">
                         {p.code}
                       </span>
-                      <span className="capitalize text-[10px] text-white/50">{p.type} • {p.totalCredits} TC</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="capitalize text-[10px] text-white/50">{p.type} • {p.totalCredits} TC</span>
+                        {currentUser.role !== "admin" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProg(p.id);
+                            }}
+                            className="p-1 text-red-400 hover:bg-red-500/10 rounded transition cursor-pointer"
+                            title="Xóa ngành"
+                          >
+                            <Trash className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-1.5 font-bold leading-tight">{p.name}</div>
                     <div className="text-[10px] text-white/40 mt-1">{linkedDept ? linkedDept.name : ""}</div>
