@@ -13,21 +13,44 @@ redis.on("error", error => {
   }
 });
 
+let isRedisUnavailable = false;
+let lastConnectAttempt = 0;
+const RECONNECT_COOLDOWN_MS = 60000; // 1 minute
+let lastWarningLoggedAt = 0;
+const WARNING_COOLDOWN_MS = 300000; // 5 minutes
+
 export async function safeRedis<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+  const now = Date.now();
+  const needsConnect = redis.status === "wait" || redis.status === "end" || redis.status === "close";
+
+  if (needsConnect && isRedisUnavailable && (now - lastConnectAttempt < RECONNECT_COOLDOWN_MS)) {
+    return fallback;
+  }
+
   try {
-    if (redis.status === "wait" || redis.status === "end" || redis.status === "close") {
+    if (needsConnect) {
+      lastConnectAttempt = now;
       try {
         await redis.connect();
+        isRedisUnavailable = false;
       } catch (connErr) {
-        // ignore connection error, let operation/fallback handle it
+        isRedisUnavailable = true;
+        throw connErr;
       }
     }
-    return await operation();
+    const result = await operation();
+    isRedisUnavailable = false;
+    return result;
   } catch (error) {
-    if (process.env.NODE_ENV === "production") {
-      console.error("[redis] Error during Redis operation in production, falling back:", error instanceof Error ? error.stack || error.message : error);
-    } else {
-      console.warn("[redis] Falling back because Redis is unavailable:", error instanceof Error ? error.message : error);
+    isRedisUnavailable = true;
+    
+    if (now - lastWarningLoggedAt > WARNING_COOLDOWN_MS) {
+      lastWarningLoggedAt = now;
+      if (process.env.NODE_ENV === "production") {
+        console.error("[redis] Error during Redis operation in production, falling back:", error instanceof Error ? error.stack || error.message : error);
+      } else {
+        console.warn("[redis] Falling back because Redis is unavailable (throttled):", error instanceof Error ? error.message : error);
+      }
     }
     return fallback;
   }
