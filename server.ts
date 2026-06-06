@@ -518,245 +518,371 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     // Sync structural tables (academic_years, semesters, departments, programs, program_courses)
     // Upsert-only: never DELETE rows missing from client snapshot (prevents mass data loss).
     if (store.academicYears !== undefined) {
+      const dbRes = await client.query("SELECT id, name, start_date, end_date, is_current FROM academic_years");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+      
       const clientYears = store.academicYears || [];
       for (const year of clientYears) {
-        await client.query(
-          `INSERT INTO academic_years (id, name, start_date, end_date, is_current)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (id) DO UPDATE SET
-             name = EXCLUDED.name,
-             start_date = EXCLUDED.start_date,
-             end_date = EXCLUDED.end_date,
-             is_current = EXCLUDED.is_current`,
-          [year.id, year.name, year.startDate, year.endDate, Boolean(year.isCurrent)]
-        );
+        const dbVal = dbMap.get(year.id);
+        const isDirty = !dbVal ||
+          dbVal.name !== year.name ||
+          dbVal.start_date !== year.startDate ||
+          dbVal.end_date !== year.endDate ||
+          Boolean(dbVal.is_current) !== Boolean(year.isCurrent);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO academic_years (id, name, start_date, end_date, is_current)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (id) DO UPDATE SET
+               name = EXCLUDED.name,
+               start_date = EXCLUDED.start_date,
+               end_date = EXCLUDED.end_date,
+               is_current = EXCLUDED.is_current`,
+            [year.id, year.name, year.startDate, year.endDate, Boolean(year.isCurrent)]
+          );
+        }
       }
     }
 
     if (store.semesters !== undefined) {
+      const dbRes = await client.query("SELECT id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close FROM semesters");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientSemesters = store.semesters || [];
       for (const sem of clientSemesters) {
-        await client.query(
-          `INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (id) DO UPDATE SET
-             academic_year_id = EXCLUDED.academic_year_id,
-             name = EXCLUDED.name,
-             type = EXCLUDED.type,
-             start_date = EXCLUDED.start_date,
-             end_date = EXCLUDED.end_date,
-             registration_open = EXCLUDED.registration_open,
-             registration_close = EXCLUDED.registration_close`,
-          [
-            sem.id,
-            sem.academicYearId || null,
-            sem.name,
-            sem.type || null,
-            sem.startDate || null,
-            sem.endDate || null,
-            sem.registrationOpen || null,
-            sem.registrationClose || null
-          ]
-        );
+        const dbVal = dbMap.get(sem.id);
+        const isDirty = !dbVal ||
+          dbVal.academic_year_id !== (sem.academicYearId || null) ||
+          dbVal.name !== sem.name ||
+          dbVal.type !== (sem.type || null) ||
+          dbVal.start_date !== (sem.startDate || null) ||
+          dbVal.end_date !== (sem.endDate || null) ||
+          dbVal.registration_open !== (sem.registrationOpen || null) ||
+          dbVal.registration_close !== (sem.registrationClose || null);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (id) DO UPDATE SET
+               academic_year_id = EXCLUDED.academic_year_id,
+               name = EXCLUDED.name,
+               type = EXCLUDED.type,
+               start_date = EXCLUDED.start_date,
+               end_date = EXCLUDED.end_date,
+               registration_open = EXCLUDED.registration_open,
+               registration_close = EXCLUDED.registration_close`,
+            [
+              sem.id,
+              sem.academicYearId || null,
+              sem.name,
+              sem.type || null,
+              sem.startDate || null,
+              sem.endDate || null,
+              sem.registrationOpen || null,
+              sem.registrationClose || null
+            ]
+          );
+        }
       }
     }
 
     if (store.departments !== undefined) {
+      const dbRes = await client.query("SELECT id, name, code, head_teacher_id, description FROM departments");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientDepts = store.departments || [];
       for (const dept of clientDepts) {
-        await client.query(
-          `INSERT INTO departments (id, name, code, head_teacher_id, description)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (id) DO UPDATE SET
-             name = EXCLUDED.name,
-             code = EXCLUDED.code,
-             head_teacher_id = EXCLUDED.head_teacher_id,
-             description = EXCLUDED.description`,
-          [
-            dept.id,
-            dept.name,
-            dept.code,
-            dept.headTeacherId || null,
-            dept.description || null
-          ]
-        );
+        const dbVal = dbMap.get(dept.id);
+        const isDirty = !dbVal ||
+          dbVal.name !== dept.name ||
+          dbVal.code !== dept.code ||
+          dbVal.head_teacher_id !== (dept.headTeacherId || null) ||
+          dbVal.description !== (dept.description || null);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO departments (id, name, code, head_teacher_id, description)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (id) DO UPDATE SET
+               name = EXCLUDED.name,
+               code = EXCLUDED.code,
+               head_teacher_id = EXCLUDED.head_teacher_id,
+               description = EXCLUDED.description`,
+            [
+              dept.id,
+              dept.name,
+              dept.code,
+              dept.headTeacherId || null,
+              dept.description || null
+            ]
+          );
+        }
       }
     }
 
     if (store.programs !== undefined) {
+      const dbRes = await client.query("SELECT id, department_id, name, code, type, total_credits, description FROM programs");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientProgs = store.programs || [];
       for (const prog of clientProgs) {
-        await client.query(
-          `INSERT INTO programs (id, department_id, name, code, type, total_credits, description)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (id) DO UPDATE SET
-             department_id = EXCLUDED.department_id,
-             name = EXCLUDED.name,
-             code = EXCLUDED.code,
-             type = EXCLUDED.type,
-             total_credits = EXCLUDED.total_credits,
-             description = EXCLUDED.description`,
-          [
-            prog.id,
-            prog.departmentId,
-            prog.name,
-            prog.code,
-            prog.type || "degree",
-            Number(prog.totalCredits) || 0,
-            prog.description || null
-          ]
-        );
+        const dbVal = dbMap.get(prog.id);
+        const isDirty = !dbVal ||
+          dbVal.department_id !== prog.departmentId ||
+          dbVal.name !== prog.name ||
+          dbVal.code !== prog.code ||
+          dbVal.type !== (prog.type || "degree") ||
+          Number(dbVal.total_credits) !== (Number(prog.totalCredits) || 0) ||
+          dbVal.description !== (prog.description || null);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO programs (id, department_id, name, code, type, total_credits, description)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (id) DO UPDATE SET
+               department_id = EXCLUDED.department_id,
+               name = EXCLUDED.name,
+               code = EXCLUDED.code,
+               type = EXCLUDED.type,
+               total_credits = EXCLUDED.total_credits,
+               description = EXCLUDED.description`,
+            [
+              prog.id,
+              prog.departmentId,
+              prog.name,
+              prog.code,
+              prog.type || "degree",
+              Number(prog.totalCredits) || 0,
+              prog.description || null
+            ]
+          );
+        }
       }
     }
 
     if (store.programCourses !== undefined) {
+      const dbRes = await client.query("SELECT id, program_id, course_id, credits, is_required, semester FROM program_courses");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientProgCourses = store.programCourses || [];
       for (const pc of clientProgCourses) {
-        await client.query(
-          `INSERT INTO program_courses (id, program_id, course_id, credits, is_required, semester)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id) DO UPDATE SET
-             program_id = EXCLUDED.program_id,
-             course_id = EXCLUDED.course_id,
-             credits = EXCLUDED.credits,
-             is_required = EXCLUDED.is_required,
-             semester = EXCLUDED.semester`,
-          [
-            pc.id,
-            pc.programId,
-            pc.courseId,
-            Number(pc.credits) || 0,
-            Boolean(pc.isRequired),
-            Number(pc.semester) || 1
-          ]
-        );
+        const dbVal = dbMap.get(pc.id);
+        const isDirty = !dbVal ||
+          dbVal.program_id !== pc.programId ||
+          dbVal.course_id !== pc.courseId ||
+          Number(dbVal.credits) !== (Number(pc.credits) || 0) ||
+          Boolean(dbVal.is_required) !== Boolean(pc.isRequired) ||
+          Number(dbVal.semester) !== (Number(pc.semester) || 1);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO program_courses (id, program_id, course_id, credits, is_required, semester)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (id) DO UPDATE SET
+               program_id = EXCLUDED.program_id,
+               course_id = EXCLUDED.course_id,
+               credits = EXCLUDED.credits,
+               is_required = EXCLUDED.is_required,
+               semester = EXCLUDED.semester`,
+            [
+              pc.id,
+              pc.programId,
+              pc.courseId,
+              Number(pc.credits) || 0,
+              Boolean(pc.isRequired),
+              Number(pc.semester) || 1
+            ]
+          );
+        }
       }
     }
 
-    // Sync notifications (upsert-only)
     if (store.notifications !== undefined) {
+      const dbRes = await client.query("SELECT id, user_id, type, message, is_read, created_at FROM notifications");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientNotes = store.notifications || [];
       for (const note of clientNotes) {
-        await client.query(
-          `INSERT INTO notifications (id, user_id, type, message, is_read, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id) DO UPDATE SET
-             user_id = EXCLUDED.user_id,
-             type = EXCLUDED.type,
-             message = EXCLUDED.message,
-             is_read = EXCLUDED.is_read,
-             created_at = EXCLUDED.created_at`,
-          [note.id, note.userId, note.type, note.message, Boolean(note.isRead), note.createdAt]
-        );
+        const dbVal = dbMap.get(note.id);
+        const isDirty = !dbVal ||
+          dbVal.user_id !== note.userId ||
+          dbVal.type !== note.type ||
+          dbVal.message !== note.message ||
+          Boolean(dbVal.is_read) !== Boolean(note.isRead) ||
+          dbVal.created_at !== note.createdAt;
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO notifications (id, user_id, type, message, is_read, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (id) DO UPDATE SET
+               user_id = EXCLUDED.user_id,
+               type = EXCLUDED.type,
+               message = EXCLUDED.message,
+               is_read = EXCLUDED.is_read,
+               created_at = EXCLUDED.created_at`,
+            [note.id, note.userId, note.type, note.message, Boolean(note.isRead), note.createdAt]
+          );
+        }
       }
     }
 
-    // Sync academic_warnings bypassed (server-managed only)
-    // Sync audit_logs bypassed (server-managed only — never accept client audit trail)
-
-    // Sync enrollments bypassed (server-managed only)
-
-    // Sync transactions bypassed (server-managed only)
-
-    // Sync tuitionFees bypassed (server-managed only)
-
-    // Sync advisorNotes (upsert-only)
     if (store.advisorNotes !== undefined) {
+      const dbRes = await client.query("SELECT id, advisor_id, student_id, content, type, created_at FROM advisor_notes");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientNotesAdvisor = store.advisorNotes || [];
       for (const n of clientNotesAdvisor) {
-        await client.query(
-          `INSERT INTO advisor_notes (id, advisor_id, student_id, content, type, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id) DO UPDATE SET
-             advisor_id = EXCLUDED.advisor_id,
-             student_id = EXCLUDED.student_id,
-             content = EXCLUDED.content,
-             type = EXCLUDED.type,
-             created_at = EXCLUDED.created_at`,
-          [
-            n.id,
-            n.advisorId || null,
-            n.studentId,
-            n.content,
-            n.type,
-            n.createdAt
-          ]
-        );
+        const dbVal = dbMap.get(n.id);
+        const isDirty = !dbVal ||
+          dbVal.advisor_id !== (n.advisorId || null) ||
+          dbVal.student_id !== n.studentId ||
+          dbVal.content !== n.content ||
+          dbVal.type !== n.type ||
+          dbVal.created_at !== n.createdAt;
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO advisor_notes (id, advisor_id, student_id, content, type, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (id) DO UPDATE SET
+               advisor_id = EXCLUDED.advisor_id,
+               student_id = EXCLUDED.student_id,
+               content = EXCLUDED.content,
+               type = EXCLUDED.type,
+               created_at = EXCLUDED.created_at`,
+            [
+              n.id,
+              n.advisorId || null,
+              n.studentId,
+              n.content,
+              n.type,
+              n.createdAt
+            ]
+          );
+        }
       }
     }
 
-    // Sync quizzes (upsert-only)
     if (store.quizzes !== undefined) {
+      const dbRes = await client.query("SELECT id, course_id, lesson_id, title, passing_score, time_limit, max_attempts, attachment_url FROM quizzes");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientQuizzes = store.quizzes || [];
       for (const q of clientQuizzes) {
-        await client.query(
-          `INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts, attachment_url)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           ON CONFLICT (id) DO UPDATE SET
-             course_id = EXCLUDED.course_id,
-             lesson_id = EXCLUDED.lesson_id,
-             title = EXCLUDED.title,
-             passing_score = EXCLUDED.passing_score,
-             time_limit = EXCLUDED.time_limit,
-             max_attempts = EXCLUDED.max_attempts,
-             attachment_url = EXCLUDED.attachment_url`,
-          [
-            q.id,
-            q.courseId,
-            q.lessonId || null,
-            q.title,
-            Number(q.passingScore) || 70,
-            Number(q.timeLimit) || 15,
-            Number(q.maxAttempts) || 3,
-            q.attachmentUrl || null
-          ]
-        );
+        const dbVal = dbMap.get(q.id);
+        const isDirty = !dbVal ||
+          dbVal.course_id !== q.courseId ||
+          dbVal.lesson_id !== (q.lessonId || null) ||
+          dbVal.title !== q.title ||
+          Number(dbVal.passing_score) !== (Number(q.passingScore) || 70) ||
+          Number(dbVal.time_limit) !== (Number(q.timeLimit) || 15) ||
+          Number(dbVal.max_attempts) !== (Number(q.maxAttempts) || 3) ||
+          dbVal.attachment_url !== (q.attachmentUrl || null);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO quizzes (id, course_id, lesson_id, title, passing_score, time_limit, max_attempts, attachment_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (id) DO UPDATE SET
+               course_id = EXCLUDED.course_id,
+               lesson_id = EXCLUDED.lesson_id,
+               title = EXCLUDED.title,
+               passing_score = EXCLUDED.passing_score,
+               time_limit = EXCLUDED.time_limit,
+               max_attempts = EXCLUDED.max_attempts,
+               attachment_url = EXCLUDED.attachment_url`,
+            [
+              q.id,
+              q.courseId,
+              q.lessonId || null,
+              q.title,
+              Number(q.passingScore) || 70,
+              Number(q.timeLimit) || 15,
+              Number(q.maxAttempts) || 3,
+              q.attachmentUrl || null
+            ]
+          );
+        }
       }
     }
 
-    // Sync questions (upsert-only)
     if (store.questions !== undefined) {
+      const dbRes = await client.query("SELECT id, quiz_id, text, type, options_json, correct_answer FROM questions");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientQuestions = store.questions || [];
       for (const qst of clientQuestions) {
-        await client.query(
-          `INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           ON CONFLICT (id) DO UPDATE SET
-             quiz_id = EXCLUDED.quiz_id,
-             text = EXCLUDED.text,
-             type = EXCLUDED.type,
-             options_json = EXCLUDED.options_json,
-             correct_answer = EXCLUDED.correct_answer,
-             created_at = COALESCE(questions.created_at, EXCLUDED.created_at)`,
-          [
-            qst.id,
-            qst.quizId,
-            qst.text,
-            qst.type,
-            JSON.stringify(qst.options || []),
-            qst.correctAnswer,
-            qst.createdAt || new Date().toISOString()
-          ]
-        );
+        const dbVal = dbMap.get(qst.id);
+        const optionsStr = JSON.stringify(qst.options || []);
+        const isDirty = !dbVal ||
+          dbVal.quiz_id !== qst.quizId ||
+          dbVal.text !== qst.text ||
+          dbVal.type !== qst.type ||
+          JSON.stringify(dbVal.options_json ? (typeof dbVal.options_json === "string" ? JSON.parse(dbVal.options_json) : dbVal.options_json) : []) !== JSON.stringify(qst.options || []) ||
+          dbVal.correct_answer !== qst.correctAnswer;
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO questions (id, quiz_id, text, type, options_json, correct_answer, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (id) DO UPDATE SET
+               quiz_id = EXCLUDED.quiz_id,
+               text = EXCLUDED.text,
+               type = EXCLUDED.type,
+               options_json = EXCLUDED.options_json,
+               correct_answer = EXCLUDED.correct_answer,
+               created_at = COALESCE(questions.created_at, EXCLUDED.created_at)`,
+            [
+              qst.id,
+              qst.quizId,
+              qst.text,
+              qst.type,
+              optionsStr,
+              qst.correctAnswer,
+              qst.createdAt || new Date().toISOString()
+            ]
+          );
+        }
       }
     }
 
-    // Sync submissions bypassed (server-managed only)
-
-    // Sync courseSections (upsert-only)
     if (store.courseSections !== undefined) {
+      const dbRes = await client.query("SELECT id, course_id, semester_id, teacher_id, section_code, max_students, status, schedule_json, schedule FROM course_sections");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       const clientSections = store.courseSections || [];
       for (const sec of clientSections) {
-        await upsertCourseSection(client, {
-          id: sec.id,
-          courseId: sec.courseId,
-          semesterId: sec.semesterId,
-          teacherId: sec.teacherId,
-          sectionCode: sec.sectionCode,
-          maxStudents: Number(sec.maxStudents) || 30,
-          schedule: sec.schedule || [],
-          status: sec.status || "open"
-        });
+        const dbVal = dbMap.get(sec.id);
+        const scheduleStr = JSON.stringify(sec.schedule || []);
+        let dbScheduleStr = "[]";
+        if (dbVal) {
+          dbScheduleStr = JSON.stringify(dbVal.schedule_json ? JSON.parse(dbVal.schedule_json) : (typeof dbVal.schedule === "string" ? JSON.parse(dbVal.schedule) : dbVal.schedule || []));
+        }
+
+        const isDirty = !dbVal ||
+          dbVal.course_id !== sec.courseId ||
+          dbVal.semester_id !== sec.semesterId ||
+          dbVal.teacher_id !== sec.teacherId ||
+          dbVal.section_code !== sec.sectionCode ||
+          Number(dbVal.max_students) !== (Number(sec.maxStudents) || 30) ||
+          dbVal.status !== (sec.status || "open") ||
+          dbScheduleStr !== scheduleStr;
+
+        if (isDirty) {
+          await upsertCourseSection(client, {
+            id: sec.id,
+            courseId: sec.courseId,
+            semesterId: sec.semesterId,
+            teacherId: sec.teacherId,
+            sectionCode: sec.sectionCode,
+            maxStudents: Number(sec.maxStudents) || 30,
+            schedule: sec.schedule || [],
+            status: sec.status || "open"
+          });
+        }
       }
     }
 
@@ -764,6 +890,9 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       const clientCerts = store.certificates || [];
       const clientCertIds = clientCerts.map(c => c.id);
       
+      const dbRes = await client.query("SELECT id, enrollment_id, student_id, course_id, issued_at, certificate_code FROM certificates");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
       if (clientCertIds.length > 0) {
         await client.query(
           `DELETE FROM certificates WHERE id NOT IN (${clientCertIds.map((_, i) => `$${i + 1}`).join(", ")})`,
@@ -774,30 +903,41 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       }
       
       for (const cert of clientCerts) {
-        await client.query(
-          `INSERT INTO certificates (id, enrollment_id, student_id, course_id, issued_at, certificate_code)
-           VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (id) DO UPDATE SET
-             enrollment_id = EXCLUDED.enrollment_id,
-             student_id = EXCLUDED.student_id,
-             course_id = EXCLUDED.course_id,
-             issued_at = EXCLUDED.issued_at,
-             certificate_code = EXCLUDED.certificate_code`,
-          [
-            cert.id,
-            cert.enrollmentId,
-            cert.studentId,
-            cert.courseId,
-            cert.issuedAt,
-            cert.certificateCode
-          ]
-        );
+        const dbVal = dbMap.get(cert.id);
+        const isDirty = !dbVal ||
+          dbVal.enrollment_id !== cert.enrollmentId ||
+          dbVal.student_id !== cert.studentId ||
+          dbVal.course_id !== cert.courseId ||
+          dbVal.issued_at !== cert.issuedAt ||
+          dbVal.certificate_code !== cert.certificateCode;
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO certificates (id, enrollment_id, student_id, course_id, issued_at, certificate_code)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (id) DO UPDATE SET
+               enrollment_id = EXCLUDED.enrollment_id,
+               student_id = EXCLUDED.student_id,
+               course_id = EXCLUDED.course_id,
+               issued_at = EXCLUDED.issued_at,
+               certificate_code = EXCLUDED.certificate_code`,
+            [
+              cert.id,
+              cert.enrollmentId,
+              cert.studentId,
+              cert.courseId,
+              cert.issuedAt,
+              cert.certificateCode
+            ]
+          );
+        }
       }
     }
 
     // Sync courseRegistrations bypassed (server-managed only)
 
     await client.query("COMMIT");
+    invalidateStoreCache();
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
