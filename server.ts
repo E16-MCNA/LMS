@@ -516,7 +516,46 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     }
 
     // Sync structural tables (academic_years, semesters, departments, programs, program_courses)
-    // Upsert-only: never DELETE rows missing from client snapshot (prevents mass data loss).
+    if (store.programCourses !== undefined) {
+      const clientIds = (store.programCourses || []).map(x => x.id);
+      if (clientIds.length > 0) {
+        await client.query(`DELETE FROM program_courses WHERE id NOT IN (${clientIds.map((_, i) => `$${i + 1}`).join(", ")})`, clientIds);
+      } else {
+        await client.query(`DELETE FROM program_courses`);
+      }
+    }
+    if (store.programs !== undefined) {
+      const clientIds = (store.programs || []).map(x => x.id);
+      if (clientIds.length > 0) {
+        await client.query(`DELETE FROM programs WHERE id NOT IN (${clientIds.map((_, i) => `$${i + 1}`).join(", ")})`, clientIds);
+      } else {
+        await client.query(`DELETE FROM programs`);
+      }
+    }
+    if (store.departments !== undefined) {
+      const clientIds = (store.departments || []).map(x => x.id);
+      if (clientIds.length > 0) {
+        await client.query(`DELETE FROM departments WHERE id NOT IN (${clientIds.map((_, i) => `$${i + 1}`).join(", ")})`, clientIds);
+      } else {
+        await client.query(`DELETE FROM departments`);
+      }
+    }
+    if (store.semesters !== undefined) {
+      const clientIds = (store.semesters || []).map(x => x.id);
+      if (clientIds.length > 0) {
+        await client.query(`DELETE FROM semesters WHERE id NOT IN (${clientIds.map((_, i) => `$${i + 1}`).join(", ")})`, clientIds);
+      } else {
+        await client.query(`DELETE FROM semesters`);
+      }
+    }
+    if (store.academicYears !== undefined) {
+      const clientIds = (store.academicYears || []).map(x => x.id);
+      if (clientIds.length > 0) {
+        await client.query(`DELETE FROM academic_years WHERE id NOT IN (${clientIds.map((_, i) => `$${i + 1}`).join(", ")})`, clientIds);
+      } else {
+        await client.query(`DELETE FROM academic_years`);
+      }
+    }
     if (store.academicYears !== undefined) {
       const dbRes = await client.query("SELECT id, name, start_date, end_date, is_current FROM academic_years");
       const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
@@ -882,6 +921,43 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
             schedule: sec.schedule || [],
             status: sec.status || "open"
           });
+        }
+      }
+    }
+
+    if (store.enrollments !== undefined) {
+      const dbRes = await client.query("SELECT id, course_id, student_id, status, enrolled_at, completed_at FROM enrollments");
+      const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
+
+      const clientEnrollments = store.enrollments || [];
+      for (const e of clientEnrollments) {
+        const dbVal = dbMap.get(e.id);
+        const isDirty = !dbVal ||
+          dbVal.course_id !== e.courseId ||
+          dbVal.student_id !== e.studentId ||
+          dbVal.status !== e.status ||
+          dbVal.enrolled_at !== e.enrolledAt ||
+          dbVal.completed_at !== (e.completedAt || null);
+
+        if (isDirty) {
+          await client.query(
+            `INSERT INTO enrollments (id, course_id, student_id, status, enrolled_at, completed_at)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (id) DO UPDATE SET
+               course_id = EXCLUDED.course_id,
+               student_id = EXCLUDED.student_id,
+               status = EXCLUDED.status,
+               enrolled_at = EXCLUDED.enrolled_at,
+               completed_at = EXCLUDED.completed_at`,
+            [
+              e.id,
+              e.courseId,
+              e.studentId,
+              e.status,
+              e.enrolledAt,
+              e.completedAt || null
+            ]
+          );
         }
       }
     }
@@ -1516,6 +1592,41 @@ app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manag
   await audit(req, "reception_reset_password", req.params.id, `Reset password for student: ${user.email}`);
   res.json({ ok: true, message: `Mật khẩu đã được đặt lại thành công về mặc định: ${defaultNewPass}` });
 }));
+app.patch("/api/admin/users/:id/role", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
+  const { role } = req.body;
+  const allowedRoles = ["student", "teacher", "manager", "admin", "parent"];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ error: "Invalid role value." });
+  }
+
+  const userRes = await pool.query("SELECT id, email, role FROM users WHERE id = $1", [req.params.id]);
+  if (userRes.rows.length === 0) {
+    return res.status(404).json({ error: "User not found." });
+  }
+
+  await pool.query("UPDATE users SET role = $1 WHERE id = $2", [role, req.params.id]);
+
+  if (role === "student") {
+    const profileRes = await pool.query("SELECT id FROM student_profiles WHERE user_id = $1", [req.params.id]);
+    if (profileRes.rows.length === 0) {
+      const profileId = `profile_${Math.random().toString(36).substring(2, 9)}`;
+      const studentCode = `SV${Math.floor(100000 + Math.random() * 900000)}`;
+      const enrollmentDate = new Date().toISOString().slice(0, 10);
+      const expectedGraduation = new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10);
+      await pool.query(
+        `INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [profileId, req.params.id, studentCode, "", "", enrollmentDate.slice(0, 4), enrollmentDate, expectedGraduation, "active", 0.0, 0]
+      );
+    }
+  }
+
+  await audit(req, "update_user_role", req.params.id, `role=${role}`);
+  invalidateStoreCache();
+
+  res.json({ ok: true, message: "Role updated successfully." });
+}));
+
 app.patch("/api/admin/users/:id/status", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.setUserActive), asyncHandler(async (req, res) => {
   const user = await usersRepository.setActive(pool, req.params.id, req.body.isActive);
   if (!user) return res.status(404).json({ error: "User not found." });
@@ -1738,7 +1849,7 @@ app.patch("/api/academic-warnings/:id/resolve", requireAuth, requireRole(["teach
   res.json(warning);
 }));
 
-app.post("/api/tuition/pay", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
+app.post("/api/tuition/pay", requireAuth, requireRole(["super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
   const ownerStudentId = req.user!.role === "student" ? req.user!.id : undefined;
   const result = await financeRepository.payTuition(pool, req.body.feeId, req.body.paidAmount, ownerStudentId);
   if (!result) return res.status(404).json({ error: "Tuition fee not found." });
@@ -1791,7 +1902,7 @@ app.post("/api/tuition/confirm-transfer", requireAuth, requireRole(["student"]),
   res.json({ ok: true, transactionId: txId });
 }));
 
-app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
+app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let result: any;
   try {
@@ -1816,7 +1927,7 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["man
   res.json(result);
 }));
 
-app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
   const { semesterId, amount, dueDate } = req.body;
   const dueDateValue = dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const client = await pool.connect();
@@ -1859,13 +1970,13 @@ app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager",
   }
 }));
 
-app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["super_admin"]), asyncHandler(async (req, res) => {
   const overdue = await financeRepository.checkOverdueFees(pool);
   await audit(req, "scan_overdue_tuition", "tuition_fees", `Found ${overdue.length} overdue fees.`);
   res.json({ overdueCount: overdue.length, fees: overdue });
 }));
 
-app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
+app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });
   if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
@@ -1889,7 +2000,7 @@ app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "manag
   res.status(201).json({ session, records });
 }));
 
-app.patch("/api/attendance/records", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.attendanceRecord), asyncHandler(async (req, res) => {
+app.patch("/api/attendance/records", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.attendanceRecord), asyncHandler(async (req, res) => {
   const session = (await pool.query("SELECT * FROM attendance_sessions WHERE id = $1", [req.body.sessionId])).rows[0];
   if (!session) return res.status(404).json({ error: "Attendance session not found." });
   if (req.user!.role === "teacher" && session.teacher_id !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
@@ -1909,7 +2020,7 @@ app.patch("/api/attendance/records", requireAuth, requireRole(["teacher", "manag
   res.json(record);
 }));
 
-app.post("/api/attendance/sessions/generate-link", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.generateAttendanceLink), asyncHandler(async (req, res) => {
+app.post("/api/attendance/sessions/generate-link", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.generateAttendanceLink), asyncHandler(async (req, res) => {
   const { courseId, semesterId, topic } = req.body;
   const course = await coursesRepository.findById(pool, courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });

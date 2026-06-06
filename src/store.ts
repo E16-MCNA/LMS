@@ -873,17 +873,17 @@ export class AppStore {
     return this.storeInstance!;
   }
 
-  public static save(store: LMSDataStore, skipSync: boolean = false): void {
+  public static save(store: LMSDataStore, skipSync: boolean = false): Promise<any> {
     this.storeInstance = store;
     localStorage.removeItem(STORAGE_KEY);
 
-    if (skipSync) return;
+    if (skipSync) return Promise.resolve();
 
     if (typeof sessionStorage !== "undefined") {
       const role = sessionStorage.getItem("e16_lms_role");
       if (role && !["manager", "super_admin", "admin"].includes(role)) {
         // Skip calling /api/store/sync as this role does not have permission
-        return;
+        return Promise.resolve();
       }
     }
 
@@ -906,7 +906,9 @@ export class AppStore {
         this.syncPromise = null;
         return undefined;
       });
+      return this.syncPromise;
     }
+    return Promise.resolve();
   }
 
   public static log(userId: string, action: string, target: string, detail: string): void {

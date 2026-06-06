@@ -75,6 +75,7 @@ export const api = {
   gradeAssignment: (payload: { submissionId: string; score: number; feedback: string }) => apiFetch("/api/assignments/grade", { method: "POST", body: JSON.stringify(payload) }),
   createUser: (payload: unknown) => apiFetch("/api/admin/users", { method: "POST", body: JSON.stringify(payload) }),
   setUserStatus: (userId: string, isActive: boolean) => apiFetch(`/api/admin/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
+  setUserRole: (userId: string, role: string) => apiFetch(`/api/admin/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   getWarnings: () => apiFetch("/api/academics/warnings"),
   createWarning: (payload: unknown) => apiFetch("/api/academics/warnings", { method: "POST", body: JSON.stringify(payload) }),
   resolveWarning: (warningId: string) => apiFetch(`/api/academics/warnings/${warningId}/resolve`, { method: "POST" }),

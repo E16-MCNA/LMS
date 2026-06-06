@@ -26,10 +26,10 @@ interface AcademicManagerProps {
 export default function AcademicManager({ store, currentUser, onRefreshData, triggerToast, initialTab }: AcademicManagerProps) {
   const [activeTab, setActiveTab] = useState<"years" | "semesters" | "departments" | "programs">(initialTab ?? "years");
 
-  const persistFromSnapshot = (mutator: (data: LMSDataStore) => void) => {
+  const persistFromSnapshot = async (mutator: (data: LMSDataStore) => void) => {
     const next = structuredClone(store);
     mutator(next);
-    AppStore.save(next);
+    await AppStore.save(next);
     onRefreshData();
   };
 
@@ -538,9 +538,19 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                     return 0;
                   }).map(s => {
                     const linkedY = years.find(y => y.id === s.academicYearId);
+                    const isYearCurrent = linkedY ? Boolean(linkedY.isCurrent) : false;
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const isSemActive = isYearCurrent && s.startDate && s.endDate && todayStr >= s.startDate && todayStr <= s.endDate;
                     return (
                       <tr key={s.id} className="hover:bg-white/5 transition">
-                        <td className="py-3 px-3 font-semibold text-white">{s.name}</td>
+                        <td className="py-3 px-3 font-semibold text-white">
+                          {s.name}
+                          {isSemActive && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold inline-block align-middle uppercase">
+                              Hiện tại
+                            </span>
+                          )}
+                        </td>
                         <td className="py-3 px-3 text-white/60">{linkedY ? linkedY.name : "Không xác định"}</td>
                         <td className="py-3 px-3 uppercase text-cyan-400 font-mono text-[10px]">{s.type}</td>
                         <td className="py-3 px-3 text-white/70">

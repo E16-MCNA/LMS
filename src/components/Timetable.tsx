@@ -79,8 +79,8 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
   const [formSectionCode, setFormSectionCode] = useState("");
   const [formMaxStudents, setFormMaxStudents] = useState<number>(30);
   const [formStatus, setFormStatus] = useState<"open" | "closed" | "cancelled">("open");
-  const [formSlots, setFormSlots] = useState<Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>>([
-    { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "Phòng A101" }
+  const [formSlots, setFormSlots] = useState<Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string; specificDate?: string }>>([
+    { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "Phòng A101", specificDate: "" }
   ]);
   const [formConflicts, setFormConflicts] = useState<string[]>([]);
   const [dragOverCell, setDragOverCell] = useState<string | null>(null);
@@ -203,7 +203,6 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
 
   const renderedSections = getRenderSections();
 
-  // Create list of items with coordinates for grid rendering
   interface TimetableCellItem {
     section: CourseSection;
     courseTitle: string;
@@ -212,6 +211,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     startTime: string;
     endTime: string;
     room: string;
+    specificDate?: string;
   }
 
   const gridData: Record<string, TimetableCellItem[]> = {};
@@ -230,7 +230,8 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
         dayOfWeek: slot.dayOfWeek,
         startTime: slot.startTime,
         endTime: slot.endTime,
-        room: slot.room
+        room: slot.room,
+        specificDate: slot.specificDate
       });
     });
   });
@@ -349,7 +350,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     setFormSectionCode(sec.sectionCode);
     setFormMaxStudents(sec.maxStudents);
     setFormStatus(sec.status);
-    setFormSlots(sec.schedule);
+    setFormSlots(sec.schedule.map(s => ({ ...s, specificDate: s.specificDate || "" })));
     setFormConflicts([]);
     setShowModal(true);
   };
@@ -416,7 +417,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     } else {
       // Dragging a pending slot from the left queue sidebar.
       // Overwrite the schedule since it wasn't active on the timetable.
-      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101" }];
+      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101", specificDate: "" }];
     }
 
     // Run overlap logic against other active sections
@@ -491,17 +492,30 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
   };
 
   const addFormSlot = () => {
-    setFormSlots([...formSlots, { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "" }]);
+    setFormSlots([...formSlots, { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "", specificDate: "" }]);
   };
 
   const removeFormSlot = (idx: number) => {
     setFormSlots(formSlots.filter((_, i) => i !== idx));
   };
 
+  const getVietnameseDayOfWeek = (dateInput: string | Date): string => {
+    if (!dateInput) return "Thứ Hai";
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(date.getTime())) return "Thứ Hai";
+    const day = date.getDay();
+    const days = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+    return days[day];
+  };
+
   const updateFormSlot = (idx: number, field: string, value: string) => {
     setFormSlots(formSlots.map((slot, i) => {
       if (i === idx) {
-        return { ...slot, [field]: value };
+        const updated = { ...slot, [field]: value };
+        if (field === "specificDate") {
+          updated.dayOfWeek = getVietnameseDayOfWeek(value);
+        }
+        return updated;
       }
       return slot;
     }));
@@ -837,6 +851,13 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                   <span className="font-mono">{item.room || "Trực tuyến"}</span>
                                 </div>
 
+                                {item.specificDate && (
+                                  <div className="flex items-center gap-1 text-[10px] text-white/50">
+                                    <span className="shrink-0">📅</span>
+                                    <span className="font-mono text-cyan-400 font-bold">{item.specificDate}</span>
+                                  </div>
+                                )}
+
                                 {role !== "teacher" && (
                                   <div className="flex items-center gap-1 text-[10px] text-white/50 pt-1 border-t border-white/5 font-sans">
                                     <User className="h-3 w-3 text-cyan-400 shrink-0" />
@@ -955,6 +976,12 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                       <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
                       Phòng: {slot.room || "Trực tuyến"}
                     </span>
+                    {slot.specificDate && (
+                      <span className="flex items-center gap-1 font-mono text-cyan-400 font-bold">
+                        <span>📅</span>
+                        Ngày: {slot.specificDate}
+                      </span>
+                    )}
                     {role !== "teacher" && (
                       <span className="flex items-center gap-1">
                         <User className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
@@ -1196,10 +1223,20 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                   {formSlots.map((slot, idx) => (
                     <div
                       key={idx}
-                      className="bg-black/15 border border-white/5 p-3 rounded-2xl grid grid-cols-1 sm:grid-cols-4 gap-3 items-end relative overflow-hidden"
+                      className="bg-black/15 border border-white/5 p-3 rounded-2xl grid grid-cols-1 sm:grid-cols-5 gap-3 items-end relative overflow-hidden"
                     >
                       <div className="space-y-1">
-                        <label className="text-white/40 text-[10px] block">Ngày học</label>
+                        <label className="text-white/40 text-[10px] block">Ngày học cụ thể (tùy chọn)</label>
+                        <input
+                          type="date"
+                          value={slot.specificDate || ""}
+                          onChange={(e) => updateFormSlot(idx, "specificDate", e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-slate-900 border border-white/10 rounded-lg text-white text-xs font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-white/40 text-[10px] block">Thứ trong tuần</label>
                         <select
                           value={slot.dayOfWeek}
                           onChange={(e) => updateFormSlot(idx, "dayOfWeek", e.target.value)}

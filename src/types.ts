@@ -324,7 +324,7 @@ export interface CourseSection {
   teacherId: string;
   sectionCode: string;          // e.g. "CS101-01"
   maxStudents: number;          // capacity cap
-  schedule: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>;
+  schedule: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string; specificDate?: string }>;
   status: "pending" | "open" | "closed" | "cancelled";
 }
 

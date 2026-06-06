@@ -547,16 +547,18 @@ function AppShell() {
                   >
                     <span>Hành chính SIS</span>
                   </button>
-                  <button
-                    onClick={() => setActiveSystem("LMS")}
-                    className={`px-3 py-1.5 rounded-xl text-[10.5px] font-bold font-sans tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
-                      activeSystem === "LMS"
-                        ? "bg-indigo-600 text-white shadow-lg border border-indigo-400/30"
-                        : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
-                    }`}
-                  >
-                    <span>LMS Học tập</span>
-                  </button>
+                  {currentUser.role !== "manager" && (
+                    <button
+                      onClick={() => setActiveSystem("LMS")}
+                      className={`px-3 py-1.5 rounded-xl text-[10.5px] font-bold font-sans tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
+                        activeSystem === "LMS"
+                          ? "bg-indigo-600 text-white shadow-lg border border-indigo-400/30"
+                          : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
+                      }`}
+                    >
+                      <span>LMS Học tập</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div />

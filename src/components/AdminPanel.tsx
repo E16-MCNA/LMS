@@ -96,14 +96,14 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
     } else {
       const allowedSisTabs = [
         "academic_years", "semesters", "departments", "programs", "students",
-        "reports", "class_placement", "verify_certificates", "admin_guide",
-        "attendance", "admin_timetable", "teacher_timetable"
+        "reports", "class_placement", "verify_certificates", "admin_guide"
       ];
-      if (currentUser.role === "manager" || currentUser.role === "super_admin") {
-        allowedSisTabs.push("tuition", "users");
-      }
-      if (currentUser.role === "admin" || currentUser.role === "super_admin") {
-        allowedSisTabs.push("warnings");
+      if (currentUser.role === "super_admin") {
+        allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "tuition", "users", "warnings", "approval", "audit");
+      } else if (currentUser.role === "manager") {
+        allowedSisTabs.push("users", "approval", "audit");
+      } else if (currentUser.role === "admin") {
+        allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "warnings");
       }
       if (!allowedSisTabs.includes(activeSubTab)) {
         setActiveSubTab("admin_guide");
@@ -327,13 +327,15 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
   const handleUpdateUserRole = (userId: string, newRole: User["role"]) => {
     const allowedRoles: User["role"][] = ["student", "teacher", "manager", "admin", "parent"];
     if (!allowedRoles.includes(newRole)) return;
-    const storeData = structuredClone(store);
-    storeData.users = storeData.users.map(user => user.id === userId ? { ...user, role: newRole } : user);
-    if (newRole === "student") ensureStudentProfile(storeData, userId);
-    AppStore.log(currentUser.id, "update_user_role", userId, `Changed role to ${newRole}`);
-    AppStore.save(storeData);
-    onRefreshData();
-    triggerToast("Đã cập nhật quyền hạn người dùng và đồng bộ xuống PostgreSQL.");
+    
+    api.setUserRole(userId, newRole)
+      .then(() => {
+        onRefreshData();
+        triggerToast("Đã cập nhật quyền hạn người dùng thành công và lưu vào cơ sở dữ liệu.");
+      })
+      .catch((err: Error) => {
+        triggerToast(err.message || "Không thể cập nhật quyền hạn người dùng.");
+      });
   };
 
   // Approve Course selection
@@ -567,15 +569,17 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               >
                 <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Sổ Học sinh Sinh viên</span>
               </button>
-              <button
-                onClick={() => { setActiveSubTab("attendance"); setRegistryLookupStudentId(null); }}
-                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
-                  activeSubTab === "attendance" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
-                }`}
-              >
-                <span className="flex items-center gap-2"><Activity className="h-4 w-4" /> Quản trị Điểm danh</span>
-              </button>
-              {(currentUser.role === "manager" || currentUser.role === "super_admin") && (
+              {currentUser.role !== "manager" && (
+                <button
+                  onClick={() => { setActiveSubTab("attendance"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "attendance" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><Activity className="h-4 w-4" /> Quản trị Điểm danh</span>
+                </button>
+              )}
+              {currentUser.role === "super_admin" && (
                 <button
                   onClick={() => { setActiveSubTab("tuition"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
@@ -585,22 +589,26 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   <span className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Kế toán Học Phí</span>
                 </button>
               )}
-              <button
-                onClick={() => { setActiveSubTab("admin_timetable"); setRegistryLookupStudentId(null); }}
-                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
-                  activeSubTab === "admin_timetable" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
-                }`}
-              >
-                <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Quản lý Thời khóa biểu</span>
-              </button>
-              <button
-                onClick={() => { setActiveSubTab("teacher_timetable"); setRegistryLookupStudentId(null); }}
-                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
-                  activeSubTab === "teacher_timetable" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
-                }`}
-              >
-                <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Thời khóa biểu Giảng viên</span>
-              </button>
+              {currentUser.role !== "manager" && (
+                <>
+                <button
+                  onClick={() => { setActiveSubTab("admin_timetable"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "admin_timetable" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Quản lý Thời khóa biểu</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("teacher_timetable"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "teacher_timetable" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Thời khóa biểu Giảng viên</span>
+                </button>
+                </>
+              )}
               <button
                 onClick={() => { setActiveSubTab("class_placement"); setRegistryLookupStudentId(null); }}
                 className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
@@ -618,14 +626,37 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                 <span className="flex items-center gap-2"><Award className="h-4 w-4" /> Duyệt & Xác thực Bằng</span>
               </button>
               {(currentUser.role === "manager" || currentUser.role === "super_admin") && (
+                <>
                 <button
                   onClick={() => { setActiveSubTab("users"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
                     activeSubTab === "users" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
                   }`}
                 >
-                  <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Phân quyền & Tuyển sinh</span>
+                  <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Phân quyền người dùng</span>
                 </button>
+                <button
+                  onClick={() => { setActiveSubTab("approval"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "approval" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Duyệt khóa học</span>
+                  {pendingCourses.length > 0 && (
+                    <span className="bg-amber-500 text-slate-950 font-sans font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center">
+                      {pendingCourses.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("audit"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "audit" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><Database className="h-4 w-4" /> Nhật ký hệ thống (Audit)</span>
+                </button>
+                </>
               )}
             </div>
             </>
