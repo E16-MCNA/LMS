@@ -169,7 +169,7 @@ export function getInitialStore(): LMSDataStore {
         title: "Advanced System Design & Clean Architecture",
         description: "Deep dive into solid principles, microservice patterns, and message broker backbones. Explore scale-ready structures.",
         teacherId: teacherId,
-        status: "pending", // Pending admin approval demo!
+        status: "published",
         category: "Software Engineering",
         price: 3500000,
         level: "Nâng cao",

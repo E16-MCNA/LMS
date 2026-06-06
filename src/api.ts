@@ -64,6 +64,9 @@ export const api = {
   addLesson: (payload: unknown) => apiFetch("/api/lessons", { method: "POST", body: JSON.stringify(payload) }),
   getEnrollments: () => apiFetch("/api/enrollments"),
   registerEnrollment: (courseId: string) => apiFetch("/api/enrollments/register", { method: "POST", body: JSON.stringify({ courseId }) }),
+  approveEnrollment: (enrollmentId: string, payload: { sectionId?: string; semesterId?: string } = {}) => apiFetch(`/api/enrollments/${enrollmentId}/approve`, { method: "PATCH", body: JSON.stringify(payload) }),
+  issueCertificate: (payload: { enrollmentId: string }) => apiFetch<LMSDataStore["certificates"][number]>("/api/certificates/issue", { method: "POST", body: JSON.stringify(payload) }),
+  revokeCertificate: (certificateId: string) => apiFetch(`/api/certificates/${certificateId}`, { method: "DELETE" }),
   toggleProgress: (payload: { enrollmentId: string; lessonId: string }) => apiFetch("/api/progress/toggle", { method: "POST", body: JSON.stringify(payload) }),
   createQuiz: (payload: unknown) => apiFetch("/api/quizzes", { method: "POST", body: JSON.stringify(payload) }),
   addQuestion: (quizId: string, payload: unknown) => apiFetch(`/api/quizzes/${quizId}/questions`, { method: "POST", body: JSON.stringify(payload) }),
@@ -90,7 +93,7 @@ export const api = {
   deleteCourseSection: (sectionId: string) => apiFetch(`/api/course-sections/${sectionId}`, { method: "DELETE" }),
   saveAttendance: (payload: unknown) => apiFetch("/api/attendance/sessions", { method: "POST", body: JSON.stringify(payload) }),
   updateAttendanceRecord: (payload: unknown) => apiFetch("/api/attendance/records", { method: "PATCH", body: JSON.stringify(payload) }),
-  generateAttendanceLink: (payload: { courseId: string; semesterId?: string; topic: string }) => apiFetch<{ session: any; code: string; expiresAt: string }>("/api/attendance/sessions/generate-link", { method: "POST", body: JSON.stringify(payload) }),
+  generateAttendanceLink: (payload: { courseId: string; sectionId?: string; semesterId?: string; topic: string }) => apiFetch<{ session: any; code: string; expiresAt: string }>("/api/attendance/sessions/generate-link", { method: "POST", body: JSON.stringify(payload) }),
   selfCheckin: (payload: { sessionId: string; code: string }) => apiFetch<{ ok: boolean; record: any }>("/api/attendance/self-checkin", { method: "POST", body: JSON.stringify(payload) }),
   updateStudentProfile: (payload: unknown) => apiFetch("/api/student/profile", { method: "PATCH", body: JSON.stringify(payload) }),
   updateStudentNotes: (studentId: string, notes: string) => apiFetch(`/api/advisor/student-profile/${studentId}`, { method: "PATCH", body: JSON.stringify({ notes }) }),
@@ -99,6 +102,6 @@ export const api = {
   resetPassword: (userId: string) => apiFetch(`/api/admin/users/${userId}/reset-password`, { method: "POST" }),
   teacherCheckin: (payload: { courseId: string; sectionId: string; slotTime: string; classDate: string }) => apiFetch<{ ok: boolean; record: any }>("/api/attendance/teacher-checkin", { method: "POST", body: JSON.stringify(payload) }),
   warnTeacher: (payload: { courseId: string; teacherId: string }) => apiFetch<{ ok: boolean }>("/api/attendance/warn-teacher", { method: "POST", body: JSON.stringify(payload) }),
-  createForumPost: (courseId: string, payload: { title: string; content: string }) => apiFetch(`/api/courses/${courseId}/forum`, { method: "POST", body: JSON.stringify({ courseId, ...payload }) }),
+  createForumPost: (courseId: string, payload: { title: string; content: string; sectionId?: string }) => apiFetch(`/api/courses/${courseId}/forum`, { method: "POST", body: JSON.stringify({ courseId, ...payload }) }),
   createForumReply: (postId: string, payload: { content: string }) => apiFetch(`/api/forum/posts/${postId}/replies`, { method: "POST", body: JSON.stringify(payload) })
 };

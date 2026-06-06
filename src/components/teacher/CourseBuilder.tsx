@@ -16,6 +16,7 @@ interface ComponentProps {
 export default function CourseBuilder(props: ComponentProps) {
   const [courseSearch, setCourseSearch] = React.useState("");
   const [activeCourseTab, setActiveCourseTab] = React.useState<"curriculum" | "discussion">("curriculum");
+  const [selectedForumSectionId, setSelectedForumSectionId] = React.useState("");
   const {
     activeSubTab,
     setActiveSubTab,
@@ -112,6 +113,7 @@ export default function CourseBuilder(props: ComponentProps) {
 
   React.useEffect(() => {
     setActiveCourseTab("curriculum");
+    setSelectedForumSectionId("");
   }, [selectedCourseId]);
 
   // Local states for CourseSection management inside CourseBuilder
@@ -333,6 +335,10 @@ export default function CourseBuilder(props: ComponentProps) {
   };
 
   const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === activeCourse?.id);
+  const forumSections = courseSections.filter((s: any) => s.status !== "cancelled");
+  const activeForumSectionId = selectedForumSectionId && forumSections.some((s: any) => s.id === selectedForumSectionId)
+    ? selectedForumSectionId
+    : forumSections[0]?.id || "";
 
   const filteredCourses = myCourses.filter((course: any) => {
     return !courseSearch ||
@@ -373,8 +379,8 @@ export default function CourseBuilder(props: ComponentProps) {
                             course.status === "rejected" ? "bg-red-500/20 text-red-400 border border-red-500/30" :
                             "bg-white/10 text-white/60 border border-white/5"
                           }`}>
-                            {course.status === "published" ? "ĐÃ DUYỆT" :
-                             course.status === "pending" ? "CHỜ DUYỆT" :
+                            {course.status === "published" ? "ĐANG MỞ" :
+                             course.status === "pending" ? "CHỜ XUẤT BẢN" :
                              course.status === "rejected" ? "BỊ TRẢ VỀ" : "BẢN NHÁP"}
                           </span>
                         </div>
@@ -441,8 +447,8 @@ export default function CourseBuilder(props: ComponentProps) {
                 </button>
                 <h4 className="text-base font-display font-semibold text-white truncate max-w-sm md:max-w-md">Khóa học: {activeCourse.title}</h4>
                 <span className="text-xs text-white/40">Trạng thái: <strong className="text-indigo-200 uppercase">{
-                  activeCourse.status === "published" ? "Đã duyệt" :
-                  activeCourse.status === "pending" ? "Đang chờ duyệt" :
+                  activeCourse.status === "published" ? "Đang mở" :
+                  activeCourse.status === "pending" ? "Chờ xuất bản" :
                   activeCourse.status === "rejected" ? "Bị trả về chỉnh sửa" : "Bản nháp"
                 }</strong></span>
               </div>
@@ -518,20 +524,20 @@ export default function CourseBuilder(props: ComponentProps) {
                       onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
                       className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
                     >
-                      Gửi yêu cầu duyệt xuất bản
+                      Xuất bản khóa học
                     </button>
                   )}
 
                   {activeCourse.status === "rejected" && (
                     <div className="space-y-2">
                       <div className="bg-red-500/15 border border-red-500/20 rounded-xl p-3 text-[11px] text-red-200/90 leading-relaxed">
-                        Yêu cầu xuất bản bị từ chối. Vui lòng đọc chi tiết lý do trả về, cập nhật các nội dung cần thiết và gửi yêu cầu phê duyệt lại.
+                        Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và xuất bản lại.
                       </div>
                       <button
                         onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
                         className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl cursor-pointer"
                       >
-                        Gửi lại yêu cầu duyệt
+                        Xuất bản lại khóa học
                       </button>
                     </div>
                   )}
@@ -544,7 +550,7 @@ export default function CourseBuilder(props: ComponentProps) {
 
                   {activeCourse.status === "pending" && (
                     <div className="bg-amber-500/15 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-normal">
-                      Đang chờ ban điều hành duyệt phê duyệt trước khi đưa lên danh mục công khai.
+                      Khóa học cũ còn ở trạng thái chờ duyệt; bấm xuất bản lại để đưa lên danh mục công khai.
                     </div>
                   )}
                 </div>
@@ -710,14 +716,40 @@ export default function CourseBuilder(props: ComponentProps) {
               </div>
             </div>
             ) : (
-              <div className="w-full">
-                <ForumDiscussion
-                  courseId={selectedCourseId}
-                  store={store}
-                  currentUser={currentUser}
-                  onRefreshData={onRefreshData}
-                  triggerToast={triggerToast}
-                />
+              <div className="w-full space-y-4">
+                {forumSections.length > 0 ? (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <div>
+                        <h5 className="text-xs font-bold text-white">Diễn đàn lớp học phần</h5>
+                        <p className="text-[11px] text-white/45">Chọn lớp trước khi xem và đăng thảo luận.</p>
+                      </div>
+                      <select
+                        value={activeForumSectionId}
+                        onChange={(e) => setSelectedForumSectionId(e.target.value)}
+                        className="min-w-56 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-indigo-400"
+                      >
+                        {forumSections.map((sec: any) => (
+                          <option key={sec.id} value={sec.id} className="bg-slate-900">
+                            {sec.sectionCode}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <ForumDiscussion
+                      courseId={selectedCourseId}
+                      sectionId={activeForumSectionId}
+                      store={store}
+                      currentUser={currentUser}
+                      onRefreshData={onRefreshData}
+                      triggerToast={triggerToast}
+                    />
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-xs text-white/45">
+                    Chưa có lớp học phần để mở diễn đàn.
+                  </div>
+                )}
               </div>
             )}
           </div>

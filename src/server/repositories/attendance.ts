@@ -6,7 +6,7 @@ import { eventBus } from "../eventBus";
 export const attendanceRepository = {
   async createSession(db: Queryable, session: AttendanceSession): Promise<AttendanceSession> {
     const columns = (await db.query(
-      "SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_sessions' AND column_name IN ('date', 'session_date')"
+      "SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_sessions' AND column_name IN ('date', 'session_date', 'section_id')"
     )).rows.map(row => row.column_name);
     const sessionDateOnly = session.date.slice(0, 10);
     if (columns.includes("session_date") && columns.includes("date")) {
@@ -25,6 +25,9 @@ export const attendanceRepository = {
         "INSERT INTO attendance_sessions (id, course_id, semester_id, teacher_id, date, topic) VALUES ($1,$2,$3,$4,$5,$6)",
         [session.id, session.courseId, session.semesterId || null, session.teacherId, session.date, session.topic]
       );
+    }
+    if (columns.includes("section_id") && session.sectionId) {
+      await db.query("UPDATE attendance_sessions SET section_id = $1 WHERE id = $2", [session.sectionId, session.id]);
     }
     return session;
   },

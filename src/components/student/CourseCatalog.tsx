@@ -250,10 +250,15 @@ export default function CourseCatalog(props: ComponentProps) {
                     {(() => {
                       const matchEnroll = myEnrollments.find(e => e.courseId === crs.id);
                       const isEnrolled = !!matchEnroll;
+                      const isPendingPlacement = matchEnroll?.status === "pending";
                       const isPendingPayment = matchEnroll?.status === "pending_payment";
 
                       return isEnrolled ? (
-                        isPendingPayment ? (
+                        isPendingPlacement ? (
+                          <span className="block text-center text-xs font-mono font-bold text-violet-300 py-2 bg-violet-500/10 border border-violet-500/20 rounded-xl">
+                            Chờ xếp lớp học phần
+                          </span>
+                        ) : isPendingPayment ? (
                           <div className="space-y-2">
                             <span className="block text-center text-xs font-mono font-bold text-amber-400 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                               ⏰ Chờ duyệt học phí

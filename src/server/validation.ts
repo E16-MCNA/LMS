@@ -69,6 +69,13 @@ export const schemas = {
   registerEnrollment: z.object({
     courseId: z.string().trim().min(1)
   }),
+  approveEnrollment: z.object({
+    sectionId: z.string().trim().min(1).optional(),
+    semesterId: z.string().trim().min(1).optional()
+  }),
+  issueCertificate: z.object({
+    enrollmentId: z.string().trim().min(1)
+  }),
   toggleProgress: z.object({
     enrollmentId: z.string().trim().min(1),
     lessonId: z.string().trim().min(1)
@@ -110,6 +117,7 @@ export const schemas = {
   }),
   attendanceSession: z.object({
     courseId: z.string().trim().min(1),
+    sectionId: z.string().trim().min(1).optional(),
     semesterId: z.string().trim().optional(),
     date: z.string().trim().min(1),
     topic: z.string().trim().min(1),
@@ -222,6 +230,7 @@ export const schemas = {
   }),
   generateAttendanceLink: z.object({
     courseId: z.string().trim().min(1),
+    sectionId: z.string().trim().min(1).optional(),
     semesterId: z.string().trim().optional(),
     topic: z.string().trim().min(1)
   }),
@@ -237,6 +246,7 @@ export const schemas = {
   }),
   createForumPost: z.object({
     courseId: z.string().trim().min(1),
+    sectionId: z.string().trim().min(1).optional(),
     title: z.string().trim().min(1).max(200),
     content: z.string().trim().min(1).max(10000)
   }),

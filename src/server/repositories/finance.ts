@@ -76,7 +76,7 @@ export const financeRepository = {
       if (!isTuitionPayment && tx.course_id) {
         await db.query(
           `UPDATE enrollments
-           SET status = 'active'
+           SET status = 'pending'
            WHERE student_id = $1 AND course_id = $2 AND status = 'pending_payment'`,
           [tx.student_id, tx.course_id]
         );

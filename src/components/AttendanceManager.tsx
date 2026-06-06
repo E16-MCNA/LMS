@@ -29,6 +29,7 @@ interface AttendanceManagerProps {
 export default function AttendanceManager({ store, currentUser, onRefreshData, triggerToast, defaultCourseId }: AttendanceManagerProps) {
   // Course selection
   const [selectedCourseId, setSelectedCourseId] = useState(defaultCourseId || "");
+  const [selectedSectionId, setSelectedSectionId] = useState("");
   // Session selection (or create new)
   const [activeSessionId, setActiveSessionId] = useState("");
 
@@ -64,6 +65,8 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
   const [complianceSearch, setComplianceSearch] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [courseDetailId, setCourseDetailId] = useState<string | null>(null);
+  const [courseFilterText, setCourseFilterText] = useState("");
+  const [sectionFilterText, setSectionFilterText] = useState("");
   const [newSessionDate, setNewSessionDate] = useState("");
   const [newSessionTopic, setNewSessionTopic] = useState("");
   const [newSessionTime, setNewSessionTime] = useState("09:00 - 11:30");
@@ -75,10 +78,24 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
   const activeSemester = systemSemesters.find(s => s.id === "sem_spring25") || systemSemesters[0]; // spring 25 default
   const curSemesterId = activeSemester ? activeSemester.id : "sem_spring25";
 
-  // Sessions for chosen course
-  const sessions = (store.attendanceSessions || []).filter(s => s.courseId === selectedCourseId);
-  // Enrolled students in chosen course
-  const courseEnrollments = enrollments.filter(e => e.courseId === selectedCourseId && e.status !== "cancelled");
+  const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === selectedCourseId && s.status !== "cancelled");
+  const filteredCourses = courses.filter(c => 
+    c.title.toLowerCase().includes(courseFilterText.toLowerCase()) || 
+    c.category.toLowerCase().includes(courseFilterText.toLowerCase())
+  );
+  const filteredCourseSections = courseSections.filter((s: any) => 
+    s.sectionCode.toLowerCase().includes(sectionFilterText.toLowerCase())
+  );
+  // Sessions for chosen course/section
+  const sessions = (store.attendanceSessions || []).filter(s => (
+    s.courseId === selectedCourseId && (!selectedSectionId || s.sectionId === selectedSectionId)
+  ));
+  // Enrolled students in chosen course/section
+  const courseEnrollments = selectedSectionId
+    ? (store.courseRegistrations || [])
+        .filter((r: any) => r.sectionId === selectedSectionId && r.status === "registered")
+        .map((r: any) => ({ courseId: selectedCourseId, studentId: r.studentId, status: "active" }))
+    : [];
   const courseStudents = courseEnrollments.map(enroll => {
     const usr = store.users.find(u => u.id === enroll.studentId) || { name: "Sinh viên", id: enroll.studentId };
     const pProfile = (store.studentProfiles || []).find(p => p.userId === enroll.studentId);
@@ -124,6 +141,10 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       triggerToast("Vui lòng chọn môn học trước khi lập buổi điểm danh.");
       return;
     }
+    if (!selectedSectionId) {
+      triggerToast("Vui lòng chọn lớp học phần trước khi lập buổi điểm danh.");
+      return;
+    }
     if (checkinMethod === "manual" && !newSessionDate) {
       triggerToast("Hãy nhập ngày tháng cho buổi điểm danh.");
       return;
@@ -137,6 +158,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       if (checkinMethod === "link") {
         const result = await api.generateAttendanceLink({
           courseId: selectedCourseId,
+          sectionId: selectedSectionId,
           semesterId: curSemesterId,
           topic: newSessionTopic.trim()
         });
@@ -152,6 +174,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
         const combinedDate = newSessionTime.trim() ? `${newSessionDate} (${newSessionTime.trim()})` : newSessionDate;
         const result = await api.saveAttendance({
           courseId: selectedCourseId,
+          sectionId: selectedSectionId,
           semesterId: curSemesterId,
           date: combinedDate,
           topic: newSessionTopic.trim(),
@@ -445,29 +468,64 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
       
       {/* Course & Session selectors */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-950/30 backdrop-blur-md border border-white/10 p-5 rounded-3xl text-xs shadow-xl transition-all duration-200 items-end">
-        <div className={selectedCourseId ? "col-span-1 md:col-span-5 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
+        <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
           <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
             1. Lựa chọn môn học / lớp học phần:
           </label>
-          <select
-            value={selectedCourseId}
-            onChange={(e) => { setSelectedCourseId(e.target.value); setActiveSessionId(""); }}
-            className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all"
-          >
-            <option value="">-- Click chọn lớp môn học --</option>
-            {courses.map(c => (
-              <option key={c.id} value={c.id} className="bg-slate-900">{c.title} ({c.category})</option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Lọc môn..."
+              value={courseFilterText}
+              onChange={(e) => setCourseFilterText(e.target.value)}
+              className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans"
+            />
+            <select
+              value={selectedCourseId}
+              onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
+              className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all"
+            >
+              <option value="">-- Click chọn lớp môn học --</option>
+              {filteredCourses.map(c => (
+                <option key={c.id} value={c.id} className="bg-slate-900">{c.title} ({c.category})</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {selectedCourseId && (
           <>
-            <div className="col-span-1 md:col-span-4 space-y-1.5">
+            <div className="col-span-1 md:col-span-3 space-y-1.5">
+              <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                2. Chọn lớp học phần:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Lọc lớp..."
+                  value={sectionFilterText}
+                  onChange={(e) => setSectionFilterText(e.target.value)}
+                  className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans"
+                />
+                <select
+                  value={selectedSectionId}
+                  onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}
+                  className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all"
+                >
+                  <option value="">-- Chọn lớp --</option>
+                  {filteredCourseSections.map((section: any) => (
+                    <option key={section.id} value={section.id} className="bg-slate-900">{section.sectionCode}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="col-span-1 md:col-span-3 space-y-1.5">
               <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-                2. Chọn đợt buổi học:
+                3. Chọn đợt buổi học:
               </label>
               <select
                 value={activeSessionId}
@@ -481,7 +539,7 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
               </select>
             </div>
             
-            <div className="col-span-1 md:col-span-3">
+            <div className="col-span-1 md:col-span-2">
               <button
                 onClick={() => setShowCreateSession(true)}
                 className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"

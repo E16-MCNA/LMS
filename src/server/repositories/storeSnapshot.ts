@@ -122,6 +122,7 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
   const attendanceSessions = attendanceSessionsRes.rows.map(row => ({
     id: row.id,
     courseId: row.course_id,
+    sectionId: row.section_id || undefined,
     semesterId: row.semester_id,
     teacherId: row.teacher_id,
     date: row.date || row.session_date,
@@ -169,7 +170,7 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
   const forumReplies = forumRepliesRes.rows.map(row => ({ id: row.id, postId: row.post_id, authorId: row.author_id, content: row.content, createdAt: row.created_at }));
   const forumPosts = forumPostsRes.rows.map(row => {
     const postReplies = forumReplies.filter(r => r.postId === row.id);
-    return { id: row.id, courseId: row.course_id, authorId: row.author_id, title: row.title, content: row.content, replies: postReplies, createdAt: row.created_at };
+    return { id: row.id, courseId: row.course_id, sectionId: row.section_id || undefined, authorId: row.author_id, title: row.title, content: row.content, replies: postReplies, createdAt: row.created_at };
   });
 
   const teacherAttendance = teacherAttendanceRes.rows.map(row => ({
@@ -241,6 +242,10 @@ export function limitStoreForRole(store: any, user: User) {
     const visibleEnrollments = store.enrollments.filter((item: Enrollment) => teacherCourseIds.has(item.courseId));
     const visibleStudentIds = new Set(visibleEnrollments.map((item: Enrollment) => item.studentId));
     visibleStudentIds.add(user.id);
+    const mySections = new Set((store.courseSections || [])
+      .filter((cs: any) => cs.teacherId === user.id)
+      .map((cs: any) => cs.id)
+    );
     return {
       ...store,
       users: store.users.filter((item: User) => visibleStudentIds.has(item.id) || item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
@@ -252,13 +257,17 @@ export function limitStoreForRole(store: any, user: User) {
       submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId)),
       teacherAttendance: (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === user.id),
       certificates: (store.certificates || []).filter((cert: any) => teacherCourseIds.has(cert.courseId)),
-      forumPosts: (store.forumPosts || []).filter((post: any) => teacherCourseIds.has(post.courseId))
+      forumPosts: (store.forumPosts || []).filter((post: any) => teacherCourseIds.has(post.courseId) && (!post.sectionId || mySections.has(post.sectionId)))
     };
   }
 
   if (user.role === "student") {
     const myEnrollments = store.enrollments.filter((item: Enrollment) => item.studentId === user.id);
     const myCourseIds = new Set(myEnrollments.map((item: Enrollment) => item.courseId));
+    const myRegisteredSections = new Set((store.courseRegistrations || [])
+      .filter((cr: any) => cr.studentId === user.id && cr.status === "registered")
+      .map((cr: any) => cr.sectionId)
+    );
     return {
       ...store,
       users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
@@ -272,7 +281,7 @@ export function limitStoreForRole(store: any, user: User) {
       notifications: store.notifications.filter((item: any) => item.userId === user.id),
       teacherAttendance: [],
       certificates: (store.certificates || []).filter((cert: any) => cert.studentId === user.id),
-      forumPosts: (store.forumPosts || []).filter((post: any) => myCourseIds.has(post.courseId))
+      forumPosts: (store.forumPosts || []).filter((post: any) => myCourseIds.has(post.courseId) && (!post.sectionId || myRegisteredSections.has(post.sectionId)))
     };
   }
 

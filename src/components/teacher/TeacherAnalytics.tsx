@@ -131,9 +131,9 @@ export default function TeacherAnalytics(props: ComponentProps) {
                         <span className="font-mono text-cyan-300 font-bold">{Math.round(totalAvgQuiz)}%</span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-white/40">Trạng thái Phê duyệt</span>
+                        <span className="text-white/40">Trạng thái khóa học</span>
                         <span className="text-indigo-200 uppercase font-mono text-[10px] bg-white/5 py-0.5 px-2 rounded-full border border-white/10 font-bold">
-                          {course.status === "published" ? "Đã duyệt" : course.status === "pending" ? "Chờ duyệt" : course.status === "rejected" ? "Bị từ chối" : "Bản nháp"}
+                          {course.status === "published" ? "Đang mở" : course.status === "pending" ? "Chờ xuất bản" : course.status === "rejected" ? "Bị trả về" : "Bản nháp"}
                         </span>
                       </div>
                     </div>

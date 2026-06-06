@@ -17,7 +17,7 @@ export const enrollmentsRepository = {
       id: generateId("enroll"),
       courseId,
       studentId,
-      status: isPaidCourse ? "pending_payment" : "active",
+      status: isPaidCourse ? "pending_payment" : "pending",
       enrolledAt: new Date().toISOString()
     };
     await db.query(
@@ -33,7 +33,7 @@ export const enrollmentsRepository = {
 
   async existsForCourse(db: Queryable, studentId: string, courseId: string) {
     return Boolean((await db.query(
-      "SELECT id FROM enrollments WHERE course_id = $1 AND student_id = $2 AND status IN ('active', 'pending_payment')",
+      "SELECT id FROM enrollments WHERE course_id = $1 AND student_id = $2 AND status IN ('pending', 'active', 'pending_payment')",
       [courseId, studentId]
     )).rows[0]);
   },

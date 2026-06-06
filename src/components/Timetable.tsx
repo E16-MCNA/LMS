@@ -33,7 +33,9 @@ interface TimetableProps {
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 
-const getVietnameseDayOfWeek = (date: Date): string => {
+const getVietnameseDayOfWeek = (dateInput: Date | string): string => {
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return "Thứ Hai";
   const day = date.getDay();
   if (day === 0) return "Chủ Nhật";
   if (day === 1) return "Thứ Hai";
@@ -499,14 +501,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     setFormSlots(formSlots.filter((_, i) => i !== idx));
   };
 
-  const getVietnameseDayOfWeek = (dateInput: string | Date): string => {
-    if (!dateInput) return "Thứ Hai";
-    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
-    if (isNaN(date.getTime())) return "Thứ Hai";
-    const day = date.getDay();
-    const days = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-    return days[day];
-  };
+
 
   const updateFormSlot = (idx: number, field: string, value: string) => {
     setFormSlots(formSlots.map((slot, i) => {
@@ -874,11 +869,11 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                   const startMins = timeToMins(item.startTime);
                                   
                                   const isSameDay = item.dayOfWeek === currentDay;
-                                  const minutesElapsed = currentMins - startMins;
-                                  const isWithinTenMinutes = isSameDay && minutesElapsed >= 0 && minutesElapsed <= 10;
-                                  const remainingMinutes = 10 - minutesElapsed;
+                                  const endMins = timeToMins(item.endTime);
+                                  const isWithinClassDuration = isSameDay && currentMins >= startMins && currentMins <= endMins;
+                                  const remainingMinutes = endMins - currentMins;
                                   
-                                  if (isWithinTenMinutes) {
+                                  if (isWithinClassDuration) {
                                     const classDateStr = now.toISOString().slice(0, 10);
                                     const hasCheckedIn = (store.teacherAttendance || []).some(
                                       (ta: any) =>
@@ -916,7 +911,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                         }}
                                         className="mt-2 w-full py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-lg transition-all duration-200 text-[10px] flex items-center justify-center gap-1 shadow-lg shadow-orange-500/10 cursor-pointer animate-pulse font-sans"
                                       >
-                                        🔑 Giảng viên điểm danh (còn {remainingMinutes}p)
+                                        🔑 Giảng viên điểm danh (hết ca sau {remainingMinutes}p)
                                       </button>
                                     );
                                   }
@@ -1046,7 +1041,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                           }}
                           className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all duration-200 text-xs flex items-center gap-1 shadow-lg shadow-orange-500/10 cursor-pointer animate-pulse shrink-0 font-sans"
                         >
-                          🔑 Giảng viên điểm danh (còn {remainingMinutes}p)
+                          🔑 Giảng viên điểm danh (hết ca sau {remainingMinutes}p)
                         </button>
                       );
                     }

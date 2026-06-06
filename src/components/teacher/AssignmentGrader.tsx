@@ -296,6 +296,23 @@ export default function AssignmentGrader(props: ComponentProps) {
 
             <form onSubmit={handleAddAssignmentSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Chọn Khóa học</label>
+                <select
+                  required
+                  value={selectedCourseId || ""}
+                  onChange={(e) => setSelectedCourseId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 font-sans"
+                >
+                  <option value="">-- Chọn khóa học --</option>
+                  {myCourses.map((c: any) => (
+                    <option key={c.id} value={c.id} className="bg-slate-900">
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-xs font-bold text-white/70">Tiêu đề Thử thách bài tập</label>
                 <input
                   type="text"
@@ -311,7 +328,7 @@ export default function AssignmentGrader(props: ComponentProps) {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-white/70">Hạn chót Hoàn thành</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     required
                     value={assignDeadline}
                     onChange={(e) => setAssignDeadline(e.target.value)}

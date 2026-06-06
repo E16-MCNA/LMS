@@ -15,8 +15,8 @@ import {
   Check,
   Trash2
 } from "lucide-react";
-import { LMSDataStore, User as UserType, Course, Certificate, Enrollment } from "../types";
-import { AppStore } from "../store";
+import { LMSDataStore, User as UserType, Certificate } from "../types";
+import { api } from "../api";
 
 interface CertificateVerifierProps {
   store: LMSDataStore;
@@ -24,7 +24,7 @@ interface CertificateVerifierProps {
   onRefreshData: () => void;
 }
 
-export default function CertificateVerifier({ store, currentUser, onRefreshData }: CertificateVerifierProps) {
+export default function CertificateVerifier({ store, onRefreshData }: CertificateVerifierProps) {
   const [activeTab, setActiveTab] = useState<"pending" | "lookup" | "registry">("pending");
   
   // Verification Lookup States
@@ -155,68 +155,29 @@ export default function CertificateVerifier({ store, currentUser, onRefreshData 
   };
 
   // Manually Approve & Issue Certificate
-  const handleIssueCertificate = (item: typeof pendingList[0]) => {
-    const code = `MCNA-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
+  const handleIssueCertificate = async (item: typeof pendingList[0]) => {
     if (!window.confirm(`Xác nhận Phê duyệt kết quả và phát hành Chứng chỉ tốt nghiệp cho học viên ${item.studentName}?`)) return;
 
-    const storeData = AppStore.get();
-    
-    // Create new certificate
-    const newCert: Certificate = {
-      id: `cert_${Math.random().toString(36).substring(2, 9)}`,
-      enrollmentId: item.enrollmentId,
-      studentId: item.studentId,
-      courseId: item.courseId,
-      issuedAt: new Date().toISOString(),
-      certificateCode: code
-    };
-
-    // Update enrollment status to completed
-    storeData.enrollments = (storeData.enrollments || []).map(e => {
-      if (e.id === item.enrollmentId) {
-        return {
-          ...e,
-          status: "completed",
-          completedAt: new Date().toISOString()
-        };
-      }
-      return e;
-    });
-
-    if (!storeData.certificates) storeData.certificates = [];
-    storeData.certificates.push(newCert);
-
-    // Notify student
-    AppStore.notify(
-      item.studentId, 
-      "success", 
-      `Chúc mừng! Chứng chỉ khóa học "${item.courseTitle}" của bạn đã được phê duyệt và cấp chính thức. Mã kiểm định độc bản của bạn: ${code}.`
-    );
-
-    AppStore.log(
-      currentUser.id, 
-      "issue_certificate_manual", 
-      code, 
-      `Duyệt kết quả & cấp chứng nhận cho học viên ${item.studentName} môn ${item.courseTitle}.`
-    );
-
-    AppStore.save(storeData);
-    onRefreshData();
-    triggerToast(`🏆 Đã cấp thành công chứng chỉ mã ${code} cho ${item.studentName}!`);
+    try {
+      const certificate = await api.issueCertificate({ enrollmentId: item.enrollmentId });
+      onRefreshData();
+      triggerToast(`🏆 Đã cấp thành công chứng chỉ mã ${certificate.certificateCode} cho ${item.studentName}!`);
+    } catch (err: any) {
+      triggerToast(err.message || "Không thể cấp chứng chỉ.");
+    }
   };
 
   // Revoke/Delete Certificate
-  const handleRevokeCertificate = (id: string, code: string, name: string) => {
+  const handleRevokeCertificate = async (id: string, code: string, name: string) => {
     if (!window.confirm(`⚠️ Cảnh báo: Bạn có chắc chắn muốn THU HỒI chứng chỉ mã "${code}" của học viên "${name}"? Hành động này sẽ xóa vĩnh viễn chứng nhận khỏi hệ thống.`)) return;
 
-    const storeData = AppStore.get();
-    storeData.certificates = (storeData.certificates || []).filter(c => c.id !== id);
-
-    AppStore.log(currentUser.id, "revoke_certificate", code, `Thu hồi chứng chỉ tốt nghiệp của học viên ${name}.`);
-    AppStore.save(storeData);
-    onRefreshData();
-    triggerToast(`🗑️ Đã thu hồi chứng chỉ ${code}!`);
+    try {
+      await api.revokeCertificate(id);
+      onRefreshData();
+      triggerToast(`🗑️ Đã thu hồi chứng chỉ ${code}!`);
+    } catch (err: any) {
+      triggerToast(err.message || "Không thể thu hồi chứng chỉ.");
+    }
   };
 
   return (

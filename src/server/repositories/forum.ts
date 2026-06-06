@@ -3,10 +3,11 @@ import { Queryable } from "../db";
 import { generateId } from "../ids";
 
 export const forumRepository = {
-  async createPost(db: Queryable, input: { courseId: string; authorId: string; title: string; content: string }): Promise<ForumPost> {
+  async createPost(db: Queryable, input: { courseId: string; sectionId?: string; authorId: string; title: string; content: string }): Promise<ForumPost> {
     const post: ForumPost = {
       id: generateId("post"),
       courseId: input.courseId,
+      sectionId: input.sectionId,
       authorId: input.authorId,
       title: input.title,
       content: input.content,
@@ -14,9 +15,9 @@ export const forumRepository = {
       createdAt: new Date().toISOString()
     };
     await db.query(
-      `INSERT INTO forum_posts (id, course_id, author_id, title, content, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [post.id, post.courseId, post.authorId, post.title, post.content, post.createdAt]
+      `INSERT INTO forum_posts (id, course_id, section_id, author_id, title, content, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [post.id, post.courseId, post.sectionId || null, post.authorId, post.title, post.content, post.createdAt]
     );
     return post;
   },

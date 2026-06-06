@@ -84,6 +84,11 @@ export default function MyLearningWorkspace(props: ComponentProps) {
     setActiveWorkspaceTab("study");
   }, [learningCourseId]);
 
+  const activeLearningSectionId = ((store.courseRegistrations || []).find((registration: any) => {
+    if (registration.studentId !== currentUser.id || registration.status !== "registered") return false;
+    return (store.courseSections || []).some((section: any) => section.id === registration.sectionId && section.courseId === learningCourseId);
+  }) || {}).sectionId || null;
+
   // Construct structured study sessions by grouping lessons and assignments dynamically
   const getCourseSessions = () => {
     const courseLessons = currentLearningLessons || [];
@@ -147,16 +152,17 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                         
                         <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-mono font-bold border ${
                           enroll.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                          enroll.status === "pending" ? "bg-violet-500/10 text-violet-300 border-violet-500/20 font-bold" :
                           enroll.status === "pending_payment" ? "bg-amber-500/10 text-amber-300 border-amber-500/20 font-bold" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
                         }`}>
-                          {enroll.status === "pending_payment" ? "Chờ duyệt phí" : enroll.status === "active" ? "Đang học" : "Đã hoàn thành"}
+                          {enroll.status === "pending" ? "Chờ xếp lớp" : enroll.status === "pending_payment" ? "Chờ duyệt phí" : enroll.status === "active" ? "Đang học" : "Đã hoàn thành"}
                         </span>
                       </div>
 
                       <h5 className="font-display font-bold text-white text-base leading-tight group-hover:text-indigo-200 transition-colors">{course.title}</h5>
                       
                       {/* Interactive Progress Tracking */}
-                      {enroll.status !== "pending_payment" && (
+                      {enroll.status !== "pending_payment" && enroll.status !== "pending" && (
                         <div className="space-y-2 pt-2">
                           <div className="flex justify-between text-[11px] text-white/50 font-mono">
                             <span>Tiến độ học tập</span>
@@ -176,6 +182,11 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                           ℹ️ Giao dịch chuyển khoản học phí đang chờ đối soát sao kê. Bạn sẽ nhận được thông báo ngay khi Kế toán duyệt giao dịch.
                         </div>
                       )}
+                      {enroll.status === "pending" && (
+                        <div className="bg-violet-500/5 border border-violet-500/10 p-3.5 rounded-xl text-[11px] text-violet-200/80 leading-relaxed font-sans shadow-inner">
+                          Yêu cầu đăng ký đã được ghi nhận và đang chờ quản lý xếp lớp học phần.
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-4 border-t border-white/5 mt-5 flex justify-between items-center text-xs">
@@ -191,6 +202,11 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                           >
                             Hướng dẫn thanh toán
                           </button>
+                        </>
+                      ) : enroll.status === "pending" ? (
+                        <>
+                          <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-violet-300/80">Chờ xếp lớp</span>
+                          <span className="text-[10px] text-white/40">Chưa thể vào lớp</span>
                         </>
                       ) : (
                         <>
@@ -596,6 +612,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
               <div className="w-full">
                 <ForumDiscussion
                   courseId={learningCourseId}
+                  sectionId={activeLearningSectionId}
                   store={store}
                   currentUser={currentUser}
                   onRefreshData={onRefreshData}

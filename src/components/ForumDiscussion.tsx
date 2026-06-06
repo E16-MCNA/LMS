@@ -4,6 +4,7 @@ import { api } from "../api";
 
 interface ForumDiscussionProps {
   courseId: string;
+  sectionId?: string | null;
   store: any;
   currentUser: any;
   onRefreshData: () => void;
@@ -12,6 +13,7 @@ interface ForumDiscussionProps {
 
 export default function ForumDiscussion({
   courseId,
+  sectionId,
   store,
   currentUser,
   onRefreshData,
@@ -26,9 +28,9 @@ export default function ForumDiscussion({
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter posts for the current course
+  // Filter posts for the current course and section
   const coursePosts = (store.forumPosts || []).filter(
-    (post: any) => post.courseId === courseId
+    (post: any) => post.courseId === courseId && (sectionId ? post.sectionId === sectionId : !post.sectionId)
   );
 
   // Search filter
@@ -39,6 +41,7 @@ export default function ForumDiscussion({
   );
 
   const selectedPost = coursePosts.find((p: any) => p.id === selectedPostId);
+  const currentSection = sectionId ? (store.courseSections || []).find((section: any) => section.id === sectionId) : null;
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +54,8 @@ export default function ForumDiscussion({
     try {
       await api.createForumPost(courseId, {
         title: newPostTitle.trim(),
-        content: newPostContent.trim()
+        content: newPostContent.trim(),
+        sectionId: sectionId || undefined
       });
       triggerToast("Đăng bài viết mới thành công!", "success");
       setNewPostTitle("");
@@ -294,7 +298,7 @@ export default function ForumDiscussion({
           {/* Header & New Post button */}
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-xl font-bold tracking-wide">Diễn đàn thảo luận khóa học</h2>
+              <h2 className="text-xl font-bold tracking-wide">Diễn đàn thảo luận {currentSection ? `lớp ${currentSection.sectionCode}` : "khóa học"}</h2>
               <p className="text-sm text-white/50 mt-1">Nơi trao đổi câu hỏi, kiến thức học tập giữa lớp học</p>
             </div>
             {!isReadOnly && (

@@ -86,7 +86,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
 
   useEffect(() => {
     if (activeSystem === "LMS") {
-      const allowedLmsTabs = ["approval", "audit", "admin_guide"];
+      const allowedLmsTabs = ["audit", "admin_guide"];
       if (currentUser.role === "manager" || currentUser.role === "super_admin") {
         allowedLmsTabs.push("users");
       }
@@ -99,9 +99,9 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
         "reports", "class_placement", "verify_certificates", "admin_guide"
       ];
       if (currentUser.role === "super_admin") {
-        allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "tuition", "users", "warnings", "approval", "audit");
+        allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "tuition", "users", "warnings", "audit");
       } else if (currentUser.role === "manager") {
-        allowedSisTabs.push("users", "approval", "audit");
+        allowedSisTabs.push("users", "audit");
       } else if (currentUser.role === "admin") {
         allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "warnings");
       }
@@ -569,7 +569,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               >
                 <span className="flex items-center gap-2"><GraduationCap className="h-4 w-4" /> Sổ Học sinh Sinh viên</span>
               </button>
-              {currentUser.role !== "manager" && (
+              {(currentUser.role === "admin" || currentUser.role === "super_admin") && (
                 <button
                   onClick={() => { setActiveSubTab("attendance"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
@@ -636,19 +636,6 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Phân quyền người dùng</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("approval"); setRegistryLookupStudentId(null); }}
-                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
-                    activeSubTab === "approval" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
-                  }`}
-                >
-                  <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Duyệt khóa học</span>
-                  {pendingCourses.length > 0 && (
-                    <span className="bg-amber-500 text-slate-950 font-sans font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center">
-                      {pendingCourses.length}
-                    </span>
-                  )}
-                </button>
-                <button
                   onClick={() => { setActiveSubTab("audit"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
                     activeSubTab === "audit" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
@@ -674,19 +661,6 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                 }`}
               >
                 <span className="flex items-center gap-2"><HelpCircle className="h-4 w-4" /> Hướng dẫn sử dụng</span>
-              </button>
-              <button
-                onClick={() => { setActiveSubTab("approval"); setRegistryLookupStudentId(null); }}
-                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
-                  activeSubTab === "approval" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
-                }`}
-              >
-                <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Duyệt khóa học</span>
-                {pendingCourses.length > 0 && (
-                  <span className="bg-amber-500 text-slate-950 font-sans font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center">
-                    {pendingCourses.length}
-                  </span>
-                )}
               </button>
               {(currentUser.role === "manager" || currentUser.role === "super_admin") && (
                 <button

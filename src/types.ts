@@ -48,7 +48,7 @@ export interface Enrollment {
   id: string;
   courseId: string;
   studentId: string;
-  status: "active" | "completed" | "cancelled" | "pending_payment";
+  status: "pending" | "active" | "completed" | "cancelled" | "pending_payment";
   enrolledAt: string;
   completedAt?: string;
 }
@@ -139,6 +139,7 @@ export interface Notification {
 export interface ForumPost {
   id: string;
   courseId: string;
+  sectionId?: string;
   authorId: string;
   title: string;
   content: string;
@@ -249,6 +250,7 @@ export interface StudentProfile {
 export interface AttendanceSession {
   id: string;
   courseId: string;
+  sectionId?: string;
   semesterId: string;
   teacherId: string;
   date: string;

@@ -117,7 +117,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
 
   useEffect(() => {
     if (activeSystem === "SIS") {
-      if (!["profile", "academics_record", "student_attendance", "student_tuition", "student_transcript", "parent_view", "student_guide", "student_timetable"].includes(activeSubTab)) {
+      if (!["profile", "academics_record", "student_attendance", "student_tuition", "student_transcript", "student_guide"].includes(activeSubTab)) {
         setActiveSubTab("student_guide");
       }
     } else {
@@ -889,17 +889,6 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
               <span>Lý lịch cá nhân</span>
             </button>
             <button
-              onClick={() => { setActiveSubTab("student_timetable"); setShowSidebar(false); }}
-              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
-                activeSubTab === "student_timetable" 
-                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <Calendar className={`h-4.5 w-4.5 ${activeSubTab === "student_timetable" ? "text-white" : "text-white/40"}`} />
-              <span>Thời khóa biểu</span>
-            </button>
-            <button
               onClick={() => { setActiveSubTab("academics_record"); setShowSidebar(false); }}
               className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                 activeSubTab === "academics_record" 
@@ -942,37 +931,6 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
             >
               <FileCheck className={`h-4.5 w-4.5 ${activeSubTab === "student_transcript" ? "text-white" : "text-white/40"}`} />
               <span>Kết quả học tập</span>
-            </button>
-            <button
-              onClick={() => { setActiveSubTab("parent_view"); setShowSidebar(false); }}
-              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
-                activeSubTab === "parent_view" 
-                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <Shield className={`h-4.5 w-4.5 ${activeSubTab === "parent_view" ? "text-white" : "text-white/40"}`} />
-              <span>Cổng Phụ Huynh</span>
-            </button>
-            <button
-              onClick={() => { setActiveSubTab("notifications"); setShowSidebar(false); }}
-              className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center justify-between gap-2.5 ${
-                activeSubTab === "notifications" 
-                  ? "bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20" 
-                  : "text-white/60 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Bell className={`h-4.5 w-4.5 ${activeSubTab === "notifications" ? "text-white" : "text-white/40"}`} />
-                <span>Hộp thư thông báo</span>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                myNotifications.filter(n => !n.isRead).length > 0 
-                  ? "bg-red-500/20 text-red-300 animate-pulse border border-red-500/10" 
-                  : "bg-white/10 text-white/50"
-              }`}>
-                {myNotifications.filter(n => !n.isRead).length}
-              </span>
             </button>
           </div>
           )}

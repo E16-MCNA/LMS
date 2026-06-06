@@ -412,16 +412,16 @@ export default function QuizBuilder(props: ComponentProps) {
 
                       <div className="space-y-3.5 pt-2 max-h-[600px] overflow-y-auto pr-1">
                         {store.questions.filter(qst => qst.quizId === selectedQuizId).map((qst, n) => (
-                          <div key={qst.id} className="bg-white/5 border border-white/10 rounded-2xl p-4.5 space-y-3 relative">
-                            <div className="flex justify-between items-start gap-3">
-                              <span className="text-xs font-bold text-white flex-1 pr-14">{n+1}. {qst.text}</span>
-                              <span className="text-[10px] uppercase tracking-wider font-mono text-indigo-300 bg-white/5 py-0.5 px-2 rounded-full border border-white/10 text-right">
+                          <div key={qst.id} className="bg-white/5 border border-white/10 rounded-2xl p-4.5 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 min-w-0">
+                              <span className="text-xs font-bold text-white min-w-0 flex-1 break-words">{n+1}. {qst.text}</span>
+                              <span className="text-[10px] uppercase tracking-wider font-mono text-indigo-300 bg-white/5 py-0.5 px-2 rounded-full border border-white/10 text-right shrink-0">
                                 {qst.type === "single" ? "Một đáp án" : qst.type === "multiple" ? "Nhiều đáp án" : "Tự điền từ"}
                               </span>
                             </div>
 
                             {/* Edit / Delete Actions */}
-                            <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => handleStartEditQuestion(qst)}

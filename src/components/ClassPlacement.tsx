@@ -14,9 +14,9 @@ import {
   UserCheck,
   Search
 } from "lucide-react";
-import { LMSDataStore, User, Course, CourseSection, CourseRegistration } from "../types";
+import { LMSDataStore, User } from "../types";
 import { AppStore } from "../store";
-import { generateId } from "../utils";
+import { api } from "../api";
 
 interface ClassPlacementProps {
   store: LMSDataStore;
@@ -32,6 +32,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
   // Placement Modal states
   const [showModal, setShowModal] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState<{
+    enrollmentId: string;
     studentId: string;
     studentName: string;
     courseId: string;
@@ -51,7 +52,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     const sections = store.courseSections || [];
 
     // Filter active enrollments
-    const activeEnrollments = enrollments.filter(e => e.status === "active");
+    const activeEnrollments = enrollments.filter(e => e.status === "pending" || e.status === "active");
 
     return activeEnrollments.map(e => {
       const student = store.users.find(u => u.id === e.studentId);
@@ -76,7 +77,8 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
           studentEmail: student.email,
           courseId: e.courseId,
           courseTitle: course.title,
-          enrolledAt: e.enrolledAt
+          enrolledAt: e.enrolledAt,
+          status: e.status
         };
       }
       return null;
@@ -88,6 +90,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
       courseId: string;
       courseTitle: string;
       enrolledAt: string;
+      status: string;
     }>;
   };
 
@@ -138,6 +141,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
 
   const handleOpenPlacement = (item: typeof unplacedList[0]) => {
     setSelectedEnrollment({
+      enrollmentId: item.enrollmentId,
       studentId: item.studentId,
       studentName: item.studentName,
       courseId: item.courseId,
@@ -152,15 +156,14 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
   };
 
   // Submit placement
-  const handleAssignPlacement = (e: React.FormEvent) => {
+  const handleAssignPlacement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEnrollment || !selectedSectionId) {
       triggerToast("⚠️ Vui lòng chọn một lớp học phần hợp lệ!");
       return;
     }
 
-    const storeData = AppStore.get();
-    const section = (storeData.courseSections || []).find(s => s.id === selectedSectionId);
+    const section = (store.courseSections || []).find(s => s.id === selectedSectionId);
     
     if (!section) {
       triggerToast("⚠️ Không tìm thấy thông tin lớp học phần!");
@@ -168,7 +171,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     }
 
     // Check capacity
-    const currentRegs = (storeData.courseRegistrations || []).filter(
+    const currentRegs = (store.courseRegistrations || []).filter(
       r => r.sectionId === selectedSectionId && r.status === "registered"
     ).length;
 
@@ -178,30 +181,17 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
       }
     }
 
-    const newReg: CourseRegistration = {
-      id: generateId("cr"),
-      studentId: selectedEnrollment.studentId,
-      sectionId: selectedSectionId,
-      semesterId: activeSemesterId,
-      status: "registered",
-      registeredAt: new Date().toISOString(),
-      credits: 3
-    };
-
-    if (!storeData.courseRegistrations) storeData.courseRegistrations = [];
-    storeData.courseRegistrations.push(newReg);
-
-    AppStore.log(
-      currentUser.id, 
-      "assign_class_placement", 
-      selectedEnrollment.studentName, 
-      `Xếp lớp học viên vào lớp ${section.sectionCode} (${selectedEnrollment.courseTitle}) học kỳ ${activeSemesterId}.`
-    );
-
-    AppStore.save(storeData);
-    setShowModal(false);
-    onRefreshData();
-    triggerToast(`✅ Đã xếp lớp thành công cho học viên ${selectedEnrollment.studentName}!`);
+    try {
+      await api.approveEnrollment(selectedEnrollment.enrollmentId, {
+        sectionId: selectedSectionId,
+        semesterId: activeSemesterId
+      });
+      setShowModal(false);
+      onRefreshData();
+      triggerToast(`✅ Đã duyệt và xếp lớp thành công cho học viên ${selectedEnrollment.studentName}!`);
+    } catch (err: any) {
+      triggerToast(err.message || "Không thể duyệt và xếp lớp học viên.");
+    }
   };
 
   // Approve waitlist registration

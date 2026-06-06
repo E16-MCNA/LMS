@@ -132,6 +132,12 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   const myCourses = store.courses.filter(c => c.teacherId === currentUser.id);
   const myCourseIds = myCourses.map(c => c.id);
 
+  useEffect(() => {
+    if (showAssignModal && !selectedCourseId && myCourses.length === 1) {
+      setSelectedCourseId(myCourses[0].id);
+    }
+  }, [showAssignModal, selectedCourseId, myCourses]);
+
   // Handle Course creation / update
   const handleOpenCreateCourse = () => {
     setCourseModalMode("create");
@@ -176,7 +182,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         title: courseTitle,
         description: courseDesc,
         teacherId: currentUser.id,
-        status: "draft",
+        status: "published",
         category: courseCategory,
         thumbnail: courseThumb || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60",
         createdAt: new Date().toISOString(),
@@ -228,17 +234,17 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     const storeData = AppStore.get();
     storeData.courses = storeData.courses.map(c => {
       if (c.id === courseId) {
-        AppStore.log(currentUser.id, "submit_course_approval", c.title, "Changed status from draft/returned to pending approval queue.");
-        return { ...c, status: "pending" };
+        AppStore.log(currentUser.id, "publish_course_direct", c.title, "Published course without manager approval queue.");
+        return { ...c, status: "published" };
       }
       return c;
     });
 
-    api.submitCourse(courseId).catch(err => console.warn("Failed to submit course for approval on server:", err));
+    api.submitCourse(courseId).catch(err => console.warn("Failed to publish course on server:", err));
 
     AppStore.save(storeData);
     onRefreshData();
-    triggerToast("Course submitted into administrative review queue.");
+    triggerToast("Khóa học đã được xuất bản.");
   };
 
   // Add Lesson to current Course
@@ -377,7 +383,10 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   // Create Assignment
   const handleAddAssignmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourseId) return;
+    if (!selectedCourseId) {
+      triggerToast("Vui lòng chọn khóa học trước khi tạo bài tự luận.");
+      return;
+    }
     if (!assignTitle.trim() || !assignDesc.trim() || !assignDeadline) {
       triggerToast("All fields elements are mandatory.");
       return;
@@ -621,17 +630,6 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                 >
                   <Users className={`h-4.5 w-4.5 ${activeSubTab === "attendance" ? "text-indigo-300" : "text-white/40"}`} />
                   <span>Điểm danh lớp học</span>
-                </button>
-                <button
-                  onClick={() => { setActiveSubTab("advising"); setShowSidebar(false); }}
-                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
-                    activeSubTab === "advising" 
-                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "advising" ? "text-indigo-300" : "text-white/40"}`} />
-                  <span>Cố vấn học tập</span>
                 </button>
               </>
             ) : (
