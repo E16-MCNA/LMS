@@ -513,7 +513,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     store, currentUser, myCourses, myCourseIds, handleOpenCreateCourse, handleOpenEditCourse, handleSaveCourse,
     handleSubmitCourseForApproval, handleAddLessonSubmit, handleAddQuizSubmit, handleAddQuestionSubmit, handleAddAssignmentSubmit,
     handleGradeSubmission, handleExportCSVGradebook, activeCourse, lessons, courseQuizzes, courseAssignments, myAssignments, studentSubmissionsRaw, updateStore,
-    triggerToast
+    triggerToast, onRefreshData
   };
 
   return (

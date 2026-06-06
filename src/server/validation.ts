@@ -234,5 +234,13 @@ export const schemas = {
     sectionId: z.string().trim().min(1),
     slotTime: z.string().trim().min(1),
     classDate: z.string().trim().min(1)
+  }),
+  createForumPost: z.object({
+    courseId: z.string().trim().min(1),
+    title: z.string().trim().min(1).max(200),
+    content: z.string().trim().min(1).max(10000)
+  }),
+  createForumReply: z.object({
+    content: z.string().trim().min(1).max(10000)
   })
 };

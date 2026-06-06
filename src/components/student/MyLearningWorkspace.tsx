@@ -1,6 +1,7 @@
 import React from "react";
 import { BookOpen, GraduationCap, CheckCircle, Bookmark, Award, Send, Clock, Play, Check, Lock, User, Search, ChevronRight, ArrowRight, HelpCircle, FileCheck, AlertCircle, X, FileText, CreditCard, Phone, Calendar, Home, Shield, Activity, DollarSign, Printer, FileSpreadsheet, Cpu, BadgeAlert } from "lucide-react";
 import { AppStore } from "../../store";
+import ForumDiscussion from "../ForumDiscussion";
 
 interface ComponentProps {
   [key: string]: any;
@@ -74,11 +75,13 @@ export default function MyLearningWorkspace(props: ComponentProps) {
   // Local state for active assignment detail and accordion sessions
   const [activeAssignmentId, setActiveAssignmentId] = React.useState<string | null>(null);
   const [expandedSessions, setExpandedSessions] = React.useState<Record<number, boolean>>({ 1: true });
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<"study" | "discussion">("study");
 
   // Reset local states when user exits or enters a different course
   React.useEffect(() => {
     setActiveAssignmentId(null);
     setExpandedSessions({ 1: true });
+    setActiveWorkspaceTab("study");
   }, [learningCourseId]);
 
   // Construct structured study sessions by grouping lessons and assignments dynamically
@@ -234,9 +237,25 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                   </h4>
                 </div>
               </div>
+
+              <div className="flex bg-black/30 border border-white/10 p-1 rounded-xl gap-1 shrink-0 self-start sm:self-center">
+                <button
+                  onClick={() => setActiveWorkspaceTab("study")}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${activeWorkspaceTab === "study" ? "bg-indigo-600 text-white shadow-lg" : "text-white/60 hover:text-white"}`}
+                >
+                  Bài học & Bài tập
+                </button>
+                <button
+                  onClick={() => setActiveWorkspaceTab("discussion")}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${activeWorkspaceTab === "discussion" ? "bg-indigo-600 text-white shadow-lg" : "text-white/60 hover:text-white"}`}
+                >
+                  Thảo luận lớp học
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {activeWorkspaceTab === "study" ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               {/* Sidebar: Grouped Study Sessions (Accordion List) -> Width: 4/12 (33%) to give plenty of space */}
               <div className="lg:col-span-4 bg-white/5 border border-white/10 rounded-3xl p-5 space-y-4 h-fit shadow-xl">
                 <span className="text-xs font-bold text-white uppercase tracking-wider block border-b border-white/5 pb-2.5">Nội dung học tập</span>
@@ -573,6 +592,17 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                 )}
               </div>
             </div>
+            ) : (
+              <div className="w-full">
+                <ForumDiscussion
+                  courseId={learningCourseId}
+                  store={store}
+                  currentUser={currentUser}
+                  onRefreshData={onRefreshData}
+                  triggerToast={triggerToast}
+                />
+              </div>
+            )}
           </div>
         )}
 

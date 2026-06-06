@@ -4,6 +4,7 @@ import ModalPortal from "../ModalPortal";
 import { AppStore } from "../../store";
 import AttendanceManager from "../AttendanceManager";
 import { api } from "../../api";
+import ForumDiscussion from "../ForumDiscussion";
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 
@@ -14,6 +15,7 @@ interface ComponentProps {
 
 export default function CourseBuilder(props: ComponentProps) {
   const [courseSearch, setCourseSearch] = React.useState("");
+  const [activeCourseTab, setActiveCourseTab] = React.useState<"curriculum" | "discussion">("curriculum");
   const {
     activeSubTab,
     setActiveSubTab,
@@ -103,8 +105,14 @@ export default function CourseBuilder(props: ComponentProps) {
     courseQuizzes,
     courseAssignments,
     myAssignments,
-    studentSubmissionsRaw
+    studentSubmissionsRaw,
+    onRefreshData,
+    triggerToast
   } = props;
+
+  React.useEffect(() => {
+    setActiveCourseTab("curriculum");
+  }, [selectedCourseId]);
 
   // Local states for CourseSection management inside CourseBuilder
   const [showSectionModal, setShowSectionModal] = React.useState(false);
@@ -428,22 +436,40 @@ export default function CourseBuilder(props: ComponentProps) {
         {/* Tab 1 Detail: Comprehensive Single Course modules editor */}
         {activeSubTab === "courses" && selectedCourseId && activeCourse && (
           <div className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
-              <button 
-                onClick={() => setSelectedCourseId(null)}
-                className="p-1 px-2 bg-white/5 hover:bg-white/10 text-xs text-white/70 rounded-lg cursor-pointer"
-              >
-                Quay lại danh sách
-              </button>
-              <h4 className="text-base font-display font-semibold text-white truncate max-w-sm md:max-w-md">Khóa học: {activeCourse.title}</h4>
-              <span className="text-xs text-white/40">Trạng thái: <strong className="text-indigo-200 uppercase">{
-                activeCourse.status === "published" ? "Đã duyệt" :
-                activeCourse.status === "pending" ? "Đang chờ duyệt" :
-                activeCourse.status === "rejected" ? "Bị trả về chỉnh sửa" : "Bản nháp"
-              }</strong></span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setSelectedCourseId(null)}
+                  className="p-1 px-2 bg-white/5 hover:bg-white/10 text-xs text-white/70 rounded-lg cursor-pointer"
+                >
+                  Quay lại danh sách
+                </button>
+                <h4 className="text-base font-display font-semibold text-white truncate max-w-sm md:max-w-md">Khóa học: {activeCourse.title}</h4>
+                <span className="text-xs text-white/40">Trạng thái: <strong className="text-indigo-200 uppercase">{
+                  activeCourse.status === "published" ? "Đã duyệt" :
+                  activeCourse.status === "pending" ? "Đang chờ duyệt" :
+                  activeCourse.status === "rejected" ? "Bị trả về chỉnh sửa" : "Bản nháp"
+                }</strong></span>
+              </div>
+
+              <div className="flex bg-black/30 border border-white/10 p-1 rounded-xl gap-1 shrink-0 self-start sm:self-center">
+                <button
+                  onClick={() => setActiveCourseTab("curriculum")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${activeCourseTab === "curriculum" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"}`}
+                >
+                  Giáo trình & Bài tập
+                </button>
+                <button
+                  onClick={() => setActiveCourseTab("discussion")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${activeCourseTab === "discussion" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"}`}
+                >
+                  Diễn đàn trao đổi
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {activeCourseTab === "curriculum" ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Left Column: Lesson sessions timeline creator */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
@@ -688,6 +714,17 @@ export default function CourseBuilder(props: ComponentProps) {
 
               </div>
             </div>
+            ) : (
+              <div className="w-full">
+                <ForumDiscussion
+                  courseId={selectedCourseId}
+                  store={store}
+                  currentUser={currentUser}
+                  onRefreshData={onRefreshData}
+                  triggerToast={triggerToast}
+                />
+              </div>
+            )}
           </div>
         )}
 

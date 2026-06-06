@@ -250,7 +250,9 @@ export function limitStoreForRole(store: any, user: User) {
       quizzes: store.quizzes.filter((quiz: any) => teacherCourseIds.has(quiz.courseId)),
       assignments: store.assignments.filter((assignment: any) => teacherCourseIds.has(assignment.courseId)),
       submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId)),
-      teacherAttendance: (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === user.id)
+      teacherAttendance: (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === user.id),
+      certificates: (store.certificates || []).filter((cert: any) => teacherCourseIds.has(cert.courseId)),
+      forumPosts: (store.forumPosts || []).filter((post: any) => teacherCourseIds.has(post.courseId))
     };
   }
 
@@ -268,7 +270,9 @@ export function limitStoreForRole(store: any, user: User) {
       academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === user.id),
       assignments: store.assignments.filter((item: any) => myCourseIds.has(item.courseId)),
       notifications: store.notifications.filter((item: any) => item.userId === user.id),
-      teacherAttendance: []
+      teacherAttendance: [],
+      certificates: (store.certificates || []).filter((cert: any) => cert.studentId === user.id),
+      forumPosts: (store.forumPosts || []).filter((post: any) => myCourseIds.has(post.courseId))
     };
   }
 
@@ -288,7 +292,9 @@ export function limitStoreForRole(store: any, user: User) {
       assignments: store.assignments.filter((item: any) => childCourseIds.has(item.courseId)),
       studentProfiles: store.studentProfiles.filter((item: any) => item.userId === childId),
       notifications: store.notifications.filter((item: any) => item.userId === user.id || item.userId === childId),
-      teacherAttendance: []
+      teacherAttendance: [],
+      certificates: (store.certificates || []).filter((cert: any) => cert.studentId === childId),
+      forumPosts: (store.forumPosts || []).filter((post: any) => childCourseIds.has(post.courseId))
     };
   }
 
@@ -297,7 +303,9 @@ export function limitStoreForRole(store: any, user: User) {
       ...store,
       users: store.users.map((item: User) => ({ ...item, passwordHash: "" })),
       notifications: store.notifications.filter((item: any) => item.userId === user.id),
-      teacherAttendance: []
+      teacherAttendance: [],
+      certificates: [],
+      forumPosts: []
     };
   }
 
@@ -311,6 +319,8 @@ export function limitStoreForRole(store: any, user: User) {
     tuitionFees: [],
     academicWarnings: [],
     assignments: [],
-    teacherAttendance: []
+    teacherAttendance: [],
+    certificates: [],
+    forumPosts: []
   };
 }

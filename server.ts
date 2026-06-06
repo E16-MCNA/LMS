@@ -58,6 +58,7 @@ import { graduationRepository } from "./src/server/repositories/graduation";
 import { scholarshipsRepository } from "./src/server/repositories/scholarships";
 import { notificationsRepository } from "./src/server/repositories/notifications";
 import { attendanceRepository } from "./src/server/repositories/attendance";
+import { forumRepository } from "./src/server/repositories/forum";
 import { eventBus } from "./src/server/eventBus";
 import { registerEventHandlers } from "./src/server/eventHandlers";
 import { toGradePoint, toLetterGrade } from "./src/server/gpaCalculator";
@@ -345,6 +346,65 @@ async function maybePostFinalCourseGradeForSubmission(db: Queryable, submissionI
   )).rows[0];
   if (!submission) return null;
   return maybePostFinalCourseGrade(db, submission.student_id, submission.course_id);
+}
+
+async function maybePostGradeEntry(
+  db: Queryable,
+  studentId: string,
+  sourceType: "quiz" | "assignment",
+  sourceId: string,
+  score: number,
+  maxScore: number = 100
+) {
+  try {
+    let courseId = "";
+    if (sourceType === "quiz") {
+      const res = await db.query(
+        `SELECT q.course_id 
+         FROM quizzes q
+         JOIN quiz_attempts qa ON qa.quiz_id = q.id
+         WHERE qa.id = $1`,
+        [sourceId]
+      );
+      courseId = res.rows[0]?.course_id;
+    } else if (sourceType === "assignment") {
+      const res = await db.query(
+        `SELECT a.course_id 
+         FROM assignments a
+         JOIN submissions s ON s.assignment_id = a.id
+         WHERE s.id = $1`,
+        [sourceId]
+      );
+      courseId = res.rows[0]?.course_id;
+    }
+
+    if (!courseId) {
+      console.warn(`[maybePostGradeEntry] Could not find courseId for sourceId: ${sourceId}`);
+      return;
+    }
+
+    const existing = await db.query(
+      `SELECT id FROM grades WHERE source_type = $1 AND source_id = $2`,
+      [sourceType, sourceId]
+    );
+
+    if (existing.rows.length > 0) {
+      await db.query(
+        `UPDATE grades SET score = $1, max_score = $2 WHERE id = $3`,
+        [score, maxScore, existing.rows[0].id]
+      );
+    } else {
+      const gradeId = generateId("grd");
+      const createdAt = new Date().toISOString();
+      await db.query(
+        `INSERT INTO grades (id, student_id, course_id, source_type, source_id, score, max_score, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [gradeId, studentId, courseId, sourceType, sourceId, score, maxScore, createdAt]
+      );
+    }
+  } catch (err) {
+    console.error("[maybePostGradeEntry] Failed to write grade entry:", err);
+  }
 }
 
 type SectionScheduleSlot = { dayOfWeek: string; startTime: string; endTime: string; room?: string };
@@ -697,6 +757,41 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
           schedule: sec.schedule || [],
           status: sec.status || "open"
         });
+      }
+    }
+
+    if (store.certificates !== undefined) {
+      const clientCerts = store.certificates || [];
+      const clientCertIds = clientCerts.map(c => c.id);
+      
+      if (clientCertIds.length > 0) {
+        await client.query(
+          `DELETE FROM certificates WHERE id NOT IN (${clientCertIds.map((_, i) => `$${i + 1}`).join(", ")})`,
+          clientCertIds
+        );
+      } else {
+        await client.query(`DELETE FROM certificates`);
+      }
+      
+      for (const cert of clientCerts) {
+        await client.query(
+          `INSERT INTO certificates (id, enrollment_id, student_id, course_id, issued_at, certificate_code)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (id) DO UPDATE SET
+             enrollment_id = EXCLUDED.enrollment_id,
+             student_id = EXCLUDED.student_id,
+             course_id = EXCLUDED.course_id,
+             issued_at = EXCLUDED.issued_at,
+             certificate_code = EXCLUDED.certificate_code`,
+          [
+            cert.id,
+            cert.enrollmentId,
+            cert.studentId,
+            cert.courseId,
+            cert.issuedAt,
+            cert.certificateCode
+          ]
+        );
       }
     }
 
@@ -1130,6 +1225,7 @@ app.post("/api/quizzes/submit", requireAuth, requireRole(["student"]), validateB
   const result = await quizzesRepository.submitAttempt(pool, req.body.quizId, req.user!.id, req.body.answers, req.body.startedAt);
   if (!result) return res.status(404).json({ error: "Quiz not found." });
   if ("error" in result) return res.status(result.status).json({ error: result.error });
+  await maybePostGradeEntry(pool, req.user!.id, "quiz", result.row.id, result.row.score, 100);
   await maybePostFinalCourseGradeForQuiz(pool, req.user!.id, req.body.quizId);
   await audit(req, "submit_quiz_attempt", result.row.quizId, `Score ${result.row.score}.`);
   res.status(201).json(result.row);
@@ -1154,9 +1250,80 @@ app.post("/api/assignments/grade", requireAuth, requireRole(["teacher", "admin",
   if (req.user!.role === "teacher" && submission.teacher_id !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
   if (req.body.score > Number(submission.max_score)) return res.status(400).json({ error: "Invalid score." });
   const result = await assignmentsRepository.grade(pool, req.body.submissionId, req.body.score, req.body.feedback);
+  if (submission) {
+    await maybePostGradeEntry(pool, submission.student_id, "assignment", req.body.submissionId, req.body.score, Number(submission.max_score) || 100);
+  }
   await maybePostFinalCourseGradeForSubmission(pool, req.body.submissionId);
   await audit(req, "grade_assignment", req.body.submissionId, `Score ${req.body.score}.`);
   res.json(result);
+}));
+
+app.post("/api/courses/:courseId/forum", requireAuth, requireRole(["student", "teacher", "manager", "admin", "super_admin"]), validateBody(schemas.createForumPost), asyncHandler(async (req, res) => {
+  const { courseId, title, content } = req.body;
+  if (courseId !== req.params.courseId) {
+    return res.status(400).json({ error: "Course ID mismatch." });
+  }
+  
+  const role = req.user!.role;
+  const userId = req.user!.id;
+  
+  if (role === "student") {
+    const enrollment = (await pool.query(
+      "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2 AND status IN ('active', 'completed')",
+      [userId, courseId]
+    )).rows[0];
+    if (!enrollment) {
+      return res.status(403).json({ error: "You must be enrolled in this course to post on the forum." });
+    }
+  } else if (role === "teacher") {
+    const owns = await coursesRepository.teacherOwnsCourse(pool, userId, courseId);
+    if (!owns) {
+      return res.status(403).json({ error: "You can only post on the forum of courses you teach." });
+    }
+  } else if (role !== "manager" && role !== "admin" && role !== "super_admin") {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+
+  const post = await forumRepository.createPost(pool, { courseId, authorId: userId, title, content });
+  invalidateStoreCache();
+  await audit(req, "create_forum_post", post.id, `Course: ${courseId}`);
+  res.status(201).json(post);
+}));
+
+app.post("/api/forum/posts/:postId/replies", requireAuth, requireRole(["student", "teacher", "manager", "admin", "super_admin"]), validateBody(schemas.createForumReply), asyncHandler(async (req, res) => {
+  const { content } = req.body;
+  const { postId } = req.params;
+  const userId = req.user!.id;
+  const role = req.user!.role;
+
+  const postRes = await pool.query("SELECT course_id FROM forum_posts WHERE id = $1", [postId]);
+  const post = postRes.rows[0];
+  if (!post) {
+    return res.status(404).json({ error: "Forum post not found." });
+  }
+  const courseId = post.course_id;
+
+  if (role === "student") {
+    const enrollment = (await pool.query(
+      "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2 AND status IN ('active', 'completed')",
+      [userId, courseId]
+    )).rows[0];
+    if (!enrollment) {
+      return res.status(403).json({ error: "You must be enrolled in this course to reply on the forum." });
+    }
+  } else if (role === "teacher") {
+    const owns = await coursesRepository.teacherOwnsCourse(pool, userId, courseId);
+    if (!owns) {
+      return res.status(403).json({ error: "You can only reply on the forum of courses you teach." });
+    }
+  } else if (role !== "manager" && role !== "admin" && role !== "super_admin") {
+    return res.status(403).json({ error: "Permission denied." });
+  }
+
+  const reply = await forumRepository.createReply(pool, { postId, authorId: userId, content });
+  invalidateStoreCache();
+  await audit(req, "create_forum_reply", reply.id, `Post: ${postId}`);
+  res.status(201).json(reply);
 }));
 
 app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin", "sale", "admin"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
