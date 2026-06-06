@@ -30,9 +30,12 @@ const ADVISOR_CREDENTIAL = credential("advisor16", "seed_advisor");
 function normalizeLegacyRoles(store: LMSDataStore): void {
   store.users = store.users.map(user => {
     const legacyRole = user.role as string;
-    if (legacyRole === "ke_toan") return { ...user, role: "finance" };
-    if (legacyRole === "quan_ly_hoc_vu" || legacyRole === "academic" || legacyRole === "academic_admin") return { ...user, role: "admin" };
-    if (legacyRole === "le_tan") return { ...user, role: "sale" };
+    if (legacyRole === "ke_toan" || legacyRole === "finance" || legacyRole === "le_tan" || legacyRole === "sale" || legacyRole === "quan_ly_hoc_vu" || legacyRole === "academic" || legacyRole === "academic_admin") {
+      return { ...user, role: "admin" };
+    }
+    if (legacyRole === "advisor") {
+      return { ...user, role: "teacher" };
+    }
     return user;
   });
 }
@@ -99,7 +102,7 @@ export function getInitialStore(): LMSDataStore {
         passwordHash: FINANCE_CREDENTIAL.hash,
         passwordSalt: FINANCE_CREDENTIAL.salt,
         name: "Nguyễn Văn Kế Toán",
-        role: "finance",
+        role: "admin",
         isActive: true,
         createdAt: new Date("2026-01-04T11:00:00Z").toISOString()
       },
@@ -109,7 +112,7 @@ export function getInitialStore(): LMSDataStore {
         passwordHash: LETAN_CREDENTIAL.hash,
         passwordSalt: LETAN_CREDENTIAL.salt,
         name: "Lê Thị Lễ Tân",
-        role: "sale",
+        role: "admin",
         isActive: true,
         createdAt: new Date("2026-01-05T12:00:00Z").toISOString()
       },
@@ -129,7 +132,7 @@ export function getInitialStore(): LMSDataStore {
         passwordHash: ADVISOR_CREDENTIAL.hash,
         passwordSalt: ADVISOR_CREDENTIAL.salt,
         name: "Phạm Cố Vấn (Cố vấn Học tập)",
-        role: "advisor",
+        role: "teacher",
         isActive: true,
         createdAt: new Date("2026-01-08T15:00:00Z").toISOString()
       }
@@ -830,7 +833,7 @@ export class AppStore {
           if (!this.storeInstance.teacherAttendance) this.storeInstance.teacherAttendance = initial.teacherAttendance || [];
 
           // Ensure new seeded roles are present
-          const rolesToBackfill = ["sale", "admin", "finance", "advisor", "parent"];
+          const rolesToBackfill = ["admin", "parent"];
           const hasAllRoles = rolesToBackfill.every(r => this.storeInstance!.users.some(u => u.role === r));
           if (!hasAllRoles) {
             // Append missing users

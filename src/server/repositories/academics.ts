@@ -4,7 +4,7 @@ import { generateId } from "../ids";
 import { academicWarningFromRow } from "../mappers";
 import { parentRepository } from "./parent";
 
-const ADMIN_WARNING_ROLES = new Set<User["role"]>(["manager", "super_admin", "admin", "finance"]);
+const ADMIN_WARNING_ROLES = new Set<User["role"]>(["manager", "super_admin", "admin"]);
 
 export const academicsRepository = {
   async listWarnings(db: Queryable, studentId?: string) {
@@ -42,7 +42,7 @@ export const academicsRepository = {
       return { warnings: await this.listWarnings(db, linkedStudentId) };
     }
 
-    if (user.role === "advisor") {
+    if (user.role === "teacher") {
       if (requestedStudentId) {
         if (!(await this.isAdvisorForStudent(db, user.id, requestedStudentId))) {
           return { error: "You are not assigned to this student.", status: 403 };

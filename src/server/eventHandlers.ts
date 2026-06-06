@@ -110,7 +110,7 @@ export function registerEventHandlers() {
     if (!hadUnresolvedWarning) {
       await notifyStudent(pool, studentId, "Tuition payment is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
       await notifyParentOf(pool, studentId, "Tuition payment is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
-      await notifyRole(pool, "finance", "A tuition fee is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
+      await notifyRole(pool, "admin", "A tuition fee is overdue.", { relatedEntityType: "tuition_fee", relatedEntityId: feeId });
     }
   });
 

@@ -1157,9 +1157,9 @@ app.get("/api/dashboard/admin", requireAuth, requireRole(["manager", "admin", "s
 }));
 app.get("/api/dashboard/teacher", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(dashboardFromStore(await storeSnapshotFromDb(pool), req.user!))));
 app.get("/api/dashboard/student", requireAuth, requireRole(["student"]), asyncHandler(async (req, res) => res.json(dashboardFromStore(await storeSnapshotFromDb(pool), req.user!))));
-app.get("/api/dashboard/finance", requireAuth, requireRole(["finance", "admin", "super_admin"]), asyncHandler(async (_req, res) => res.json(await financeRepository.getDashboard(pool))));
-app.get("/api/dashboard/academic", requireAuth, requireRole(["admin", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json({ ...dashboardFromStore(await storeSnapshotFromDb(pool), req.user!), warnings: await academicsRepository.listWarnings(pool) })));
-app.get("/api/dashboard/advisor", requireAuth, requireRole(["advisor"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getDashboard(pool, req.user!.id))));
+app.get("/api/dashboard/finance", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (_req, res) => res.json(await financeRepository.getDashboard(pool))));
+app.get("/api/dashboard/academic", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => res.json({ ...dashboardFromStore(await storeSnapshotFromDb(pool), req.user!), warnings: await academicsRepository.listWarnings(pool) })));
+app.get("/api/dashboard/advisor", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getDashboard(pool, req.user!.id))));
 app.get("/api/dashboard/parent", requireAuth, requireRole(["parent"]), resolveLinkedStudent, asyncHandler(async (req, res) => res.json(await parentRepository.getDashboard(pool, req.linkedStudentId!))));
 
 app.get("/api/courses", requireAuth, asyncHandler(async (_req, res) => res.json(await coursesRepository.list(pool))));
@@ -1309,7 +1309,7 @@ app.post("/api/enrollments/register", requireAuth, requireRole(["student"]), val
   await audit(req, "enroll_course", course.id, course.title);
   res.status(201).json(enrollment);
 }));
-app.post("/api/enrollments/:id/activate", requireAuth, requireRole(["admin", "super_admin", "finance"]), asyncHandler(async (req, res) => {
+app.post("/api/enrollments/:id/activate", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
   const enrollment = await enrollmentsRepository.activateEnrollment(pool, req.params.id);
   if (!enrollment) return res.status(404).json({ error: "Enrollment not found." });
   await audit(req, "activate_enrollment", enrollment.id, `Activated enrollment for student ID: ${enrollment.studentId}`);
@@ -1466,10 +1466,7 @@ app.post("/api/forum/posts/:postId/replies", requireAuth, requireRole(["student"
   res.status(201).json(reply);
 }));
 
-app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin", "sale", "admin"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
-  if ((req.user!.role === "sale" || req.user!.role === "admin") && req.body.role !== "student") {
-    return res.status(403).json({ error: "Chỉ có quyền đăng ký học viên (student)." });
-  }
+app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
   const credential = hashPassword(req.body.password);
   const user: User = {
     id: generateId("user"),
@@ -1507,12 +1504,9 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin",
   res.status(201).json(created);
 }));
 
-app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin", "sale", "admin"]), asyncHandler(async (req, res) => {
+app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
   const user = await usersRepository.findById(pool, req.params.id);
   if (!user) return res.status(404).json({ error: "User not found." });
-  if ((req.user!.role === "sale" || req.user!.role === "admin") && user.role !== "student") {
-    return res.status(403).json({ error: "Chỉ có quyền reset mật khẩu học viên." });
-  }
   const defaultNewPass = "studente16";
   const credential = hashPassword(defaultNewPass);
   await pool.query(
@@ -1535,27 +1529,27 @@ app.get("/api/academics/warnings", requireAuth, asyncHandler(async (req, res) =>
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   res.json(result.warnings);
 }));
-app.post("/api/academics/warnings", requireAuth, requireRole(["manager", "admin", "advisor", "super_admin"]), validateBody(schemas.createWarning), asyncHandler(async (req, res) => {
+app.post("/api/academics/warnings", requireAuth, requireRole(["admin", "teacher", "super_admin"]), validateBody(schemas.createWarning), asyncHandler(async (req, res) => {
   const warning = await academicsRepository.createWarning(pool, req.body);
   await audit(req, "create_academic_warning", warning.studentId, warning.message);
   res.status(201).json(warning);
 }));
-app.post("/api/academics/warnings/:id/resolve", requireAuth, requireRole(["manager", "admin", "advisor", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/academics/warnings/:id/resolve", requireAuth, requireRole(["admin", "teacher", "super_admin"]), asyncHandler(async (req, res) => {
   const warning = await academicsRepository.resolveWarning(pool, req.params.id);
   if (!warning) return res.status(404).json({ error: "Warning not found." });
   await audit(req, "resolve_academic_warning", warning.id, warning.studentId);
   res.json(warning);
 }));
-app.get("/api/advisor/students", requireAuth, requireRole(["advisor"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getAssignments(pool, req.user!.id))));
-app.get("/api/advisor/at-risk", requireAuth, requireRole(["advisor"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getAtRiskStudents(pool, req.user!.id))));
-app.get("/api/advisor/notes/:studentId", requireAuth, requireRole(["advisor", "admin", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getNotes(pool, req.params.studentId))));
-app.post("/api/advisor/notes", requireAuth, requireRole(["advisor"]), validateBody(schemas.advisorNote), asyncHandler(async (req, res) => {
+app.get("/api/advisor/students", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getAssignments(pool, req.user!.id))));
+app.get("/api/advisor/at-risk", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getAtRiskStudents(pool, req.user!.id))));
+app.get("/api/advisor/notes/:studentId", requireAuth, requireRole(["teacher", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getNotes(pool, req.params.studentId))));
+app.post("/api/advisor/notes", requireAuth, requireRole(["teacher"]), validateBody(schemas.advisorNote), asyncHandler(async (req, res) => {
   const note = await advisorsRepository.createNote(pool, { advisorId: req.user!.id, ...req.body });
   await audit(req, "add_advisor_note", note.student_id, note.type);
   res.status(201).json(note);
 }));
 
-app.patch("/api/advisor/student-profile/:studentId", requireAuth, requireRole(["advisor", "admin", "admin", "super_admin"]), validateBody(schemas.updateStudentNotes), asyncHandler(async (req, res) => {
+app.patch("/api/advisor/student-profile/:studentId", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.updateStudentNotes), asyncHandler(async (req, res) => {
   const { notes } = req.body;
   await pool.query(
     "UPDATE student_profiles SET notes = $1 WHERE user_id = $2",
@@ -1714,19 +1708,19 @@ app.patch("/api/graduation-applications/:id/reject", requireAuth, requireRole(["
 }));
 
 app.get("/api/scholarships", requireAuth, asyncHandler(async (_req, res) => res.json(await scholarshipsRepository.list(pool))));
-app.post("/api/scholarships", requireAuth, requireRole(["finance", "admin", "super_admin"]), validateBody(schemas.scholarship), asyncHandler(async (req, res) => res.status(201).json(await scholarshipsRepository.create(pool, req.body))));
-app.get("/api/scholarship-applications", requireAuth, requireRole(["student", "advisor", "finance", "admin", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await scholarshipsRepository.listApplications(pool, req.user!))));
+app.post("/api/scholarships", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.scholarship), asyncHandler(async (req, res) => res.status(201).json(await scholarshipsRepository.create(pool, req.body))));
+app.get("/api/scholarship-applications", requireAuth, requireRole(["student", "teacher", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await scholarshipsRepository.listApplications(pool, req.user!))));
 app.post("/api/scholarship-applications", requireAuth, requireRole(["student"]), validateBody(schemas.scholarshipApplication), asyncHandler(async (req, res) => {
   const result = await scholarshipsRepository.apply(pool, req.user!.id, req.body);
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   res.status(201).json(result.row);
 }));
-app.patch("/api/scholarship-applications/:id/approve", requireAuth, requireRole(["finance"]), validateBody(schemas.reviewNote), asyncHandler(async (req, res) => {
+app.patch("/api/scholarship-applications/:id/approve", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.reviewNote), asyncHandler(async (req, res) => {
   const application = await scholarshipsRepository.approve(pool, req.params.id, req.user!.id, req.body.reviewNote);
   if (!application) return res.status(404).json({ error: "Scholarship application not found." });
   res.json(application);
 }));
-app.patch("/api/scholarship-applications/:id/reject", requireAuth, requireRole(["finance"]), validateBody(schemas.reviewNote), asyncHandler(async (req, res) => {
+app.patch("/api/scholarship-applications/:id/reject", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.reviewNote), asyncHandler(async (req, res) => {
   const application = await scholarshipsRepository.reject(pool, req.params.id, req.user!.id, req.body.reviewNote);
   if (!application) return res.status(404).json({ error: "Scholarship application not found." });
   res.json(application);
@@ -1738,13 +1732,13 @@ app.get("/api/academic-warnings", requireAuth, asyncHandler(async (req, res) => 
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   res.json(result.warnings);
 }));
-app.patch("/api/academic-warnings/:id/resolve", requireAuth, requireRole(["advisor", "admin"]), asyncHandler(async (req, res) => {
+app.patch("/api/academic-warnings/:id/resolve", requireAuth, requireRole(["teacher", "admin"]), asyncHandler(async (req, res) => {
   const warning = await academicsRepository.resolveWarning(pool, req.params.id, req.user!.id);
   if (!warning) return res.status(404).json({ error: "Warning not found." });
   res.json(warning);
 }));
 
-app.post("/api/tuition/pay", requireAuth, requireRole(["finance", "manager", "admin", "super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
+app.post("/api/tuition/pay", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
   const ownerStudentId = req.user!.role === "student" ? req.user!.id : undefined;
   const result = await financeRepository.payTuition(pool, req.body.feeId, req.body.paidAmount, ownerStudentId);
   if (!result) return res.status(404).json({ error: "Tuition fee not found." });
@@ -1797,7 +1791,7 @@ app.post("/api/tuition/confirm-transfer", requireAuth, requireRole(["student"]),
   res.json({ ok: true, transactionId: txId });
 }));
 
-app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["finance", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
+app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let result: any;
   try {
@@ -1822,7 +1816,7 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["fin
   res.json(result);
 }));
 
-app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["finance", "manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
   const { semesterId, amount, dueDate } = req.body;
   const dueDateValue = dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const client = await pool.connect();
@@ -1865,7 +1859,7 @@ app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["finance",
   }
 }));
 
-app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["finance", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
   const overdue = await financeRepository.checkOverdueFees(pool);
   await audit(req, "scan_overdue_tuition", "tuition_fees", `Found ${overdue.length} overdue fees.`);
   res.json({ overdueCount: overdue.length, fees: overdue });

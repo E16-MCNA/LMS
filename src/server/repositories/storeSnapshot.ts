@@ -298,16 +298,6 @@ export function limitStoreForRole(store: any, user: User) {
     };
   }
 
-  if (user.role === "finance" || user.role === "sale") {
-    return {
-      ...store,
-      users: store.users.map((item: User) => ({ ...item, passwordHash: "" })),
-      notifications: store.notifications.filter((item: any) => item.userId === user.id),
-      teacherAttendance: [],
-      certificates: [],
-      forumPosts: []
-    };
-  }
 
   return {
     ...store,

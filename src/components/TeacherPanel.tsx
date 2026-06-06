@@ -33,6 +33,7 @@ import TeacherAnalytics from "./teacher/TeacherAnalytics";
 import Timetable from "./Timetable";
 import UserGuide from "./UserGuide";
 import AttendanceManager from "./AttendanceManager";
+import AdvisorPanel from "./AdvisorPanel";
 import { generateId } from "../utils";
 import { useApiStore } from "../hooks/apiHooks";
 import { api } from "../api";
@@ -572,6 +573,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                 analytics: "Báo cáo Hiệu suất",
                 timetable: "Thời khóa biểu giảng dạy",
                 attendance: "Điểm danh lớp học",
+                advising: "Cố vấn học tập",
               }[activeSubTab] || activeSubTab}</strong></span>
             </span>
             <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${showSidebar ? "rotate-90" : ""}`} />
@@ -619,6 +621,17 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                 >
                   <Users className={`h-4.5 w-4.5 ${activeSubTab === "attendance" ? "text-indigo-300" : "text-white/40"}`} />
                   <span>Điểm danh lớp học</span>
+                </button>
+                <button
+                  onClick={() => { setActiveSubTab("advising"); setShowSidebar(false); }}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "advising" 
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "advising" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Cố vấn học tập</span>
                 </button>
               </>
             ) : (
@@ -747,6 +760,14 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
               currentUser={currentUser}
               onRefreshData={onRefreshData}
               triggerToast={triggerToast}
+            />
+          )}
+
+          {activeSubTab === "advising" && (
+            <AdvisorPanel
+              currentUser={currentUser}
+              onLogout={onLogout}
+              onRefreshData={onRefreshData}
             />
           )}
         </div>

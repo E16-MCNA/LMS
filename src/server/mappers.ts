@@ -14,15 +14,18 @@ export type DbUserRow = {
 };
 
 export function normalizeRole(role: string): UserRole {
-  if (role === "ke_toan") return "finance";
-  if (role === "quan_ly_hoc_vu" || role === "academic" || role === "academic_admin") return "admin";
-  if (role === "le_tan") return "sale";
+  if (role === "ke_toan" || role === "finance") return "admin";
+  if (role === "quan_ly_hoc_vu" || role === "academic" || role === "academic_admin" || role === "admin") return "admin";
+  if (role === "le_tan" || role === "sale") return "admin";
+  if (role === "advisor") return "teacher";
   return role as UserRole;
 }
 
 export function denormalizeRole(role: string): string {
-  if (role === "academic" || role === "quan_ly_hoc_vu" || role === "academic_admin") return "admin";
-  if (role === "le_tan") return "sale";
+  if (role === "academic" || role === "quan_ly_hoc_vu" || role === "academic_admin" || role === "admin") return "admin";
+  if (role === "le_tan" || role === "sale") return "admin";
+  if (role === "ke_toan" || role === "finance") return "admin";
+  if (role === "advisor") return "teacher";
   return role;
 }
 

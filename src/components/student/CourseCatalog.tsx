@@ -122,15 +122,10 @@ export default function CourseCatalog(props: ComponentProps) {
                 return (
                   <div key={course.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition duration-150 flex flex-col justify-between">
                     <div>
-                      <div className="h-44 relative">
-                        <img
-                          referrerPolicy="no-referrer"
-                          src={course.thumbnail}
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="h-28 bg-indigo-50/50 flex items-center justify-center relative border-b border-slate-100">
+                        <BookOpen className="h-8 w-8 text-indigo-500" />
                         {isEnrolled && (
-                          <div className="absolute top-3 right-3 bg-indigo-600/90 text-white font-sans font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full border border-indigo-400/20">
+                          <div className="absolute top-3 right-3 bg-indigo-600 text-white font-sans font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full">
                             Đã đăng ký
                           </div>
                         )}

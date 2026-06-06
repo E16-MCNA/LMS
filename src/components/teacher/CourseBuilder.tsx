@@ -364,13 +364,8 @@ export default function CourseBuilder(props: ComponentProps) {
                 return (
                   <div key={course.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition duration-150 flex flex-col justify-between">
                     <div>
-                      <div className="h-40 relative">
-                        <img 
-                          referrerPolicy="no-referrer"
-                          src={course.thumbnail} 
-                          alt={course.title}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="h-28 bg-indigo-50/50 flex items-center justify-center relative border-b border-slate-100">
+                        <BookOpen className="h-8 w-8 text-indigo-500" />
                         <div className="absolute top-3 right-3">
                           <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase ${
                             course.status === "published" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
@@ -772,16 +767,6 @@ export default function CourseBuilder(props: ComponentProps) {
                 </select>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-white/70">Đường dẫn Ảnh đại diện (Thumbnail)</label>
-                <input
-                  type="text"
-                  placeholder="https://images.unsplash.com/..."
-                  value={courseThumb}
-                  onChange={(e) => setCourseThumb(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 text-xs"
-                />
-              </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-white/70">Mô tả / Đề cương khóa học</label>

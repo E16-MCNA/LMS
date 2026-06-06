@@ -28,9 +28,6 @@ import { AppStore } from "./store";
 const AdminPanel = React.lazy(() => import("./components/AdminPanel"));
 const TeacherPanel = React.lazy(() => import("./components/TeacherPanel"));
 const StudentPanel = React.lazy(() => import("./components/StudentPanel"));
-const FinancePanel = React.lazy(() => import("./components/FinancePanel"));
-const ReceptionPanel = React.lazy(() => import("./components/ReceptionPanel"));
-const AdvisorPanel = React.lazy(() => import("./components/AdvisorPanel"));
 const ParentPanel = React.lazy(() => import("./components/ParentPanel"));
 import { api, setCsrfToken } from "./api";
 
@@ -72,13 +69,10 @@ function AppShell() {
   const [changePasswordSuccess, setChangePasswordSuccess] = useState<string | null>(null);
 
   const roleLabel = (role: User["role"]) => {
-    if (role === "admin") return "Giáo Vụ Học Tập";
+    if (role === "admin") return "Admin quản lý lớp";
     if (role === "manager" || role === "super_admin") return "Ban Quản Trị";
     if (role === "teacher") return "Giảng Viên";
     if (role === "student") return "Học Viên";
-    if (role === "finance") return "Phòng Tài Chính";
-    if (role === "sale") return "Tuyển sinh Lễ tân";
-    if (role === "advisor") return "Cố Vấn Học Tập";
     if (role === "parent") return "Trang Phụ Huynh";
     return role;
   };
@@ -342,10 +336,10 @@ function AppShell() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#0f172a] text-white/90 font-sans selection:bg-indigo-500/40 selection:text-white relative ${!currentUser ? "pb-12 overflow-hidden" : ""}`}>
+    <div className={`min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-500/20 selection:text-indigo-900 relative ${!currentUser ? "pb-12 overflow-hidden" : ""}`}>
       {/* Dynamic Ambient Blur Spheres */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/5 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/5 rounded-full blur-[140px] pointer-events-none" />
 
       {/* MAIN LAYOUT CANVAS */}
       {currentUser ? (
@@ -602,27 +596,7 @@ function AppShell() {
                     activeSystem={activeSystem}
                   />
                 )}
-                {(currentUser.role === "finance") && (
-                  <FinancePanel
-                    currentUser={currentUser}
-                    onLogout={handleLogout}
-                    onRefreshData={refreshStoreDataFromServer}
-                  />
-                )}
-                {currentUser.role === "sale" && (
-                  <ReceptionPanel
-                    currentUser={currentUser}
-                    onLogout={handleLogout}
-                    onRefreshData={refreshStoreDataFromServer}
-                  />
-                )}
-                {currentUser.role === "advisor" && (
-                  <AdvisorPanel
-                    currentUser={currentUser}
-                    onLogout={handleLogout}
-                    onRefreshData={refreshStoreDataFromServer}
-                  />
-                )}
+
                 {currentUser.role === "parent" && (
                   <ParentPanel
                     currentUser={currentUser}
@@ -773,50 +747,14 @@ function AppShell() {
 
                   <button
                     type="button"
-                    onClick={() => handleInstantDemoLogin("finance@e16.local", "finance16")}
-                    className="p-2 bg-emerald-500/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-emerald-300">Kế Toán</span>
-                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">finance@e16.local</span>
-                    </div>
-                    <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-emerald-400" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleInstantDemoLogin("le_tan@e16.local", "letane16")}
-                    className="p-2 bg-pink-500/10 hover:bg-pink-600/20 border border-pink-400/20 text-pink-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-pink-200">Tuyển sinh Lễ tân</span>
-                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">le_tan@e16.local</span>
-                    </div>
-                    <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-pink-300" />
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => handleInstantDemoLogin("academic@e16.local", "academice16")}
-                    className="p-2 bg-sky-500/10 hover:bg-sky-600/20 border border-sky-400/20 text-sky-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                    className="p-2 bg-sky-500/10 hover:bg-sky-600/20 border border-sky-400/20 text-sky-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group col-span-2 sm:col-span-1"
                   >
                     <div className="min-w-0 flex-1">
-                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-sky-200">Quản Lý Học Vụ</span>
+                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-sky-200">Admin Quản Lý Lớp</span>
                       <span className="font-mono text-[8px] font-normal text-white/30 truncate block">academic@e16.local</span>
                     </div>
                     <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-sky-300" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleInstantDemoLogin("advisor@e16.local", "advisor16")}
-                    className="p-2 bg-violet-500/10 hover:bg-violet-600/20 border border-violet-400/20 text-violet-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-violet-200">Cố Vấn Học Tập</span>
-                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">advisor@e16.local</span>
-                    </div>
-                    <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-violet-300" />
                   </button>
 
                   <button

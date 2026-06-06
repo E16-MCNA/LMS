@@ -5,19 +5,18 @@ import { User } from "../../types";
 export const usersRepository = {
   async normalizeLegacyRoles(db: Queryable) {
     await db.query(`
-      UPDATE users SET role = 'finance' WHERE role = 'ke_toan';
-      UPDATE users SET role = 'admin' WHERE role IN ('quan_ly_hoc_vu', 'academic', 'academic_admin');
-      UPDATE users SET role = 'sale' WHERE role = 'le_tan';
+      UPDATE users SET role = 'admin' WHERE role IN ('ke_toan', 'finance', 'le_tan', 'sale', 'quan_ly_hoc_vu', 'academic', 'academic_admin');
+      UPDATE users SET role = 'teacher' WHERE role = 'advisor';
     `);
   },
 
   async normalizeSystemUsers(db: Queryable) {
     const systemUsers = [
       ["admin@mcna.local", "Arthur Pendragon", "manager"],
-      ["finance@mcna.local", "Nguyễn Văn Kế Toán", "finance"],
-      ["le_tan@mcna.local", "Lê Thị Lễ Tân", "sale"],
+      ["finance@mcna.local", "Nguyễn Văn Kế Toán", "admin"],
+      ["le_tan@mcna.local", "Lê Thị Lễ Tân", "admin"],
       ["academic@mcna.local", "Trần Văn Học Vụ", "admin"],
-      ["advisor@mcna.local", "Phạm Cố Vấn (Cố vấn Học tập)", "advisor"]
+      ["advisor@mcna.local", "Phạm Cố Vấn (Cố vấn Học tập)", "teacher"]
     ];
 
     for (const [email, name, role] of systemUsers) {

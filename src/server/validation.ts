@@ -21,7 +21,7 @@ export const schemas = {
     email: z.email().trim().toLowerCase(),
     password: z.string().min(8),
     name: z.string().trim().min(1),
-    role: z.enum(["manager", "super_admin", "teacher", "student", "sale", "admin", "finance", "advisor", "parent"]),
+    role: z.enum(["manager", "super_admin", "teacher", "student", "admin", "parent"]),
     phone: z.string().trim().optional(),
     linkedStudentId: z.string().trim().optional(),
     programId: z.string().trim().optional(),

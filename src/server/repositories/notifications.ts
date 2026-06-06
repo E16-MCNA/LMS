@@ -1,6 +1,7 @@
 import { Notification } from "../../types";
 import { Queryable } from "../db";
 import { generateId } from "../ids";
+import { sendEmailNotification } from "../services/email";
 
 type CreateNotificationInput = {
   userId: string;
@@ -48,6 +49,12 @@ export const notificationsRepository = {
         input.relatedEntityId || null
       ]
     );
+
+    // Dispatch email notification asynchronously
+    sendEmailNotification(db, notification.userId, notification.message).catch(err => {
+      console.error("[Email Notification dispatch error]:", err);
+    });
+
     return notification;
   },
 
