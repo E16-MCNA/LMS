@@ -122,6 +122,22 @@ export default function AssignmentSubmit(props: ComponentProps) {
     }
   };
 
+  const cleanSubmissionContent = (content = "") =>
+    content.replace(/\s*\[Attachment:[^\]]+\]/g, "").replace(/\s*\[Tệp đính kèm:[^\]]+\]/g, "").trim();
+
+  const openAssignmentSubmission = (assignment: any, submission?: any) => {
+    const isDeadlineExpired = new Date(assignment.deadline).getTime() < Date.now();
+    if (isDeadlineExpired && !submission) {
+      triggerToast("Đã quá hạn nộp bài tập này!");
+      return;
+    }
+    setSubmittingAssignmentId(assignment.id);
+    setSubmissionCodeText(cleanSubmissionContent(submission?.content || ""));
+    setExistingAttachment(submission?.attachmentUrl || null);
+    setSubmissionFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
     <>
         {/* Tab 3: Assignments list & Submissions panels */}
@@ -187,12 +203,90 @@ export default function AssignmentSubmit(props: ComponentProps) {
                               setExistingAttachment(null);
                             }}
                             disabled={isDeadlineExpired}
-                            className="p-2 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl disabled:bg-white/10 disabled:text-white/40 disabled:cursor-not-allowed transition cursor-pointer shadow-lg shadow-indigo-600/10"
+                            className="p-2 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl disabled:bg-slate-100 disabled:text-slate-700 disabled:border disabled:border-slate-300 disabled:cursor-not-allowed transition cursor-pointer shadow-lg shadow-indigo-600/10"
                           >
                             Nộp bài làm
                           </button>
                         </div>
                       </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            <div className="space-y-4 border-t border-white/10 pt-6">
+              <h4 className="text-base font-display font-semibold text-white">Bài tập đã làm</h4>
+              {(() => {
+                const completedAssignments = store.assignments
+                  .filter((assignment: any) => myEnrolledCourseIds.includes(assignment.courseId))
+                  .map((assignment: any) => ({
+                    assignment,
+                    submission: store.submissions.find((submission: any) =>
+                      submission.assignmentId === assignment.id && submission.studentId === currentUser.id
+                    )
+                  }))
+                  .filter((item: any) => item.submission)
+                  .sort((a: any, b: any) => new Date(b.submission.submittedAt).getTime() - new Date(a.submission.submittedAt).getTime());
+
+                if (completedAssignments.length === 0) {
+                  return (
+                    <div className="text-center py-10 text-white/40 bg-black/10 rounded-2xl border border-dashed border-white/10 text-xs">
+                      Chưa có bài tập đã nộp.
+                    </div>
+                  );
+                }
+
+                return completedAssignments.map(({ assignment, submission }: any) => {
+                  const courseTitle = store.courses.find((course: any) => course.id === assignment.courseId)?.title || "Không xác định";
+                  const isDeadlineExpired = new Date(assignment.deadline).getTime() < Date.now();
+                  const contentPreview = cleanSubmissionContent(submission.content || "");
+
+                  return (
+                    <div key={submission.id} className="bg-white/[0.03] border border-white/10 p-5 rounded-2xl space-y-3">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                        <div className="space-y-2 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] font-mono font-bold text-cyan-200 bg-cyan-500/10 py-0.5 px-2.5 rounded-full border border-cyan-500/20 uppercase">{courseTitle}</span>
+                            <span className="text-[10px] font-mono text-white/45">Đã nộp: {new Date(submission.submittedAt).toLocaleString("vi-VN")}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeof submission.score === "number" ? "bg-emerald-200 text-emerald-950 border-emerald-100" : "bg-amber-500/10 text-amber-200 border-amber-300/20"}`}>
+                              {typeof submission.score === "number" ? `${submission.score}/${assignment.maxScore} điểm` : "Chờ chấm"}
+                            </span>
+                          </div>
+                          <h5 className="text-sm font-bold text-white leading-snug">{assignment.title}</h5>
+                        </div>
+                        {!isDeadlineExpired && (
+                          <button
+                            onClick={() => openAssignmentSubmission(assignment, submission)}
+                            className="px-3 py-2 bg-white text-indigo-950 rounded-xl text-xs font-bold hover:bg-indigo-100 transition cursor-pointer"
+                          >
+                            Cập nhật bài làm
+                          </button>
+                        )}
+                      </div>
+
+                      {contentPreview && (
+                        <div className="rounded-xl bg-black/25 border border-white/5 p-3 text-xs text-white/70 whitespace-pre-wrap max-h-28 overflow-auto">
+                          {contentPreview}
+                        </div>
+                      )}
+
+                      {submission.attachmentUrl && (
+                        <a
+                          href={submission.attachmentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 text-xs text-cyan-200 hover:text-cyan-100 font-semibold"
+                        >
+                          <FileText className="h-3.5 w-3.5" /> Xem tệp đã nộp
+                        </a>
+                      )}
+
+                      {submission.feedback && (
+                        <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/20 p-3 text-xs text-emerald-100">
+                          <span className="font-bold">Nhận xét:</span> {submission.feedback}
+                        </div>
+                      )}
                     </div>
                   );
                 });

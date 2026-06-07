@@ -428,7 +428,7 @@ async function maybePostGradeEntry(
   }
 }
 
-type SectionScheduleSlot = { dayOfWeek: string; startTime: string; endTime: string; room?: string };
+type SectionScheduleSlot = { dayOfWeek: string; startTime: string; endTime: string; room?: string; specificDate?: string };
 type SectionPayload = {
   id?: string;
   courseId: string;
@@ -606,7 +606,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     }
 
     if (store.semesters !== undefined) {
-      const dbRes = await client.query("SELECT id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close FROM semesters");
+      const dbRes = await client.query("SELECT id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close, is_current FROM semesters");
       const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
 
       const clientSemesters = store.semesters || [];
@@ -619,12 +619,13 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
           dbVal.start_date !== (sem.startDate || null) ||
           dbVal.end_date !== (sem.endDate || null) ||
           dbVal.registration_open !== (sem.registrationOpen || null) ||
-          dbVal.registration_close !== (sem.registrationClose || null);
+          dbVal.registration_close !== (sem.registrationClose || null) ||
+          Boolean(dbVal.is_current) !== Boolean(sem.isCurrent);
 
         if (isDirty) {
           await client.query(
-            `INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close, is_current)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (id) DO UPDATE SET
                academic_year_id = EXCLUDED.academic_year_id,
                name = EXCLUDED.name,
@@ -632,7 +633,8 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
                start_date = EXCLUDED.start_date,
                end_date = EXCLUDED.end_date,
                registration_open = EXCLUDED.registration_open,
-               registration_close = EXCLUDED.registration_close`,
+               registration_close = EXCLUDED.registration_close,
+               is_current = EXCLUDED.is_current`,
             [
               sem.id,
               sem.academicYearId || null,
@@ -641,7 +643,8 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
               sem.startDate || null,
               sem.endDate || null,
               sem.registrationOpen || null,
-              sem.registrationClose || null
+              sem.registrationClose || null,
+              Boolean(sem.isCurrent)
             ]
           );
         }
@@ -2437,27 +2440,58 @@ const getVietnamTimeInfo = () => {
   return { dateStr, dayStr, timeStr };
 };
 
+const VIETNAMESE_DAYS = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
+const timeToMins = (time: string) => {
+  const [h, m] = String(time || "").split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return NaN;
+  return h * 60 + m;
+};
+
+const parseSlotTime = (slotTime: string) => {
+  const match = String(slotTime || "").trim().match(/^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/);
+  if (!match) return null;
+  return { startTime: match[1], endTime: match[2], normalized: `${match[1]} - ${match[2]}` };
+};
+
+const isValidDateOnly = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+};
+
+const dayOfWeekForDate = (dateStr: string) => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return VIETNAMESE_DAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+};
+
+const findScheduleSlot = (schedule: any[], classDate: string, slotTime: string) => {
+  if (!Array.isArray(schedule) || schedule.length === 0 || !isValidDateOnly(classDate)) return null;
+  const parsedSlot = parseSlotTime(slotTime);
+  if (!parsedSlot) return null;
+  const requestedDay = dayOfWeekForDate(classDate);
+
+  return schedule.find(slot => {
+    if (`${slot.startTime} - ${slot.endTime}` !== parsedSlot.normalized) return false;
+    if (slot.specificDate) return String(slot.specificDate).slice(0, 10) === classDate;
+    return slot.dayOfWeek === requestedDay;
+  }) || null;
+};
+
+const isCurrentVietnamTimeWithinSlot = (classDate: string, slot: any) => {
+  const { dateStr, timeStr } = getVietnamTimeInfo();
+  if (dateStr !== classDate) return false;
+  const currentMins = timeToMins(timeStr);
+  const startMins = timeToMins(slot.startTime);
+  const endMins = timeToMins(slot.endTime);
+  return Number.isFinite(currentMins) && currentMins >= startMins && currentMins <= endMins;
+};
+
 const isWithinSchedule = (schedule: any[]): boolean => {
   if (!Array.isArray(schedule) || schedule.length === 0) return true;
-  const { dateStr, dayStr, timeStr } = getVietnamTimeInfo();
-  
-  const timeToMins = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    return h * 60 + m;
-  };
-  const currentMins = timeToMins(timeStr);
-  
-  return schedule.some(slot => {
-    if (slot.specificDate) {
-      if (slot.specificDate !== dateStr) return false;
-    } else {
-      if (slot.dayOfWeek !== dayStr) return false;
-    }
-    
-    const startMins = timeToMins(slot.startTime);
-    const endMins = timeToMins(slot.endTime);
-    return currentMins >= startMins && currentMins <= endMins;
-  });
+  const { dateStr } = getVietnamTimeInfo();
+  return schedule.some(slot => findScheduleSlot([slot], dateStr, `${slot.startTime} - ${slot.endTime}`) && isCurrentVietnamTimeWithinSlot(dateStr, slot));
 };
 
 app.post("/api/attendance/self-checkin", requireAuth, requireRole(["student"]), validateBody(schemas.selfCheckin), asyncHandler(async (req, res) => {
@@ -2517,18 +2551,46 @@ app.post("/api/attendance/teacher-checkin", requireAuth, requireRole(["teacher"]
   const { courseId, sectionId, slotTime, classDate } = req.body;
   const teacherId = req.user!.id;
 
+  if (!isValidDateOnly(classDate)) {
+    return res.status(400).json({ error: "Ngày lên lớp không hợp lệ. Định dạng yêu cầu là YYYY-MM-DD." });
+  }
+  const parsedSlot = parseSlotTime(slotTime);
+  if (!parsedSlot) {
+    return res.status(400).json({ error: "Khung giờ lên lớp không hợp lệ. Định dạng yêu cầu là HH:mm - HH:mm." });
+  }
+
   // Validate schedule slot matching
-  const section = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [sectionId])).rows[0];
+  const section = (await pool.query(
+    `SELECT cs.*, c.teacher_id AS course_teacher_id
+     FROM course_sections cs
+     JOIN courses c ON c.id = cs.course_id
+     WHERE cs.id = $1`,
+    [sectionId]
+  )).rows[0];
   if (!section) return res.status(404).json({ error: "Lớp học phần không tồn tại." });
+  if (section.course_id !== courseId) {
+    return res.status(400).json({ error: "Lớp học phần không thuộc môn học đã chọn." });
+  }
+  if (section.teacher_id !== teacherId) {
+    return res.status(403).json({ error: "Bạn không phải giảng viên được phân công cho lớp học phần này." });
+  }
+  if (section.status === "cancelled") {
+    return res.status(400).json({ error: "Không thể điểm danh lớp học phần đã hủy." });
+  }
+
   const schedule = typeof section.schedule === "string" ? JSON.parse(section.schedule) : (section.schedule || []);
-  if (!isWithinSchedule(schedule)) {
+  const matchedSlot = findScheduleSlot(schedule, classDate, parsedSlot.normalized);
+  if (!matchedSlot) {
+    return res.status(400).json({ error: "Ca lên lớp không khớp thời khóa biểu của lớp học phần." });
+  }
+  if (!isCurrentVietnamTimeWithinSlot(classDate, matchedSlot)) {
     return res.status(400).json({ error: "Điểm danh không hợp lệ: Hiện tại không nằm trong khung giờ học được lên lịch của lớp này!" });
   }
 
-  // Check if teacher already checked in for this section and class date
+  // Check if teacher already checked in for this section/date/slot.
   const existing = (await pool.query(
-    "SELECT id FROM teacher_attendance WHERE teacher_id = $1 AND section_id = $2 AND class_date = $3",
-    [teacherId, sectionId, classDate]
+    "SELECT id FROM teacher_attendance WHERE teacher_id = $1 AND section_id = $2 AND class_date = $3 AND slot_time = $4",
+    [teacherId, sectionId, classDate, parsedSlot.normalized]
   )).rows[0];
 
   if (existing) {
@@ -2541,16 +2603,21 @@ app.post("/api/attendance/teacher-checkin", requireAuth, requireRole(["teacher"]
     courseId,
     sectionId,
     classDate,
-    slotTime,
+    slotTime: parsedSlot.normalized,
     status: "present" as const,
     checkedInAt: new Date().toISOString()
   };
 
-  await pool.query(
+  const insertRes = await pool.query(
     `INSERT INTO teacher_attendance (id, teacher_id, course_id, section_id, class_date, slot_time, status, checked_in_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
     [record.id, record.teacherId, record.courseId, record.sectionId, record.classDate, record.slotTime, record.status, record.checkedInAt]
   );
+  if (insertRes.rowCount === 0) {
+    return res.status(400).json({ error: "Giảng viên đã điểm danh cho ca học này rồi." });
+  }
 
   const { invalidateStoreCache } = await import("./src/server/repositories/storeSnapshot");
   invalidateStoreCache();

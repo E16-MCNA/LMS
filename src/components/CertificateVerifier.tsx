@@ -235,8 +235,8 @@ export default function CertificateVerifier({ store, onRefreshData }: Certificat
       </div>
 
       {/* Tab Select and filter bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10">
-        <div className="flex gap-1 w-full sm:w-auto">
+      <div className="space-y-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+        <div className="flex flex-wrap gap-1 w-full">
           <button
             onClick={() => setActiveTab("pending")}
             className={`flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
@@ -264,7 +264,7 @@ export default function CertificateVerifier({ store, onRefreshData }: Certificat
         </div>
 
         {activeTab !== "lookup" && (
-          <div className="relative max-w-md w-full">
+          <div className="relative w-full max-w-none">
             <input
               type="text"
               placeholder="Tìm theo tên học viên, môn học, mã..."
@@ -404,7 +404,7 @@ export default function CertificateVerifier({ store, onRefreshData }: Certificat
                     {item.lessonsCompleted} / {item.lessonsTotal} bài
                   </td>
                   <td className="py-3.5 text-center">
-                    <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-mono font-bold rounded text-[10px]">
+                    <span className="px-2.5 py-0.5 bg-emerald-200 text-emerald-950 border border-emerald-100 font-mono font-bold rounded text-[10px]">
                       {item.quizScore}% (Đậu)
                     </span>
                   </td>

@@ -35,8 +35,11 @@ CREATE TABLE IF NOT EXISTS semesters (
   start_date TEXT,
   end_date TEXT,
   registration_open TEXT,
-  registration_close TEXT
+  registration_close TEXT,
+  is_current BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+ALTER TABLE semesters ADD COLUMN IF NOT EXISTS is_current BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS courses (
   id TEXT PRIMARY KEY,

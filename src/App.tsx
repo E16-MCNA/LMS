@@ -762,12 +762,12 @@ function AppShell() {
 
                   <button
                     type="button"
-                    onClick={() => handleInstantDemoLogin("parent@e16.local", "parent16")}
+                    onClick={() => handleInstantDemoLogin("parentsstudent@mcna.local", "parent16")}
                     className="p-2 bg-rose-500/10 hover:bg-rose-600/20 border border-rose-400/20 text-rose-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group col-span-2 sm:col-span-1"
                   >
                     <div className="min-w-0 flex-1">
                       <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-rose-200">Phụ Huynh</span>
-                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">parent@e16.local</span>
+                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">parentsstudent@mcna.local</span>
                     </div>
                     <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-rose-300" />
                   </button>
@@ -829,13 +829,13 @@ function AppShell() {
                     <button
                       type="button"
                       onClick={() => handleInstantDemoLogin("student_withdrawn@e16.local", "studente16")}
-                      className="p-2 bg-gray-500/5 hover:bg-gray-600/10 border border-gray-500/10 text-gray-400 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                      className="p-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
                     >
                       <div className="min-w-0 flex-1">
-                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-gray-300">5. Thôi học (Withdrawn)</span>
+                        <span className="block font-sans font-extrabold text-[9px] leading-tight group-hover:text-slate-900">5. Thôi học (Withdrawn)</span>
                         <span className="font-mono text-[8px] font-normal text-white/30 truncate block">student_withdrawn</span>
                       </div>
-                      <ArrowRight className="h-3 w-3 text-gray-400 group-hover:translate-x-0.5 transition shrink-0" />
+                      <ArrowRight className="h-3 w-3 text-slate-700 group-hover:translate-x-0.5 transition shrink-0" />
                     </button>
                   </div>
                 </div>

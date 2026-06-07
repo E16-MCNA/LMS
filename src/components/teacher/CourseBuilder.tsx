@@ -225,9 +225,9 @@ export default function CourseBuilder(props: ComponentProps) {
     try {
       await api.deleteCourseSection(id);
       props.onRefreshData();
-      alert(`ðŸ—‘ï¸ ÄÃ£ xÃ³a lá»›p há»c pháº§n ${code}!`);
+      if (props.triggerToast) props.triggerToast(`🗑️ Đã xóa lớp học phần ${code}!`);
     } catch (err: any) {
-      alert(err.message || "KhÃ´ng thá»ƒ xÃ³a lá»›p há»c pháº§n.");
+      if (props.triggerToast) props.triggerToast(err.message || "Không thể xóa lớp học phần.");
     }
     return;
 
@@ -238,20 +238,20 @@ export default function CourseBuilder(props: ComponentProps) {
     AppStore.log(currentUser.id, "delete_section_from_builder", code, `Xóa lớp học phần ${code} trực tiếp từ trình quản lý khóa học.`);
     AppStore.save(storeData);
     props.onRefreshData();
-    alert(`🗑️ Đã xóa lớp học phần ${code}!`);
+    if (props.triggerToast) props.triggerToast(`🗑️ Đã xóa lớp học phần ${code}!`);
   };
 
   const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formSectionCode.trim()) {
-      alert("⚠️ Vui lòng nhập Mã lớp học phần!");
+      if (props.triggerToast) props.triggerToast("⚠️ Vui lòng nhập Mã lớp học phần!");
       return;
     }
 
     const conflicts = checkConflicts(editingSectionId, currentUser.id, formSlots, formSemesterId);
     if (conflicts.length > 0) {
       setFormConflicts(conflicts);
-      alert("❗ Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra kỹ chi tiết báo đỏ!");
+      if (props.triggerToast) props.triggerToast("❗ Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra kỹ chi tiết báo đỏ!");
       return;
     }
 
@@ -273,7 +273,7 @@ export default function CourseBuilder(props: ComponentProps) {
       setShowSectionModal(false);
       props.onRefreshData();
     } catch (err: any) {
-      alert(err.message || "KhÃ´ng thá»ƒ lÆ°u lá»›p há»c pháº§n.");
+      if (props.triggerToast) props.triggerToast(err.message || "Không thể lưu lớp học phần.");
     }
     return;
 
@@ -1159,7 +1159,7 @@ export default function CourseBuilder(props: ComponentProps) {
               onRefreshData={props.onRefreshData}
               triggerToast={(msg: string) => {
                 if (props.triggerToast) props.triggerToast(msg);
-                else alert(msg);
+                else console.log(msg);
               }}
               defaultCourseId={activeCourse.id}
             />

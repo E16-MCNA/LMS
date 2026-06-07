@@ -24,6 +24,7 @@ import { AppStore } from "../store";
 import { calculateCourseGradePercent, collectCourseGradeInputs, warningTypeLabel } from "../gradeUtils";
 import ModalPortal from "./ModalPortal";
 import UserGuide from "./UserGuide";
+import NotificationInbox from "./NotificationInbox";
 
 interface ParentPanelProps {
   currentUser: User;
@@ -45,7 +46,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab === "parent_guide") return;
+    if (activeTab === "parent_guide" || activeTab === "notifications") return;
     if (activeSystem === "LMS") {
       if (activeTab !== "grades") setActiveTab("grades");
     } else {
@@ -250,6 +251,12 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
                 Hướng dẫn sử dụng
               </button>
               <button
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "notifications" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                <span className="inline-flex items-center gap-2"><Bell className="h-4 w-4" /> Hộp thư thông báo</span>
+              </button>
+              <button
                 onClick={() => setActiveTab("overview")}
                 className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "overview" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
               >
@@ -286,6 +293,12 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
                 Hướng dẫn sử dụng
               </button>
               <button
+                onClick={() => setActiveTab("notifications")}
+                className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "notifications" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
+              >
+                <span className="inline-flex items-center gap-2"><Bell className="h-4 w-4" /> Hộp thư thông báo</span>
+              </button>
+              <button
                 onClick={() => setActiveTab("grades")}
                 className={`w-full text-left py-2.5 px-3 rounded-lg font-semibold transition cursor-pointer ${activeTab === "grades" ? "bg-indigo-600 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}
               >
@@ -302,6 +315,14 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
           {/* TAB USER GUIDE */}
           {activeTab === "parent_guide" && (
             <UserGuide role="parent" activeSystem={activeSystem} onClose={() => setActiveTab("overview")} />
+          )}
+
+          {activeTab === "notifications" && (
+            <NotificationInbox
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={onRefreshData}
+            />
           )}
 
           {/* TAB 1: OVERVIEW */}

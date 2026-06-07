@@ -75,7 +75,7 @@ body, html {
 .text-emerald-100, .text-emerald-200, .text-emerald-300, .text-emerald-400 {
   color: #047857 !important; /* emerald-700 */
 }
-.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400, .text-yellow-300, .text-yellow-400 {
+.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400, .text-amber-500, .text-yellow-300, .text-yellow-400, .text-yellow-500 {
   color: #b45309 !important; /* amber-700 */
 }
 .text-red-100, .text-red-200, .text-red-300, .text-red-400, .text-rose-200, .text-rose-300, .text-rose-400 {
@@ -84,7 +84,7 @@ body, html {
 .text-blue-100, .text-blue-200, .text-blue-300, .text-blue-400 {
   color: #1d4ed8 !important; /* blue-700 */
 }
-.text-sky-100, .text-sky-200, .text-sky-300, .text-sky-400, .text-cyan-300, .text-cyan-400, .text-teal-300, .text-teal-400 {
+.text-sky-100, .text-sky-200, .text-sky-300, .text-sky-400, .text-cyan-100, .text-cyan-200, .text-cyan-300, .text-cyan-400, .text-teal-300, .text-teal-400 {
   color: #0369a1 !important; /* sky-700 */
 }
 .text-violet-100, .text-violet-200, .text-violet-300, .text-violet-400 {
@@ -108,6 +108,9 @@ body, html {
 }
 .hover\:text-indigo-100:hover, .hover\:text-indigo-200:hover, .hover\:text-indigo-300:hover, .hover\:text-indigo-400:hover {
   color: #312e81 !important; /* indigo-900 */
+}
+.hover\:text-cyan-100:hover, .hover\:text-cyan-200:hover, .hover\:text-cyan-300:hover, .hover\:text-cyan-400:hover {
+  color: #0c4a6e !important; /* sky-900 */
 }
 .hover\:text-emerald-300:hover, .hover\:text-emerald-400:hover {
   color: #064e3b !important; /* emerald-900 */
@@ -138,7 +141,7 @@ body, html {
 .group:hover .group-hover\:text-blue-100, .group:hover .group-hover\:text-blue-200, .group:hover .group-hover\:text-blue-300 {
   color: #1e3a8a !important; /* blue-900 */
 }
-.group:hover .group-hover\:text-sky-100, .group:hover .group-hover\:text-sky-200, .group:hover .group-hover\:text-sky-300 {
+.group:hover .group-hover\:text-sky-100, .group:hover .group-hover\:text-sky-200, .group:hover .group-hover\:text-sky-300, .group:hover .group-hover\:text-cyan-100, .group:hover .group-hover\:text-cyan-200, .group:hover .group-hover\:text-cyan-300 {
   color: #0c4a6e !important; /* sky-900 */
 }
 .group:hover .group-hover\:text-rose-100, .group:hover .group-hover\:text-rose-200, .group:hover .group-hover\:text-rose-300 {
@@ -208,4 +211,14 @@ input:focus, select:focus, textarea:focus {
 .bg-violet-600 *, .bg-violet-500 *, .bg-violet-700 *, .bg-violet-800 *,
 .bg-rose-600 *, .bg-rose-500 *, .bg-rose-700 *, .bg-rose-800 * {
   color: #ffffff !important;
+}
+
+button:disabled {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+button:disabled * {
+  color: inherit !important;
 }

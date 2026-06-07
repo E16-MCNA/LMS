@@ -8,6 +8,13 @@ let cachedSnapshot: any = null;
 let lastCacheTime = 0;
 const CACHE_TTL = 15000; // 15 giây TTL dự phòng an toàn
 
+const normalizeDateOnly = (value: any) => {
+  if (!value) return value;
+  const text = String(value);
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : text.replace(/\s*00:00:00(?:\.0+)?$/, "");
+};
+
 export function invalidateStoreCache() {
   cachedSnapshot = null;
   lastCacheTime = 0;
@@ -111,8 +118,8 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
   const auditLogs = auditLogsRes.rows.map(row => ({ id: row.id, userId: row.user_id, action: row.action, target: row.target, detail: row.detail || "", createdAt: row.created_at }));
 
   // New academic structural tables
-  const academicYears = academicYearsRes.rows.map(row => ({ id: row.id, name: row.name, startDate: row.start_date, endDate: row.end_date, isCurrent: Boolean(row.is_current) }));
-  const semesters = semestersRes.rows.map(row => ({ id: row.id, academicYearId: row.academic_year_id, name: row.name, type: row.type, startDate: row.start_date, endDate: row.end_date, registrationOpen: row.registration_open, registrationClose: row.registration_close }));
+  const academicYears = academicYearsRes.rows.map(row => ({ id: row.id, name: row.name, startDate: normalizeDateOnly(row.start_date), endDate: normalizeDateOnly(row.end_date), isCurrent: Boolean(row.is_current) }));
+  const semesters = semestersRes.rows.map(row => ({ id: row.id, academicYearId: row.academic_year_id, name: row.name, type: row.type, startDate: normalizeDateOnly(row.start_date), endDate: normalizeDateOnly(row.end_date), registrationOpen: normalizeDateOnly(row.registration_open), registrationClose: normalizeDateOnly(row.registration_close), isCurrent: Boolean(row.is_current) }));
   const departments = departmentsRes.rows.map(row => ({ id: row.id, name: row.name, code: row.code, headTeacherId: row.head_teacher_id, description: row.description }));
   const programs = programsRes.rows.map(row => ({ id: row.id, departmentId: row.department_id, name: row.name, code: row.code, type: row.type, totalCredits: row.total_credits, description: row.description }));
   const programCourses = programCoursesRes.rows.map(row => ({ id: row.id, programId: row.program_id, courseId: row.course_id, credits: row.credits, isRequired: Boolean(row.is_required), semester: row.semester }));

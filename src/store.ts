@@ -450,7 +450,8 @@ export function getInitialStore(): LMSDataStore {
         startDate: "2024-09-01",
         endDate: "2025-01-15",
         registrationOpen: "2024-08-01",
-        registrationClose: "2024-08-31"
+        registrationClose: "2024-08-31",
+        isCurrent: false
       },
       {
         id: "sem_spring25",
@@ -460,7 +461,8 @@ export function getInitialStore(): LMSDataStore {
         startDate: "2025-02-01",
         endDate: "2025-06-30",
         registrationOpen: "2025-01-01",
-        registrationClose: "2025-01-31"
+        registrationClose: "2025-01-31",
+        isCurrent: true
       }
     ],
     departments: [

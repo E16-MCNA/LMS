@@ -28,7 +28,8 @@ import {
   ChevronRight,
   FileText,
   Award,
-  HelpCircle
+  HelpCircle,
+  Bell
 } from "lucide-react";
 import { LMSDataStore, User, Course, Lesson, Quiz, Question, Assignment, Submission, QuizAttempt } from "../types";
 import { AppStore } from "../store";
@@ -48,6 +49,7 @@ import ClassPlacement from "./ClassPlacement";
 import CertificateVerifier from "./CertificateVerifier";
 import UserGuide from "./UserGuide";
 import ModalPortal from "./ModalPortal";
+import NotificationInbox from "./NotificationInbox";
 
 interface AdminPanelProps {
   currentUser: User;
@@ -78,6 +80,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
     | "teacher_timetable"
     | "class_placement"
     | "verify_certificates"
+    | "notifications"
     | "users"
   >("admin_guide");
 
@@ -87,7 +90,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
 
   useEffect(() => {
     if (activeSystem === "LMS") {
-      const allowedLmsTabs = ["audit", "admin_guide"];
+      const allowedLmsTabs = ["audit", "admin_guide", "notifications"];
       if (currentUser.role === "manager" || currentUser.role === "super_admin") {
         allowedLmsTabs.push("users");
       }
@@ -97,7 +100,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
     } else {
       const allowedSisTabs = [
         "academic_years", "semesters", "departments", "programs", "students",
-        "reports", "class_placement", "verify_certificates", "admin_guide"
+        "reports", "class_placement", "verify_certificates", "admin_guide", "notifications"
       ];
       if (currentUser.role === "super_admin") {
         allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "tuition", "users", "warnings", "audit");
@@ -525,6 +528,14 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                 <span className="flex items-center gap-2"><HelpCircle className="h-4 w-4" /> Hướng dẫn sử dụng</span>
               </button>
               <button
+                onClick={() => { setActiveSubTab("notifications"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "notifications" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Bell className="h-4 w-4" /> Hộp thư thông báo</span>
+              </button>
+              <button
                 onClick={() => { setActiveSubTab("academic_years"); setRegistryLookupStudentId(null); }}
                 className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
                   activeSubTab === "academic_years" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
@@ -674,6 +685,14 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                 </button>
               )}
               <button
+                onClick={() => { setActiveSubTab("notifications"); setRegistryLookupStudentId(null); }}
+                className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                  activeSubTab === "notifications" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                }`}
+              >
+                <span className="flex items-center gap-2"><Bell className="h-4 w-4" /> Hộp thư thông báo</span>
+              </button>
+              <button
                 onClick={() => { setActiveSubTab("audit"); setRegistryLookupStudentId(null); }}
                 className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
                   activeSubTab === "audit" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
@@ -798,6 +817,14 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               role={currentUser.role}
               activeSystem={activeSystem}
               onClose={() => setActiveSubTab("overview")}
+            />
+          )}
+
+          {activeSubTab === "notifications" && (
+            <NotificationInbox
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={onRefreshData}
             />
           )}
 

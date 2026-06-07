@@ -106,10 +106,16 @@ export default function AttendanceManager({
   const [newSessionTime, setNewSessionTime] = useState("09:00 - 11:30");
   const [checkinMethod, setCheckinMethod] = useState<"manual" | "link">("manual");
 
-  const courses = store.courses || [];
+  const allCourses = store.courses || [];
+  const courses = currentUser.role === "teacher"
+    ? allCourses.filter(c => c.teacherId === currentUser.id)
+    : allCourses;
   const enrollments = store.enrollments || [];
   const systemSemesters = store.semesters || [];
-  const activeSemester = systemSemesters.find(s => s.id === "sem_spring25") || systemSemesters[0]; // spring 25 default
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const activeSemester = systemSemesters.find(s => s.isCurrent) ||
+    systemSemesters.find(s => s.startDate && s.endDate && todayStr >= String(s.startDate).slice(0, 10) && todayStr <= String(s.endDate).slice(0, 10)) ||
+    systemSemesters[0];
   const curSemesterId = activeSemester ? activeSemester.id : "sem_spring25";
 
   const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === selectedCourseId && s.status !== "cancelled");
@@ -527,6 +533,7 @@ export default function AttendanceManager({
             1. Lựa chọn môn học / lớp học phần:
           </label>
           <div className="flex gap-2">
+            {currentUser.role !== "teacher" && (
             <input
               type="text"
               placeholder="Lọc môn..."
@@ -535,6 +542,7 @@ export default function AttendanceManager({
               disabled={lockSelectors}
               className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
             />
+            )}
             <select
               value={selectedCourseId}
               onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
@@ -557,6 +565,7 @@ export default function AttendanceManager({
                 2. Chọn lớp học phần:
               </label>
               <div className="flex gap-2">
+                {currentUser.role !== "teacher" && (
                 <input
                   type="text"
                   placeholder="Lọc lớp..."
@@ -565,6 +574,7 @@ export default function AttendanceManager({
                   disabled={lockSelectors}
                   className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                 />
+                )}
                 <select
                   value={selectedSectionId}
                   onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}

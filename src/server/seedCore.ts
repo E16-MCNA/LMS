@@ -41,8 +41,8 @@ export async function seedCoreLearningData(db: Queryable) {
   if (Number((await db.query("SELECT COUNT(*) AS count FROM semesters")).rows[0].count) === 0) {
     for (const s of store.semesters) {
       await db.query(
-        "INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING",
-        [s.id, s.academicYearId, s.name, s.type, s.startDate, s.endDate, s.registrationOpen, s.registrationClose]
+        "INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close, is_current) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING",
+        [s.id, s.academicYearId, s.name, s.type, s.startDate, s.endDate, s.registrationOpen, s.registrationClose, Boolean(s.isCurrent)]
       );
     }
   }

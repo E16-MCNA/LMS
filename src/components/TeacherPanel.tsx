@@ -21,7 +21,8 @@ import {
   MessageSquare,
   X,
   PlusCircle,
-  FolderPlus
+  FolderPlus,
+  Bell
 } from "lucide-react";
 import { LMSDataStore, User, Course, Lesson, Quiz, Question, Assignment, Submission, QuizAttempt } from "../types";
 import { AppStore } from "../store";
@@ -34,6 +35,7 @@ import Timetable from "./Timetable";
 import UserGuide from "./UserGuide";
 import AttendanceManager from "./AttendanceManager";
 import AdvisorPanel from "./AdvisorPanel";
+import NotificationInbox from "./NotificationInbox";
 import { generateId } from "../utils";
 import { useApiStore } from "../hooks/apiHooks";
 import { api } from "../api";
@@ -646,6 +648,17 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <Users className={`h-4.5 w-4.5 ${activeSubTab === "advising" ? "text-indigo-300" : "text-white/40"}`} />
                   <span>Cố vấn học tập</span>
                 </button>
+                <button
+                  onClick={() => handleNavClick("notifications")}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "notifications"
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Bell className={`h-4.5 w-4.5 ${activeSubTab === "notifications" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Hộp thư thông báo</span>
+                </button>
               </>
             ) : (
               <>
@@ -737,6 +750,17 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <Users className={`h-4.5 w-4.5 ${activeSubTab === "advising" ? "text-indigo-300" : "text-white/40"}`} />
                   <span>Cố vấn học tập</span>
                 </button>
+                <button
+                  onClick={() => handleNavClick("notifications")}
+                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
+                    activeSubTab === "notifications"
+                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5"
+                      : "text-white/60 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <Bell className={`h-4.5 w-4.5 ${activeSubTab === "notifications" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Hộp thư thông báo</span>
+                </button>
               </>
             )}
           </div>
@@ -749,6 +773,14 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           <AssignmentGrader {...teacherPanelProps} />
           <GradebookTable {...teacherPanelProps} />
           <TeacherAnalytics {...teacherPanelProps} />
+
+          {activeSubTab === "notifications" && (
+            <NotificationInbox
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={onRefreshData}
+            />
+          )}
 
           {activeSubTab === "timetable" && (
             <Timetable

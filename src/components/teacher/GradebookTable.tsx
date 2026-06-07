@@ -128,7 +128,7 @@ export default function GradebookTable(props: ComponentProps) {
               <button
                 onClick={handleExportCSVGradebook}
                 disabled={studentSubmissionsRaw.length === 0}
-                className="px-4 py-2 text-xs font-bold text-indigo-950 bg-white hover:bg-white/95 rounded-xl disabled:bg-white/20 disabled:text-white/40 flex items-center gap-1.5 transition duration-150 cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-indigo-950 bg-white hover:bg-white/95 rounded-xl disabled:bg-slate-100 disabled:text-slate-700 disabled:border disabled:border-slate-300 flex items-center gap-1.5 transition duration-150 cursor-pointer"
               >
                 <Download className="h-4 w-4" /> Xuất bảng điểm CSV
               </button>

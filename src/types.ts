@@ -194,6 +194,7 @@ export interface Semester {
   endDate: string;
   registrationOpen: string;
   registrationClose: string;
+  isCurrent?: boolean;
 }
 
 export interface Department {

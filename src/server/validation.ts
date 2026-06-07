@@ -207,7 +207,8 @@ export const schemas = {
     dayOfWeek: z.string().trim().min(1),
     startTime: z.string().trim().min(1),
     endTime: z.string().trim().min(1),
-    room: z.string().trim().optional()
+    room: z.string().trim().optional(),
+    specificDate: z.string().trim().optional()
   }),
   courseSection: z.object({
     courseId: z.string().trim().min(1),
@@ -219,7 +220,8 @@ export const schemas = {
       dayOfWeek: z.string().trim().min(1),
       startTime: z.string().trim().min(1),
       endTime: z.string().trim().min(1),
-      room: z.string().trim().optional()
+      room: z.string().trim().optional(),
+      specificDate: z.string().trim().optional()
     })).default([]),
     status: z.enum(["pending", "open", "closed", "cancelled"]).default("open")
   }),

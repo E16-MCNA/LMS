@@ -56,12 +56,22 @@ const STANDARD_SLOTS = [
   { id: 4, label: "Ca 5", time: "18:00 - 20:00", start: "18:00", end: "20:00" }
 ];
 
+const resolveCurrentSemesterId = (store: LMSDataStore) => {
+  const semesters = store.semesters || [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return semesters.find(s => s.isCurrent)?.id ||
+    semesters.find(s => s.startDate && s.endDate && todayStr >= String(s.startDate).slice(0, 10) && todayStr <= String(s.endDate).slice(0, 10))?.id ||
+    semesters[0]?.id ||
+    "sem_spring25";
+};
+
 export default function Timetable({ role, currentUser, store, onRefreshData, defaultLookupType, onRedirectToAttendance }: TimetableProps) {
+  const defaultSemesterId = resolveCurrentSemesterId(store);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [activeSemesterId, setActiveSemesterId] = useState<string>("sem_spring25");
+  const [activeSemesterId, setActiveSemesterId] = useState<string>(defaultSemesterId);
 
   // Admin Lookup States
-  const [lookupType, setLookupType] = useState<"student" | "teacher" | "all">(defaultLookupType || "all");
+  const [lookupType, setLookupType] = useState<"student" | "teacher" | "all">(defaultLookupType || "student");
   const [lookupUserId, setLookupUserId] = useState<string>(() => {
     if (defaultLookupType === "teacher") {
       return store.users.find(u => u.role === "teacher")?.id || "";
@@ -77,7 +87,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
 
   // Form states
   const [formCourseId, setFormCourseId] = useState("");
-  const [formSemesterId, setFormSemesterId] = useState("sem_spring25");
+  const [formSemesterId, setFormSemesterId] = useState(defaultSemesterId);
   const [formTeacherId, setFormTeacherId] = useState("");
   const [formSectionCode, setFormSectionCode] = useState("");
   const [formMaxStudents, setFormMaxStudents] = useState<number>(30);
@@ -110,11 +120,51 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     return 4; // >= 18:00 -> Ca 5
   };
 
+  const getSpecificDateForDay = (day: string, semesterId: string) => {
+    const semester = (store.semesters || []).find(s => s.id === semesterId);
+    const base = semester?.startDate ? new Date(String(semester.startDate).slice(0, 10)) : new Date();
+    if (Number.isNaN(base.getTime())) return "";
+    const dayIndex = DAYS_OF_WEEK.indexOf(day);
+    if (dayIndex < 0) return "";
+    const targetJsDay = dayIndex === 6 ? 0 : dayIndex + 1;
+    const offset = (targetJsDay - base.getDay() + 7) % 7;
+    const result = new Date(base);
+    result.setDate(base.getDate() + offset);
+    return result.toISOString().slice(0, 10);
+  };
+
+  const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDayForDateString = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-").map(Number);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return "";
+    const jsDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+    return DAYS_OF_WEEK[jsDay === 0 ? 6 : jsDay - 1] || "";
+  };
+
+  const slotsShareCalendarDate = (
+    a: { dayOfWeek: string; specificDate?: string },
+    b: { dayOfWeek: string; specificDate?: string }
+  ) => {
+    const aDate = a.specificDate ? String(a.specificDate).slice(0, 10) : "";
+    const bDate = b.specificDate ? String(b.specificDate).slice(0, 10) : "";
+    if (aDate && bDate) return aDate === bDate;
+    if (aDate) return getDayForDateString(aDate) === b.dayOfWeek;
+    if (bDate) return getDayForDateString(bDate) === a.dayOfWeek;
+    return a.dayOfWeek === b.dayOfWeek;
+  };
+
   // Conflict Checker
   const checkConflicts = (
     sectionId: string | null,
     teacherId: string,
-    slots: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>,
+    slots: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string; specificDate?: string }>,
     semesterId: string
   ): string[] => {
     const sections = store.courseSections || [];
@@ -135,7 +185,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
 
       activeSections.forEach(sec => {
         sec.schedule.forEach(secSlot => {
-          if (secSlot.dayOfWeek === slot.dayOfWeek) {
+          if (slotsShareCalendarDate(slot, secSlot)) {
             const secStart = timeToMins(secSlot.startTime);
             const secEnd = timeToMins(secSlot.endTime);
 
@@ -289,15 +339,15 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
       };
       if (modalMode === "create") {
         await api.createCourseSection(payload);
-        triggerToast("âœ… Khá»Ÿi táº¡o lá»›p há»c pháº§n thÃ nh cÃ´ng!");
+        triggerToast("✅ Khởi tạo lớp học phần thành công!");
       } else if (editingSectionId) {
         await api.updateCourseSection(editingSectionId, payload);
-        triggerToast("âœ… Cáº­p nháº­t lá»›p há»c pháº§n thÃ nh cÃ´ng!");
+        triggerToast("✅ Cập nhật lớp học phần thành công!");
       }
       setShowModal(false);
       onRefreshData();
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ lÆ°u lá»›p há»c pháº§n.");
+      triggerToast(err.message || "Không thể lưu lớp học phần.");
     }
     return;
 
@@ -412,7 +462,8 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
             ...s,
             dayOfWeek: day,
             startTime: slot.start,
-            endTime: slot.end
+            endTime: slot.end,
+            specificDate: getSpecificDateForDay(day, sec.semesterId)
           };
         }
         return s;
@@ -420,13 +471,13 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     } else {
       // Dragging a pending slot from the left queue sidebar.
       // Overwrite the schedule since it wasn't active on the timetable.
-      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101", specificDate: "" }];
+      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101", specificDate: getSpecificDateForDay(day, sec.semesterId) }];
     }
 
     // Run overlap logic against other active sections
     const conflicts = checkConflicts(sec.id, sec.teacherId, newSlots, sec.semesterId);
     if (conflicts.length > 0) {
-      alert(`❗ Không thể xếp lớp học phần ${sec.sectionCode} do xung đột lịch:\n\n${conflicts.join("\n")}`);
+      triggerToast(`Không thể xếp lớp ${sec.sectionCode}: ${conflicts[0] || "xung đột lịch"}`);
       return;
     }
 
@@ -441,9 +492,9 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
         status: "open"
       });
       onRefreshData();
-      triggerToast(`âœ… ÄÃ£ phÃª duyá»‡t & xáº¿p ca lá»›p ${sec.sectionCode} vÃ o ${day} (${slot.start} - ${slot.end})!`);
+      triggerToast(`✅ Đã phê duyệt và xếp ca lớp ${sec.sectionCode} vào ${day} (${slot.start} - ${slot.end})!`);
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ xáº¿p lá»‹ch lá»›p há»c pháº§n.");
+      triggerToast(err.message || "Không thể xếp lịch lớp học phần.");
     }
     return;
 
@@ -477,9 +528,9 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     try {
       await api.deleteCourseSection(id);
       onRefreshData();
-      triggerToast(`ðŸ—‘ï¸ ÄÃ£ xÃ³a lá»›p há»c pháº§n ${code}!`);
+      triggerToast(`🗑️ Đã xóa lớp học phần ${code}!`);
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ xÃ³a lá»›p há»c pháº§n.");
+      triggerToast(err.message || "Không thể xóa lớp học phần.");
     }
     return;
 
@@ -598,7 +649,6 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
               }}
               className="w-full px-3 py-2 bg-black/20 border border-white/10 rounded-xl text-white text-xs"
             >
-              <option value="all">Tất cả lớp học phần</option>
               <option value="student">Lịch học của Học sinh</option>
               <option value="teacher">Lịch dạy của Giảng viên</option>
             </select>
@@ -740,7 +790,8 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                   <th className="py-4 px-2 w-[120px] text-center text-[10.5px] uppercase font-bold text-indigo-300 font-mono border-r border-white/5">Ca / Khung Giờ</th>
                   {DAYS_OF_WEEK.map(day => (
                     <th key={day} className="py-4 px-3 text-center text-xs font-bold text-white uppercase tracking-wider">
-                      {day}
+                      <div>{day}</div>
+                      <div className="mt-1 text-[10px] font-mono text-cyan-200 normal-case">{getSpecificDateForDay(day, activeSemesterId)}</div>
                     </th>
                   ))}
                 </tr>
@@ -878,23 +929,26 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                 {role === "teacher" && (() => {
                                   const now = new Date();
                                   const currentDay = getVietnameseDayOfWeek(now);
+                                  const todayDateStr = getLocalDateString(now);
                                   const currentHourStr = now.toTimeString().slice(0, 5); // "HH:MM"
                                   
                                   const currentMins = timeToMins(currentHourStr);
                                   const startMins = timeToMins(item.startTime);
                                   
-                                  const isSameDay = item.dayOfWeek === currentDay;
+                                  const isSameDay = item.specificDate ? item.specificDate === todayDateStr : item.dayOfWeek === currentDay;
                                   const endMins = timeToMins(item.endTime);
                                   const isWithinClassDuration = isSameDay && currentMins >= startMins && currentMins <= endMins;
                                   const remainingMinutes = endMins - currentMins;
                                   
                                   if (isWithinClassDuration) {
-                                    const classDateStr = now.toISOString().slice(0, 10);
+                                    const classDateStr = item.specificDate || todayDateStr;
+                                    const slotTime = `${item.startTime} - ${item.endTime}`;
                                     const hasCheckedIn = (store.teacherAttendance || []).some(
                                       (ta: any) =>
                                         ta.teacherId === currentUser.id &&
                                         ta.sectionId === item.section.id &&
-                                        ta.classDate === classDateStr
+                                        ta.classDate === classDateStr &&
+                                        ta.slotTime === slotTime
                                     );
 
                                     if (hasCheckedIn) {
@@ -914,14 +968,14 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                             await api.teacherCheckin({
                                               courseId: item.section.courseId,
                                               sectionId: item.section.id,
-                                              slotTime: `${item.startTime} - ${item.endTime}`,
+                                              slotTime,
                                               classDate: classDateStr
                                             });
 
-                                            alert("🚀 Xác nhận giảng viên lên lớp (Có mặt) thành công!");
+                                            triggerToast("✅ Xác nhận giảng viên lên lớp thành công!");
                                             onRefreshData();
                                           } catch (err: any) {
-                                            alert(err.message || "Không thể thực hiện điểm danh.");
+                                            triggerToast(err.message || "Không thể thực hiện điểm danh.");
                                           }
                                         }}
                                         className="mt-2 w-full py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-lg transition-all duration-200 text-[10px] flex items-center justify-center gap-1 shadow-lg shadow-orange-500/10 cursor-pointer animate-pulse font-sans"
@@ -1025,23 +1079,26 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                   {(() => {
                     const now = new Date();
                     const currentDay = getVietnameseDayOfWeek(now);
+                    const todayDateStr = getLocalDateString(now);
                     const currentHourStr = now.toTimeString().slice(0, 5); // "HH:MM"
                     
                     const currentMins = timeToMins(currentHourStr);
                     const startMins = timeToMins(slot.startTime);
                     
-                    const isSameDay = slot.dayOfWeek === currentDay;
+                    const isSameDay = slot.specificDate ? slot.specificDate === todayDateStr : slot.dayOfWeek === currentDay;
                     const minutesElapsed = currentMins - startMins;
                     const isWithinTenMinutes = isSameDay && minutesElapsed >= 0 && minutesElapsed <= 10;
                     const remainingMinutes = 10 - minutesElapsed;
                     
                     if (isWithinTenMinutes) {
-                      const classDateStr = now.toISOString().slice(0, 10);
+                      const classDateStr = slot.specificDate || todayDateStr;
+                      const slotTime = `${slot.startTime} - ${slot.endTime}`;
                       const hasCheckedIn = (store.teacherAttendance || []).some(
                         (ta: any) =>
                           ta.teacherId === currentUser.id &&
                           ta.sectionId === slot.section.id &&
-                          ta.classDate === classDateStr
+                          ta.classDate === classDateStr &&
+                          ta.slotTime === slotTime
                       );
 
                       if (hasCheckedIn) {
@@ -1061,14 +1118,14 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                               await api.teacherCheckin({
                                 courseId: slot.section.courseId,
                                 sectionId: slot.section.id,
-                                slotTime: `${slot.startTime} - ${slot.endTime}`,
+                                slotTime,
                                 classDate: classDateStr
                               });
 
-                              alert("🚀 Xác nhận giảng viên lên lớp (Có mặt) thành công!");
+                              triggerToast("✅ Xác nhận giảng viên lên lớp thành công!");
                               onRefreshData();
                             } catch (err: any) {
-                              alert(err.message || "Không thể thực hiện điểm danh.");
+                              triggerToast(err.message || "Không thể thực hiện điểm danh.");
                             }
                           }}
                           className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all duration-200 text-xs flex items-center gap-1 shadow-lg shadow-orange-500/10 cursor-pointer animate-pulse shrink-0 font-sans"

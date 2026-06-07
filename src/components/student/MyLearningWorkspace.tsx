@@ -76,6 +76,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
   const [activeAssignmentId, setActiveAssignmentId] = React.useState<string | null>(null);
   const [expandedSessions, setExpandedSessions] = React.useState<Record<number, boolean>>({ 1: true });
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<"study" | "discussion">("study");
+  const [myClassSearch, setMyClassSearch] = React.useState("");
 
   // Reset local states when user exits or enters a different course
   React.useEffect(() => {
@@ -94,7 +95,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
     const courseLessons = currentLearningLessons || [];
     const courseAssignments = store.assignments.filter((a: any) => a.courseId === learningCourseId) || [];
     const courseSessionsData = store.attendanceSessions
-      .filter((s: any) => s.courseId === learningCourseId)
+      .filter((s: any) => s.courseId === learningCourseId && (!activeLearningSectionId || s.sectionId === activeLearningSectionId))
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
     const numSessions = Math.max(courseLessons.length, courseSessionsData.length, 1);
@@ -126,6 +127,23 @@ export default function MyLearningWorkspace(props: ComponentProps) {
   };
 
   const courseSessions = learningCourseId ? getCourseSessions() : [];
+  const getEnrollmentSection = (enroll: any) => {
+    const registration = (store.courseRegistrations || []).find((r: any) =>
+      r.studentId === currentUser.id &&
+      r.courseId === enroll.courseId &&
+      r.status === "registered"
+    );
+    return (store.courseSections || []).find((section: any) => section.id === registration?.sectionId);
+  };
+  const filteredMyEnrollments = myEnrollments.filter((enroll: any) => {
+    const query = myClassSearch.trim().toLowerCase();
+    if (!query) return true;
+    const course = store.courses.find((c: any) => c.id === enroll.courseId);
+    const section = getEnrollmentSection(enroll);
+    return [course?.title, course?.category, enroll.status, section?.sectionCode]
+      .filter(Boolean)
+      .some(value => String(value).toLowerCase().includes(query));
+  });
 
   return (
     <>
@@ -134,10 +152,21 @@ export default function MyLearningWorkspace(props: ComponentProps) {
           <div className="space-y-6">
             <h4 className="text-base font-display font-semibold text-white">Khóa học Đào tạo của tôi</h4>
 
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/35" />
+              <input
+                value={myClassSearch}
+                onChange={(event) => setMyClassSearch(event.target.value)}
+                placeholder="Tìm lớp học theo tên môn, mã lớp, trạng thái..."
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-black/25 border border-white/10 text-sm text-white placeholder-white/35 focus:outline-none focus:border-indigo-400"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {myEnrollments.map(enroll => {
+              {filteredMyEnrollments.map(enroll => {
                 const course = store.courses.find(c => c.id === enroll.courseId);
                 if (!course) return null;
+                const section = getEnrollmentSection(enroll);
                 const totalLessonsCount = store.lessons.filter(l => l.courseId === course.id).length;
                 const completedProgress = store.lessonProgress.filter(p => p.enrollmentId === enroll.id && p.completed).length;
                 const percentage = totalLessonsCount ? Math.round((completedProgress / totalLessonsCount) * 100) : 0;
@@ -149,6 +178,11 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                         <span className="text-[10px] font-mono text-indigo-300 uppercase bg-indigo-500/10 py-1 px-2.5 rounded-full border border-indigo-500/20 font-bold">
                           {course.category}
                         </span>
+                        {section && (
+                          <span className="text-[10px] font-mono text-cyan-200 uppercase bg-cyan-500/10 py-1 px-2.5 rounded-full border border-cyan-500/20 font-bold">
+                            {section.sectionCode}
+                          </span>
+                        )}
                         
                         <span className={`px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-wider font-mono font-bold border ${
                           enroll.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
@@ -224,9 +258,11 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                 );
               })}
 
-              {myEnrollments.length === 0 && (
-                <div className="col-span-full text-center py-16 bg-black/10 border border-dashed border-white/5 rounded-2xl text-xs text-white/40">
-                  Bạn chưa đăng ký lớp học nào. Vui lòng vào mục "Khám phá khóa học" để học hoặc liên hệ trường hỗ trợ.
+              {filteredMyEnrollments.length === 0 && (
+                <div className="col-span-full text-center py-16 bg-black/10 border border-dashed border-white/5 rounded-2xl text-[0] text-transparent">
+                  <span className="text-xs text-white/45">
+                    {myEnrollments.length === 0 ? "Bạn chưa đăng ký lớp học nào." : "Không tìm thấy lớp học phù hợp với từ khóa."}
+                  </span>
                 </div>
               )}
             </div>
