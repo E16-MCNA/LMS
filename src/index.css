@@ -149,7 +149,7 @@ body, html {
 }
 
 /* Semi-transparent dark background overrides to render light theme friendly */
-.bg-indigo-950\/40, .bg-indigo-950\/30, .bg-indigo-950\/20, .bg-slate-900\/40, .bg-slate-950\/40, .bg-indigo-900\/20 {
+.bg-indigo-950\/40, .bg-indigo-950\/30, .bg-indigo-950\/20, .bg-slate-900\/40, .bg-slate-900\/50, .bg-slate-900\/60, .bg-slate-950\/40, .bg-slate-950\/30, .bg-slate-950\/20, .bg-slate-950\/50, .bg-slate-950\/60, .bg-indigo-900\/20 {
   background-color: #f1f5f9 !important; /* slate-100 */
   border-color: #cbd5e1 !important; /* slate-300 */
 }
