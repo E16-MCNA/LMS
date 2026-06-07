@@ -404,15 +404,44 @@ export default function AssignmentGrader(props: ComponentProps) {
               const stud = store.users.find(u => u.id === sub?.studentId);
               return (
                 <form onSubmit={handleGradeSubmission} className="space-y-4 text-xs">
-                  <div className="bg-black/25 rounded-xl p-3 border border-white/5 space-y-1">
-                    <span className="text-[10px] text-white/40 block uppercase">Nội dung bài làm ({stud?.name})</span>
-                    <p className="text-white/80 leading-relaxed font-mono whitespace-pre-wrap max-h-32 overflow-y-auto pr-1">
-                      {sub?.content}
+                  <div className="bg-slate-100 rounded-xl p-3 border border-slate-300 space-y-1">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold">Nội dung bài làm ({stud?.name})</span>
+                    <p className="text-slate-800 leading-relaxed font-mono whitespace-pre-wrap max-h-32 overflow-y-auto pr-1">
+                      {sub?.content ? sub.content.replace(/\s*\[Attachment:[^\]]+\]/g, "").replace(/\s*\[Tệp đính kèm:[^\]]+\]/g, "") : ""}
                     </p>
+
+                    {(() => {
+                      let extractedUrl = sub?.attachmentUrl;
+                      if (!extractedUrl && sub?.content) {
+                        const match = sub.content.match(/\[Attachment:\s*([^\]]+)\]/) || sub.content.match(/\[Tệp đính kèm:\s*([^\]]+)\]/);
+                        if (match) {
+                          const val = match[1].trim();
+                          if (val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/")) {
+                            extractedUrl = val;
+                          }
+                        }
+                      }
+                      if (!extractedUrl) return null;
+
+                      return (
+                        <div className="mt-3 pt-3 border-t border-slate-300 flex items-center justify-between">
+                          <span className="text-[10px] text-slate-500 font-bold uppercase">Tệp đính kèm:</span>
+                          <a 
+                            href={extractedUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition text-[10px] font-bold cursor-pointer font-sans decoration-none"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Tải / Xem file bài làm
+                          </a>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Nhập Điểm số (Tối đa: {chal?.maxScore || 100})</label>
+                    <label className="text-xs font-bold text-slate-700">Nhập Điểm số (Tối đa: {chal?.maxScore || 100})</label>
                     <input
                       type="number"
                       required
@@ -420,18 +449,18 @@ export default function AssignmentGrader(props: ComponentProps) {
                       max={chal?.maxScore || 100}
                       value={gradingScore}
                       onChange={(e) => setGradingScore(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                      className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Góp ý & Nhận xét của Giảng viên</label>
+                    <label className="text-xs font-bold text-slate-700">Góp ý & Nhận xét của Giảng viên</label>
                     <textarea
                       required
                       placeholder="Ví dụ: Ý tưởng tốt, cách trình bày rõ ràng, cần tối ưu thêm mã nguồn."
                       value={gradingFeedback}
                       onChange={(e) => setGradingFeedback(e.target.value)}
-                      className="w-full px-3 py-2 bg-black/20 text-white h-20 max-h-32 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 text-xs"
+                      className="w-full px-3 py-2 bg-white text-slate-900 h-20 max-h-32 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-400 text-xs"
                     />
                   </div>
 
@@ -439,13 +468,13 @@ export default function AssignmentGrader(props: ComponentProps) {
                     <button
                       type="button"
                       onClick={() => setActiveSubmissionId(null)}
-                      className="px-4 py-2 bg-transparent text-white/60 hover:text-white transition cursor-pointer"
+                      className="px-4 py-2 bg-transparent text-slate-500 hover:text-slate-800 transition cursor-pointer font-bold"
                     >
                       Hủy bỏ
                     </button>
                     <button
                       type="submit"
-                      className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer"
+                      className="px-4.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
                     >
                       Hoàn tất Chấm điểm
                     </button>

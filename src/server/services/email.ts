@@ -249,6 +249,45 @@ function generateEmailHtml(name: string, message: string): string {
 }
 
 /**
+ * Send email direct to a recipient without querying the database (useful to avoid transaction client issues).
+ */
+export async function sendEmailDirect(recipientEmail: string, recipientName: string, message: string) {
+  try {
+    let toEmail = recipientEmail;
+    if (TEST_RECEIVER_EMAIL) {
+      toEmail = TEST_RECEIVER_EMAIL;
+      console.log(`[Email Service] Overriding recipient email from ${recipientEmail} to ${TEST_RECEIVER_EMAIL} for testing.`);
+    }
+
+    const subject = `[E16 LMS] Thông báo mới từ hệ thống`;
+    const htmlContent = generateEmailHtml(recipientName || "Học viên", message);
+
+    try {
+      const activeTransporter = await getTransporter();
+      const info = await activeTransporter.sendMail({
+        from: SMTP_FROM,
+        to: toEmail,
+        subject: subject,
+        html: htmlContent,
+        text: `Kính gửi ${recipientName},\n\nBạn có một thông báo mới từ E16 LMS:\n\n${message}\n\nVui lòng đăng nhập hệ thống để xem chi tiết.`,
+      });
+
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        logPreviewUrl(toEmail, subject, previewUrl);
+      } else {
+        logRealEmailSent(toEmail, subject, info);
+      }
+    } catch (smtpErr) {
+      console.warn("[Email Service] SMTP dispatch failed, falling back to local file log.", smtpErr);
+      logEmailMock(toEmail, recipientName || "Học viên", subject, htmlContent);
+    }
+  } catch (err) {
+    console.error(`[Email Service Error] Failed to process direct email notification to ${recipientEmail}:`, err);
+  }
+}
+
+/**
  * Send email notification to a user by fetching their details from DB and mailing them.
  */
 export async function sendEmailNotification(db: Queryable, userId: string, message: string) {
@@ -259,35 +298,7 @@ export async function sendEmailNotification(db: Queryable, userId: string, messa
       return;
     }
 
-    let recipientEmail = user.email;
-    if (TEST_RECEIVER_EMAIL) {
-      recipientEmail = TEST_RECEIVER_EMAIL;
-      console.log(`[Email Service] Overriding recipient email from ${user.email} to ${TEST_RECEIVER_EMAIL} for testing.`);
-    }
-
-    const subject = `[E16 LMS] Thông báo mới từ hệ thống`;
-    const htmlContent = generateEmailHtml(user.name || "Học viên", message);
-
-    try {
-      const activeTransporter = await getTransporter();
-      const info = await activeTransporter.sendMail({
-        from: SMTP_FROM,
-        to: recipientEmail,
-        subject: subject,
-        html: htmlContent,
-        text: `Kính gửi ${user.name},\n\nBạn có một thông báo mới từ E16 LMS:\n\n${message}\n\nVui lòng đăng nhập hệ thống để xem chi tiết.`,
-      });
-
-      const previewUrl = nodemailer.getTestMessageUrl(info);
-      if (previewUrl) {
-        logPreviewUrl(recipientEmail, subject, previewUrl);
-      } else {
-        logRealEmailSent(recipientEmail, subject, info);
-      }
-    } catch (smtpErr) {
-      console.warn("[Email Service] SMTP dispatch failed, falling back to local file log.", smtpErr);
-      logEmailMock(recipientEmail, user.name || "Học viên", subject, htmlContent);
-    }
+    await sendEmailDirect(user.email, user.name || "Học viên", message);
   } catch (err) {
     console.error(`[Email Service Error] Failed to process email notification for user ${userId}:`, err);
   }

@@ -1,7 +1,7 @@
 import { Notification } from "../../types";
 import { Queryable } from "../db";
 import { generateId } from "../ids";
-import { sendEmailNotification } from "../services/email";
+import { sendEmailNotification, sendEmailDirect } from "../services/email";
 
 type CreateNotificationInput = {
   userId: string;
@@ -35,6 +35,19 @@ export const notificationsRepository = {
       isRead: false,
       createdAt: new Date().toISOString()
     };
+    // Fetch user details synchronously using the active transaction/query client
+    let userEmail: string | null = null;
+    let userName: string | null = null;
+    try {
+      const userRes = await db.query("SELECT email, name FROM users WHERE id = $1", [notification.userId]);
+      if (userRes.rows[0]) {
+        userEmail = userRes.rows[0].email;
+        userName = userRes.rows[0].name;
+      }
+    } catch (dbErr) {
+      console.error("[Notifications Repository] Synchronous user email fetch failed:", dbErr);
+    }
+
     await db.query(
       `INSERT INTO notifications (id, user_id, type, message, is_read, created_at, related_entity_type, related_entity_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -50,10 +63,12 @@ export const notificationsRepository = {
       ]
     );
 
-    // Dispatch email notification asynchronously
-    sendEmailNotification(db, notification.userId, notification.message).catch(err => {
-      console.error("[Email Notification dispatch error]:", err);
-    });
+    // Dispatch email notification asynchronously without querying db
+    if (userEmail) {
+      sendEmailDirect(userEmail, userName || "Học viên", notification.message).catch(err => {
+        console.error("[Email Notification dispatch error]:", err);
+      });
+    }
 
     return notification;
   },

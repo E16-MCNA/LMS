@@ -124,20 +124,8 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
         // STUDENT SIS
         return [
           {
-            title: "Tra cứu Thời khóa biểu & Điểm danh lớp học số",
-            description: "Xem thời gian biểu các lớp học phần tuần hiện tại và nắm lịch đứng lớp.",
-            icon: <Calendar className="h-5 w-5 text-cyan-400" />,
-            steps: [
-              "Vào tab 'Thời khóa biểu' trên Sidebar Menu SIS dọc trái.",
-              "Lịch học hiển thị dưới dạng Lưới tuần (Thứ Hai -> Chủ Nhật) chia ca rõ ràng kèm số phòng học và Tên Giảng viên đứng lớp.",
-              "Bạn có thể chuyển sang 'Dạng danh sách (List)' để xem lịch trình các ca học tuần tự cực kỳ dễ đọc trên điện thoại.",
-              "Tại lớp học trực tiếp, sử dụng camera điện thoại quét mã QR Code Điểm Danh do Giảng viên hiển thị trên bảng máy chiếu đầu giờ để xác thực đi học tự động."
-            ],
-            tips: "💡 Phiên quét mã QR điểm danh chỉ hoạt động và mở cửa xác nhận trong vòng 15 ca học đầu tiên của buổi học."
-          },
-          {
-            title: "Cập nhật Hồ sơ lý lịch & Cổng Phụ Huynh",
-            description: "Quản lý thông tin liên hệ thường trú và thiết lập cổng liên lạc cho bố mẹ.",
+            title: "Cập nhật Hồ sơ lý lịch cá nhân",
+            description: "Quản lý thông tin liên hệ thường trú và thông tin liên lạc cá nhân.",
             icon: <Users className="h-5 w-5 text-cyan-400" />,
             steps: [
               "Vào tab 'Lý lịch cá nhân' dưới phân hệ SIS Học Vụ.",
@@ -145,7 +133,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
               "Nhập số điện thoại cá nhân, ngày sinh, giới tính, địa chỉ thường trú và thông tin người bảo lãnh.",
               "Ấn 'Lưu trữ hồ sơ' để cập nhật an toàn vào cơ sở dữ liệu học thuật."
             ],
-            tips: "💡 Thông tin Phụ huynh rất quan trọng để hệ thống tự động đồng bộ kết quả học tập sang Cổng Phụ Huynh."
+            tips: "💡 Thông tin cá nhân chính xác giúp nhà trường liên hệ và cập nhật trạng thái học tập của bạn kịp thời."
           },
           {
             title: "Kiểm tra chuyên cần & Đóng học phí trực tuyến",

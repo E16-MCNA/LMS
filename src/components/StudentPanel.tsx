@@ -311,22 +311,22 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
       triggerToast("Đã lập yêu cầu đăng ký học thành công!");
       setPaymentGuideTx(newTx);
     } else {
-      // Free course -> Activate immediately
+      // Free course -> Set status to pending (waiting for manager assignment)
       const newEnroll: Enrollment = {
         id: generateId("enroll"),
         courseId,
         studentId: currentUser.id,
-        status: "active",
+        status: "pending",
         enrolledAt: new Date().toISOString()
       };
 
       storeData.enrollments.push(newEnroll);
-      AppStore.log(currentUser.id, "enroll_course", courseId, "Đăng ký tham gia khóa đào tạo miễn phí thành công.");
-      AppStore.notify(currentUser.id, "success", `Tham gia thành công khóa học miễn phí! Hãy vào tab "Lớp học của tôi" để bắt đầu.`);
+      AppStore.log(currentUser.id, "enroll_course", courseId, "Đăng ký tham gia khóa đào tạo miễn phí thành công. Trạng thái: Chờ xếp lớp.");
+      AppStore.notify(currentUser.id, "success", `Đã gửi yêu cầu đăng ký khóa học "${courseObj.title}". Vui lòng chờ Giáo vụ sắp xếp lớp học phần.`);
       AppStore.save(storeData);
 
       onRefreshData();
-      triggerToast("Đăng ký khóa học thành công!");
+      triggerToast("Đăng ký khóa học thành công! Vui lòng chờ sắp xếp lớp.");
       setViewingCourseId(null);
       setActiveSubTab("learning");
     }

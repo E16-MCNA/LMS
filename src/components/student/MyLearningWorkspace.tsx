@@ -483,6 +483,18 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                         </span>
                       </div>
 
+                      {isDeadlineExpired && (
+                        <div className="bg-red-950/20 border border-red-500/30 rounded-2xl p-4 text-xs text-red-200 flex items-start gap-2 shadow-lg shadow-red-500/5 animate-pulse">
+                          <AlertCircle className="h-4.5 w-4.5 text-red-400 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <span className="font-extrabold block text-sm uppercase tracking-wide">Thời hạn nộp bài đã kết thúc</span>
+                            <p className="text-white/70">
+                              Hạn chót nộp bài là <span className="text-white font-semibold">{new Date(assignObj.deadline).toLocaleDateString("vi-VN")}</span> lúc <span className="text-white font-semibold">{new Date(assignObj.deadline).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}</span>. Bạn không thể nộp hoặc chỉnh sửa bài làm sau khi hết hạn.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-3">
                         <span className="text-xs font-mono font-bold text-white/50 uppercase tracking-widest block">Yêu cầu & Hướng dẫn</span>
                         <div className="bg-black/20 p-5 rounded-2xl border border-white/5 text-xs md:text-sm text-white/70 leading-relaxed font-sans whitespace-pre-line shadow-inner">

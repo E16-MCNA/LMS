@@ -54,9 +54,10 @@ interface AdminPanelProps {
   onLogout: () => void;
   onRefreshData: () => void;
   activeSystem?: "SIS" | "LMS";
+  updateStore?: (updater: (draft: any) => void) => void;
 }
 
-export default function AdminPanel({ currentUser, onLogout, onRefreshData, activeSystem = "SIS" }: AdminPanelProps) {
+export default function AdminPanel({ currentUser, onLogout, onRefreshData, activeSystem = "SIS", updateStore }: AdminPanelProps) {
   const { store, isLoading, isError } = useApiStore();
 
   // Navigation tab states
@@ -712,6 +713,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               currentUser={currentUser} 
               onRefreshData={onRefreshData} 
               triggerToast={triggerToast} 
+              updateStore={updateStore}
               initialTab={
                 activeSubTab === "academic_years" ? "years" :
                 activeSubTab === "semesters" ? "semesters" :

@@ -154,6 +154,16 @@ export default function AssignmentSubmit(props: ComponentProps) {
                   return (
                     <div key={a.id} className="bg-gradient-to-b from-white/5 to-white/[0.02] border border-white/10 p-5 rounded-2xl hover:border-white/20 transition-all duration-200 shadow-xl relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full filter blur-xl pointer-events-none" />
+                      
+                      {isDeadlineExpired && (
+                        <div className="mb-4 bg-red-950/20 border border-red-500/30 rounded-xl p-3 flex items-center gap-2 text-red-200 text-xs animate-pulse">
+                          <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                          <div>
+                            <span className="font-bold">Đã quá hạn nộp bài!</span> Hạn cuối là {new Date(a.deadline).toLocaleDateString("vi-VN")} lúc {new Date(a.deadline).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}. Bạn không thể nộp bài này nữa.
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div className="space-y-2 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">

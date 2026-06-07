@@ -151,9 +151,15 @@ export default function GradebookTable(props: ComponentProps) {
                 const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => {
                   const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
                   if (!studentUser) return false;
+
+                  const reg = (store.courseRegistrations || []).find((r: any) => r.studentId === enroll.studentId && r.status === "registered");
+                  const sec = reg ? (store.courseSections || []).find((s: any) => s.id === reg.sectionId && s.courseId === enroll.courseId) : null;
+                  const secCode = sec?.sectionCode || "";
+
                   return !searchTerm ||
                     studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    studentUser.email.toLowerCase().includes(searchTerm.toLowerCase());
+                    studentUser.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    secCode.toLowerCase().includes(searchTerm.toLowerCase());
                 });
 
                 if (courseEnrollments.length === 0) return null;
@@ -225,11 +231,23 @@ export default function GradebookTable(props: ComponentProps) {
                             const totalLessons = store.lessons.filter((l: any) => l.courseId === enroll.courseId).length;
 
                             return (
-                              <tr key={idx} className="hover:bg-white/2 transition-colors">
-                                <td className="p-3.5 font-medium text-white">
-                                  <div>{studentUser?.name || "Không xác định"}</div>
-                                  <div className="text-[10px] text-white/40 font-mono">{studentUser?.email || "Không xác định"}</div>
-                                </td>
+                                <tr key={idx} className="hover:bg-white/2 transition-colors">
+                                  <td className="p-3.5 font-medium text-white">
+                                    <div>{studentUser?.name || "Không xác định"}</div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="text-[10px] text-white/40 font-mono">{studentUser?.email || "Không xác định"}</span>
+                                      {(() => {
+                                        const reg = (store.courseRegistrations || []).find((r: any) => r.studentId === enroll.studentId && r.status === "registered");
+                                        const sec = reg ? (store.courseSections || []).find((s: any) => s.id === reg.sectionId && s.courseId === enroll.courseId) : null;
+                                        if (!sec) return null;
+                                        return (
+                                          <span className="px-1.5 py-0.2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded font-mono text-[9px] font-bold uppercase">
+                                            Lớp: {sec.sectionCode}
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                  </td>
                                 <td className="p-3.5 text-xs font-mono">
                                   Đã hoàn thành {completedLessons}/{totalLessons} bài học
                                 </td>

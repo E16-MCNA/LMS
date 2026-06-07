@@ -535,7 +535,7 @@ function AppShell() {
               </div>
 
               {/* Header right: System Switcher */}
-              {["manager", "super_admin", "admin", "teacher", "student", "parent"].includes(currentUser.role) ? (
+              {["manager", "super_admin", "admin", "student", "parent"].includes(currentUser.role) ? (
                 <div className="flex bg-white/5 border border-white/10 rounded-2xl p-1 relative z-10 backdrop-blur-xl transition duration-200 shadow-md">
                   <button
                     onClick={() => setActiveSystem("SIS")}
@@ -579,6 +579,7 @@ function AppShell() {
                     onLogout={handleLogout}
                     onRefreshData={refreshStoreDataFromServer}
                     activeSystem={activeSystem}
+                    updateStore={updateStore}
                   />
                 )}
                 {currentUser.role === "teacher" && (

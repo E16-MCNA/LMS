@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Users, 
   Calendar, 
@@ -24,14 +24,48 @@ interface AttendanceManagerProps {
   onRefreshData: () => void;
   triggerToast: (msg: string) => void;
   defaultCourseId?: string;
+  lockSelectors?: boolean;
+  courseId?: string | null;
+  sectionId?: string | null;
+  onGoBackToTimetable?: () => void;
 }
 
-export default function AttendanceManager({ store, currentUser, onRefreshData, triggerToast, defaultCourseId }: AttendanceManagerProps) {
+export default function AttendanceManager({
+  store,
+  currentUser,
+  onRefreshData,
+  triggerToast,
+  defaultCourseId,
+  lockSelectors = false,
+  courseId = null,
+  sectionId = null,
+  onGoBackToTimetable
+}: AttendanceManagerProps) {
   // Course selection
-  const [selectedCourseId, setSelectedCourseId] = useState(defaultCourseId || "");
-  const [selectedSectionId, setSelectedSectionId] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState(courseId || defaultCourseId || "");
+  const [selectedSectionId, setSelectedSectionId] = useState(sectionId || "");
   // Session selection (or create new)
   const [activeSessionId, setActiveSessionId] = useState("");
+
+  // Sync locked values if they change
+  useEffect(() => {
+    if (lockSelectors) {
+      if (courseId) setSelectedCourseId(courseId);
+      if (sectionId) setSelectedSectionId(sectionId);
+    }
+  }, [lockSelectors, courseId, sectionId]);
+
+  // Auto-select latest session if locked and no session is active yet
+  useEffect(() => {
+    if (lockSelectors && selectedCourseId && selectedSectionId && !activeSessionId) {
+      const classSessions = (store.attendanceSessions || []).filter(s =>
+        s.courseId === selectedCourseId && s.sectionId === selectedSectionId
+      );
+      if (classSessions.length > 0) {
+        setActiveSessionId(classSessions[classSessions.length - 1].id);
+      }
+    }
+  }, [lockSelectors, selectedCourseId, selectedSectionId, activeSessionId, store.attendanceSessions]);
 
   // Sorting state for nonCompliantCourses
   const [complianceSortField, setComplianceSortField] = useState<string>("courseTitle");
@@ -309,6 +343,25 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
 
   return (
     <div className="space-y-6">
+      {lockSelectors && onGoBackToTimetable && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-2xl gap-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            </span>
+            <span className="text-xs font-semibold text-indigo-200 font-sans">
+              Đang mở chế độ Điểm danh học viên từ Thời khóa biểu. Lọc chọn lớp/môn học đã khóa để tránh sai lệch.
+            </span>
+          </div>
+          <button
+            onClick={onGoBackToTimetable}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition duration-150 cursor-pointer text-xs flex items-center gap-1 shadow-lg shadow-indigo-600/10 border border-indigo-500/20"
+          >
+            ← Quay lại Thời khóa biểu
+          </button>
+        </div>
+      )}
 
       {/* Giám sát tuân thủ điểm danh giảng viên (Học vụ & Admin) */}
       {(currentUser.role === "admin" || currentUser.role === "manager" || currentUser.role === "super_admin") && (
@@ -479,12 +532,14 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
               placeholder="Lọc môn..."
               value={courseFilterText}
               onChange={(e) => setCourseFilterText(e.target.value)}
-              className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans"
+              disabled={lockSelectors}
+              className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <select
               value={selectedCourseId}
               onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
-              className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all"
+              disabled={lockSelectors}
+              className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">-- Click chọn lớp môn học --</option>
               {filteredCourses.map(c => (
@@ -507,12 +562,14 @@ export default function AttendanceManager({ store, currentUser, onRefreshData, t
                   placeholder="Lọc lớp..."
                   value={sectionFilterText}
                   onChange={(e) => setSectionFilterText(e.target.value)}
-                  className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans"
+                  disabled={lockSelectors}
+                  className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <select
                   value={selectedSectionId}
                   onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}
-                  className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all"
+                  disabled={lockSelectors}
+                  className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">-- Chọn lớp --</option>
                   {filteredCourseSections.map((section: any) => (

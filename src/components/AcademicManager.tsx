@@ -21,21 +21,38 @@ interface AcademicManagerProps {
   onRefreshData: () => void;
   triggerToast: (msg: string) => void;
   initialTab?: "years" | "semesters" | "departments" | "programs";
+  updateStore?: (updater: (draft: LMSDataStore) => void) => void;
 }
 
-export default function AcademicManager({ store, currentUser, onRefreshData, triggerToast, initialTab }: AcademicManagerProps) {
+export default function AcademicManager({ store, currentUser, onRefreshData, triggerToast, initialTab, updateStore }: AcademicManagerProps) {
   const [activeTab, setActiveTab] = useState<"years" | "semesters" | "departments" | "programs">(initialTab ?? "years");
 
   const persistFromSnapshot = async (mutator: (data: LMSDataStore) => void) => {
-    try {
-      const next = structuredClone(store);
-      mutator(next);
-      await AppStore.save(next);
-      onRefreshData();
-    } catch (err: any) {
-      console.error("Lỗi đồng bộ dữ liệu SIS:", err);
-      triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
-      onRefreshData();
+    if (updateStore) {
+      try {
+        // Optimistically update React state in-memory
+        updateStore(mutator);
+        // Persist to Postgres database asynchronously
+        const next = AppStore.get();
+        await AppStore.save(next);
+      } catch (err: any) {
+        console.error("Lỗi đồng bộ dữ liệu SIS:", err);
+        triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
+        // Rollback to server state
+        onRefreshData();
+      }
+    } else {
+      // Fallback if updateStore is not provided
+      try {
+        const next = structuredClone(store);
+        mutator(next);
+        await AppStore.save(next);
+        onRefreshData();
+      } catch (err: any) {
+        console.error("Lỗi đồng bộ dữ liệu SIS:", err);
+        triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
+        onRefreshData();
+      }
     }
   };
 
@@ -371,8 +388,63 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   const currentProgram = programs.find(p => p.id === selectedProgramId);
   const activeCurriculums = programCourses.filter(pc => pc.programId === selectedProgramId);
 
+  // Find current active semester
+  const todayStr = new Date().toISOString().split('T')[0];
+  const activeSemester = semesters.find(s => {
+    const linkedY = years.find(y => y.id === s.academicYearId);
+    const isYearCurrent = linkedY ? Boolean(linkedY.isCurrent) : false;
+    return isYearCurrent && s.startDate && s.endDate && todayStr >= s.startDate && todayStr <= s.endDate;
+  });
+  const activeYear = years.find(y => y.isCurrent);
+
   return (
     <div className="space-y-6">
+      {/* Active Semester Banner */}
+      {activeSemester ? (
+        <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full filter blur-xl" />
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping animate-duration-1000" />
+              <span className="text-emerald-400 text-[10px] font-extrabold uppercase tracking-widest font-mono">
+                Học Kỳ Đang Hoạt Động (Active)
+              </span>
+            </div>
+            <h3 className="text-lg font-display font-black text-white">
+              {activeSemester.name} — Năm học {activeYear?.name || "Hiện tại"}
+            </h3>
+            <p className="text-xs text-white/60">
+              Thời gian học kỳ: <span className="text-white font-medium">{activeSemester.startDate}</span> đến <span className="text-white font-medium">{activeSemester.endDate}</span>
+            </p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-xs space-y-1">
+            <span className="text-white/40 block text-[9px] uppercase font-bold tracking-wider">Cổng đăng ký môn học</span>
+            <div className="text-white font-medium">
+              Mở: <span className="text-cyan-400 font-mono">{activeSemester.registrationOpen}</span>
+            </div>
+            <div className="text-white font-medium">
+              Đóng: <span className="text-red-400 font-mono">{activeSemester.registrationClose}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-950/20 border border-amber-500/30 rounded-3xl p-6 relative overflow-hidden backdrop-blur-md">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full filter blur-xl" />
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-amber-400 text-[10px] font-extrabold uppercase tracking-widest font-mono">
+              Cảnh Báo Học Vụ
+            </span>
+          </div>
+          <h3 className="text-base font-display font-bold text-white mt-1">
+            Chưa có học kỳ nào đang trong thời gian hoạt động (Active).
+          </h3>
+          <p className="text-xs text-white/60 mt-0.5">
+            Vui lòng cấu hình thời gian bắt đầu và kết thúc của học kỳ trong năm học hiện tại để kích hoạt.
+          </p>
+        </div>
+      )}
+
       <div className="flex border-b border-white/10 pb-2 gap-4">
         <button
           onClick={() => { setActiveTab("years"); setSelectedProgramId(null); }}

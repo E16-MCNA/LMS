@@ -42,8 +42,8 @@ body, html {
 /* Overrides for semi-transparent dark layers (glass containers) */
 .bg-white\/5, .bg-white\/3, .bg-white\/2, .bg-white\/8, .bg-black\/20, .bg-black\/25, .bg-black\/35 {
   background-color: #ffffff !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
-  border-color: #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 /* Active sidebar link highlight overlay */
@@ -54,7 +54,7 @@ body, html {
 
 /* Borders override */
 .border-white\/10, .border-white\/15, .border-white\/5, .border-white\/20, .border-white\/8, .border-b-white\/5, .border-r-white\/15, .border-t-white\/5 {
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* Text overrides */

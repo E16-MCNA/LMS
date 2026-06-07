@@ -30,7 +30,7 @@ export default function ForumDiscussion({
 
   // Filter posts for the current course and section
   const coursePosts = (store.forumPosts || []).filter(
-    (post: any) => post.courseId === courseId && (sectionId ? post.sectionId === sectionId : !post.sectionId)
+    (post: any) => post.courseId === courseId && post.sectionId === sectionId
   );
 
   // Search filter
@@ -132,6 +132,18 @@ export default function ForumDiscussion({
   };
 
   const isReadOnly = currentUser.role === "parent";
+
+  if (!sectionId) {
+    return (
+      <div className="w-full bg-white/5 border border-white/10 rounded-3xl p-8 text-center text-white/50 space-y-3 flex flex-col items-center justify-center min-h-[250px]">
+        <MessageSquare className="w-10 h-10 text-indigo-400/60 mx-auto animate-bounce" />
+        <h5 className="font-bold text-white text-sm">Bạn chưa được xếp lớp học phần cụ thể</h5>
+        <p className="text-xs text-white/60 max-w-md mx-auto leading-relaxed">
+          Diễn đàn thảo luận được tổ chức riêng biệt cho từng lớp học. Bạn cần được Giáo vụ xếp vào lớp học phần cụ thể của môn học này để tham gia thảo luận.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 shadow-2xl text-white">

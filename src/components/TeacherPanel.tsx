@@ -53,6 +53,21 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   const [activeSubTab, setActiveSubTab] = useState<string>("teacher_guide");
   const [showSidebar, setShowSidebar] = useState(false);
 
+  // Attendance routing/locking states from Timetable redirect
+  const [attendanceCourseId, setAttendanceCourseId] = useState<string | null>(null);
+  const [attendanceSectionId, setAttendanceSectionId] = useState<string | null>(null);
+  const [lockAttendanceSelectors, setLockAttendanceSelectors] = useState<boolean>(false);
+
+  const handleNavClick = (tab: string) => {
+    setActiveSubTab(tab);
+    setShowSidebar(false);
+    if (tab !== "attendance") {
+      setAttendanceCourseId(null);
+      setAttendanceSectionId(null);
+      setLockAttendanceSelectors(false);
+    }
+  };
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [activeSubTab]);
@@ -599,7 +614,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
             {activeSystem === "SIS" ? (
               <>
                 <button
-                  onClick={() => { setActiveSubTab("teacher_guide"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("teacher_guide")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "teacher_guide" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -610,7 +625,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Hướng dẫn sử dụng</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("timetable"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("timetable")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "timetable" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -621,21 +636,21 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Thời khóa biểu giảng dạy</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("attendance"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("advising")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
-                    activeSubTab === "attendance" 
+                    activeSubTab === "advising" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "attendance" ? "text-indigo-300" : "text-white/40"}`} />
-                  <span>Điểm danh lớp học</span>
+                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "advising" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Cố vấn học tập</span>
                 </button>
               </>
             ) : (
               <>
                 <button
-                  onClick={() => { setActiveSubTab("teacher_guide"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("teacher_guide")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "teacher_guide" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -646,7 +661,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Hướng dẫn sử dụng</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("courses"); setSelectedCourseId(null); setShowSidebar(false); }}
+                  onClick={() => { handleNavClick("courses"); setSelectedCourseId(null); }}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "courses" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -657,7 +672,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Chương trình Đào tạo</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("quizzes"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("quizzes")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "quizzes" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -668,7 +683,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Đề thi & Đánh giá</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("assignments"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("assignments")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "assignments" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -679,7 +694,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Bài tập & Chấm điểm</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("gradebook"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("gradebook")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "gradebook" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -690,7 +705,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Sổ điểm Tổng hợp</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("analytics"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("analytics")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "analytics" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -701,7 +716,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Báo cáo Hiệu suất</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("timetable"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("timetable")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
                     activeSubTab === "timetable" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
@@ -712,15 +727,15 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <span>Thời khóa biểu</span>
                 </button>
                 <button
-                  onClick={() => { setActiveSubTab("attendance"); setShowSidebar(false); }}
+                  onClick={() => handleNavClick("advising")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
-                    activeSubTab === "attendance" 
+                    activeSubTab === "advising" 
                       ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
                       : "text-white/60 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "attendance" ? "text-indigo-300" : "text-white/40"}`} />
-                  <span>Điểm danh lớp học</span>
+                  <Users className={`h-4.5 w-4.5 ${activeSubTab === "advising" ? "text-indigo-300" : "text-white/40"}`} />
+                  <span>Cố vấn học tập</span>
                 </button>
               </>
             )}
@@ -741,6 +756,12 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
               currentUser={currentUser}
               store={store}
               onRefreshData={onRefreshData}
+              onRedirectToAttendance={(courseId, sectionId) => {
+                setAttendanceCourseId(courseId);
+                setAttendanceSectionId(sectionId);
+                setLockAttendanceSelectors(true);
+                setActiveSubTab("attendance");
+              }}
             />
           )}
 
@@ -758,6 +779,15 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
               currentUser={currentUser}
               onRefreshData={onRefreshData}
               triggerToast={triggerToast}
+              lockSelectors={lockAttendanceSelectors}
+              courseId={attendanceCourseId}
+              sectionId={attendanceSectionId}
+              onGoBackToTimetable={() => {
+                setAttendanceCourseId(null);
+                setAttendanceSectionId(null);
+                setLockAttendanceSelectors(false);
+                setActiveSubTab("timetable");
+              }}
             />
           )}
 

@@ -29,6 +29,7 @@ interface TimetableProps {
   store: LMSDataStore;
   onRefreshData: () => void;
   defaultLookupType?: "student" | "teacher" | "all";
+  onRedirectToAttendance?: (courseId: string, sectionId: string) => void;
 }
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
@@ -55,7 +56,7 @@ const STANDARD_SLOTS = [
   { id: 4, label: "Ca 5", time: "18:00 - 20:00", start: "18:00", end: "20:00" }
 ];
 
-export default function Timetable({ role, currentUser, store, onRefreshData, defaultLookupType }: TimetableProps) {
+export default function Timetable({ role, currentUser, store, onRefreshData, defaultLookupType, onRedirectToAttendance }: TimetableProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeSemesterId, setActiveSemesterId] = useState<string>("sem_spring25");
 
@@ -571,7 +572,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
             ))}
           </select>
 
-          {(role === "admin" || role === "teacher") && (
+          {role === "admin" && (
             <button
               onClick={handleOpenCreate}
               className="px-3 py-1.5 bg-white text-indigo-950 font-bold rounded-xl text-xs hover:bg-slate-50 transition cursor-pointer flex items-center gap-1.5"
@@ -817,7 +818,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                               >
                                 <div className="flex justify-between items-start gap-1 font-bold">
                                   <span className="text-white font-black">{item.section.sectionCode}</span>
-                                  {(role === "admin" || (role === "teacher" && item.section.teacherId === currentUser.id)) && (
+                                  {role === "admin" && (
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition duration-150">
                                       <button
                                         onClick={() => handleOpenEdit(item.section)}
@@ -834,6 +835,20 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                         <Trash2 className="h-3 w-3" />
                                       </button>
                                     </div>
+                                  )}
+                                  {role === "teacher" && item.section.teacherId === currentUser.id && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onRedirectToAttendance) {
+                                          onRedirectToAttendance(item.section.courseId, item.section.id);
+                                        }
+                                      }}
+                                      className="px-1.5 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                                      title="Điểm danh lớp học phần"
+                                    >
+                                      📝 Điểm danh
+                                    </button>
                                   )}
                                 </div>
 
@@ -971,10 +986,27 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                       <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
                       Phòng: {slot.room || "Trực tuyến"}
                     </span>
-                    {slot.specificDate && (
+                    {slot.specificDate ? (
                       <span className="flex items-center gap-1 font-mono text-cyan-400 font-bold">
                         <span>📅</span>
                         Ngày: {slot.specificDate}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 font-mono text-cyan-400 font-semibold">
+                        <span>📅</span>
+                        Ngày (Tuần này): {(() => {
+                          const now = new Date();
+                          const dayIndexMap: Record<string, number> = {
+                            "Chủ Nhật": 0, "Thứ Hai": 1, "Thứ Ba": 2, "Thứ Tư": 3, "Thứ Năm": 4, "Thứ Sáu": 5, "Thứ Bảy": 6
+                          };
+                          const targetDayIndex = dayIndexMap[slot.dayOfWeek];
+                          if (targetDayIndex === undefined) return "";
+                          const currentDayIndex = now.getDay();
+                          const diff = targetDayIndex - currentDayIndex;
+                          const targetDate = new Date(now);
+                          targetDate.setDate(now.getDate() + diff);
+                          return targetDate.toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit', year: 'numeric' });
+                        })()}
                       </span>
                     )}
                     {role !== "teacher" && (
@@ -1047,18 +1079,34 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                     }
                     return null;
                   })()}
-                  <button
-                    onClick={() => handleOpenEdit(slot.section)}
-                    className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-xl transition cursor-pointer text-xs flex items-center gap-1 font-semibold"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" /> Sửa
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSection(slot.section.id, slot.section.sectionCode)}
-                    className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer text-xs flex items-center gap-1 font-semibold"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> Hủy
-                  </button>
+                  {role === "admin" && (
+                    <>
+                      <button
+                        onClick={() => handleOpenEdit(slot.section)}
+                        className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-xl transition cursor-pointer text-xs flex items-center gap-1 font-semibold"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" /> Sửa
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSection(slot.section.id, slot.section.sectionCode)}
+                        className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition cursor-pointer text-xs flex items-center gap-1 font-semibold"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Hủy
+                      </button>
+                    </>
+                  )}
+                  {role === "teacher" && (
+                    <button
+                      onClick={() => {
+                        if (onRedirectToAttendance) {
+                          onRedirectToAttendance(slot.section.courseId, slot.section.id);
+                        }
+                      }}
+                      className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition shadow-lg shadow-indigo-600/10 font-sans border border-indigo-500/25"
+                    >
+                      <span>📝 Điểm danh học viên</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
