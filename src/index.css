@@ -90,7 +90,7 @@ body, html {
 .text-violet-100, .text-violet-200, .text-violet-300, .text-violet-400 {
   color: #6d28d9 !important; /* violet-700 */
 }
-.text-slate-300, .text-gray-300 {
+.text-slate-100, .text-slate-200, .text-slate-300, .text-gray-100, .text-gray-200, .text-gray-300 {
   color: #475569 !important; /* slate-600 */
 }
 

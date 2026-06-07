@@ -441,7 +441,7 @@ export default function AssignmentGrader(props: ComponentProps) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Nhập Điểm số (Tối đa: {chal?.maxScore || 100})</label>
+                    <label className="text-xs font-bold text-slate-300">Nhập Điểm số (Tối đa: {chal?.maxScore || 100})</label>
                     <input
                       type="number"
                       required
@@ -454,7 +454,7 @@ export default function AssignmentGrader(props: ComponentProps) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Góp ý & Nhận xét của Giảng viên</label>
+                    <label className="text-xs font-bold text-slate-300">Góp ý & Nhận xét của Giảng viên</label>
                     <textarea
                       required
                       placeholder="Ví dụ: Ý tưởng tốt, cách trình bày rõ ràng, cần tối ưu thêm mã nguồn."
@@ -468,7 +468,7 @@ export default function AssignmentGrader(props: ComponentProps) {
                     <button
                       type="button"
                       onClick={() => setActiveSubmissionId(null)}
-                      className="px-4 py-2 bg-transparent text-slate-500 hover:text-slate-800 transition cursor-pointer font-bold"
+                      className="px-4 py-2 bg-transparent text-slate-400 hover:text-white transition cursor-pointer font-bold"
                     >
                       Hủy bỏ
                     </button>
