@@ -1254,7 +1254,7 @@ app.get("/api/dashboard/admin", requireAuth, requireRole(["manager", "admin", "s
 }));
 app.get("/api/dashboard/teacher", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(dashboardFromStore(await storeSnapshotFromDb(pool), req.user!))));
 app.get("/api/dashboard/student", requireAuth, requireRole(["student"]), asyncHandler(async (req, res) => res.json(dashboardFromStore(await storeSnapshotFromDb(pool), req.user!))));
-app.get("/api/dashboard/finance", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (_req, res) => res.json(await financeRepository.getDashboard(pool))));
+app.get("/api/dashboard/finance", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (_req, res) => res.json(await financeRepository.getDashboard(pool))));
 app.get("/api/dashboard/academic", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => res.json({ ...dashboardFromStore(await storeSnapshotFromDb(pool), req.user!), warnings: await academicsRepository.listWarnings(pool) })));
 app.get("/api/dashboard/advisor", requireAuth, requireRole(["teacher"]), asyncHandler(async (req, res) => res.json(await advisorsRepository.getDashboard(pool, req.user!.id))));
 app.get("/api/dashboard/parent", requireAuth, requireRole(["parent"]), resolveLinkedStudent, asyncHandler(async (req, res) => res.json(await parentRepository.getDashboard(pool, req.linkedStudentId!))));
@@ -2166,7 +2166,7 @@ app.patch("/api/academic-warnings/:id/resolve", requireAuth, requireRole(["teach
   res.json(warning);
 }));
 
-app.post("/api/tuition/pay", requireAuth, requireRole(["super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
+app.post("/api/tuition/pay", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.payTuition), asyncHandler(async (req, res) => {
   const ownerStudentId = req.user!.role === "student" ? req.user!.id : undefined;
   const result = await financeRepository.payTuition(pool, req.body.feeId, req.body.paidAmount, ownerStudentId);
   if (!result) return res.status(404).json({ error: "Tuition fee not found." });

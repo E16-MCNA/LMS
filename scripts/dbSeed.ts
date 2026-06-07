@@ -66,14 +66,24 @@ async function main() {
       client,
       "users",
       ["id", "email", "password_hash", "password_salt", "name", "role", "is_active", "phone", "linked_student_id", "created_at"],
-      [["user_parent_demo", "parent@mcna.local", parentCredential.hash, parentCredential.salt, "Parent Demo", "parent", true, null, "user_student", new Date().toISOString()]],
+      [["user_parent_demo", "parentsstudent@mcna.local", parentCredential.hash, parentCredential.salt, "Parent Demo", "parent", true, null, "user_student", new Date().toISOString()]],
       `(id) DO UPDATE SET email = EXCLUDED.email, password_hash = EXCLUDED.password_hash, password_salt = EXCLUDED.password_salt, name = EXCLUDED.name, role = EXCLUDED.role, is_active = EXCLUDED.is_active, linked_student_id = EXCLUDED.linked_student_id`
     );
+
+    const parentLinks = store.users
+      .filter(u => u.role === "parent" && u.linkedStudentId)
+      .map(u => [
+        u.id === "user_parent_demo" ? "plink_parent_demo_student" : `plink_${u.linkedStudentId}`,
+        u.id,
+        u.linkedStudentId!,
+        new Date().toISOString()
+      ]);
+
     await insertBatch(
       client,
       "parent_links",
       ["id", "parent_id", "student_id", "created_at"],
-      [["plink_parent_demo_student", "user_parent_demo", "user_student", new Date().toISOString()]],
+      parentLinks,
       `(parent_id, student_id) DO NOTHING`
     );
 
@@ -187,6 +197,46 @@ async function main() {
       ["id", "user_id", "student_code", "program_id", "department_id", "academic_year", "enrollment_date", "expected_graduation", "status", "gpa", "total_credits_earned", "address", "phone", "date_of_birth", "gender", "notes"],
       (store.studentProfiles || []).map(p => [p.id, p.userId, p.studentCode, p.programId, p.departmentId, p.academicYear, p.enrollmentDate, p.expectedGraduation, p.status, p.gpa, p.totalCreditsEarned, p.address || null, p.phone || null, p.dateOfBirth || null, p.gender || null, p.notes || null]),
       `(id) DO UPDATE SET user_id = EXCLUDED.user_id, student_code = EXCLUDED.student_code, program_id = EXCLUDED.program_id, department_id = EXCLUDED.department_id, academic_year = EXCLUDED.academic_year, enrollment_date = EXCLUDED.enrollment_date, expected_graduation = EXCLUDED.expected_graduation, status = EXCLUDED.status, gpa = EXCLUDED.gpa, total_credits_earned = EXCLUDED.total_credits_earned, address = EXCLUDED.address, phone = EXCLUDED.phone, date_of_birth = EXCLUDED.date_of_birth, gender = EXCLUDED.gender, notes = EXCLUDED.notes`
+    );
+
+    await insertBatch(
+      client,
+      "course_sections",
+      ["id", "course_id", "semester_id", "teacher_id", "section_code", "max_students", "schedule", "status"],
+      (store.courseSections || []).map(section => [
+        section.id,
+        section.courseId,
+        section.semesterId,
+        section.teacherId,
+        section.sectionCode,
+        section.maxStudents,
+        JSON.stringify(section.schedule || []),
+        section.status
+      ]),
+      `(id) DO UPDATE SET course_id = EXCLUDED.course_id, semester_id = EXCLUDED.semester_id, teacher_id = EXCLUDED.teacher_id, section_code = EXCLUDED.section_code, max_students = EXCLUDED.max_students, schedule = EXCLUDED.schedule, status = EXCLUDED.status`
+    );
+
+    const fallbackDays = [2, 4, 3, 6];
+    const sectionScheduleRows: any[] = [];
+    for (const section of store.courseSections || []) {
+      for (const [index, slot] of (section.schedule || []).entries()) {
+        sectionScheduleRows.push([
+          `sched_${section.id}_${index}`,
+          section.id,
+          fallbackDays[index % fallbackDays.length],
+          slot.startTime,
+          slot.endTime,
+          slot.room || null
+        ]);
+      }
+    }
+    
+    await insertBatch(
+      client,
+      "section_schedules",
+      ["id", "section_id", "day_of_week", "start_time", "end_time", "room"],
+      sectionScheduleRows,
+      `(id) DO UPDATE SET section_id = EXCLUDED.section_id, day_of_week = EXCLUDED.day_of_week, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`
     );
 
     await insertBatch(

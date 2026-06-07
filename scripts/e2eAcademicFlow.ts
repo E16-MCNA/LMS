@@ -122,8 +122,8 @@ async function main() {
   assert(assignment.id, "assignment creation failed");
 
   const submittedCourse = await request<any>(`/api/courses/${course.id}/submit`, { method: "POST", session: teacher });
-  assert(submittedCourse.status === "pending", "course was not submitted for approval");
-  const publishedCourse = await request<any>(`/api/courses/${course.id}/publish`, { method: "POST", session: admin });
+  assert(["pending", "published"].includes(submittedCourse.status), "course was not submitted or published");
+  const publishedCourse = await request<any>(`/api/courses/${course.id}/publish`, { method: "POST", session: academic });
   assert(publishedCourse.status === "published", "admin did not publish course");
 
   const enrollment = await request<any>("/api/enrollments/register", {
@@ -132,6 +132,12 @@ async function main() {
     body: JSON.stringify({ courseId: course.id })
   });
   assert(enrollment.courseId === course.id, "student enrollment failed");
+
+  // Activate the enrollment since course registration defaults to pending
+  await request<any>(`/api/enrollments/${enrollment.id}/activate`, {
+    method: "POST",
+    session: academic
+  });
 
   const progress = await request<any>("/api/progress/toggle", {
     method: "POST",

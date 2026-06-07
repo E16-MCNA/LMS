@@ -703,5 +703,33 @@ export function backfillMegaDemoData(store: LMSDataStore) {
     });
   });
 
+  // Generate/synchronize parent accounts for all student accounts
+  const parentCredential = credential("parent16", "seed_parent_global");
+  const studentUsers = store.users.filter(u => u.role === "student");
+  studentUsers.forEach(student => {
+    const parentId = student.id === "user_student" ? "user_parent_demo" : `parent_${student.id}`;
+    const parentEmail = "parents" + student.email;
+    
+    // Check if parent account exists, if so, update email
+    const existingParent = store.users.find(u => u.id === parentId || (u.role === "parent" && u.linkedStudentId === student.id));
+    if (existingParent) {
+      existingParent.email = parentEmail;
+      existingParent.name = `Phụ Huynh ${student.name}`;
+      existingParent.linkedStudentId = student.id;
+    } else {
+      store.users.push({
+        id: parentId,
+        email: parentEmail,
+        passwordHash: parentCredential.hash,
+        passwordSalt: parentCredential.salt,
+        name: `Phụ Huynh ${student.name}`,
+        role: "parent",
+        isActive: true,
+        linkedStudentId: student.id,
+        createdAt: student.createdAt
+      });
+    }
+  });
+
   recomputeAndPersistAllGpas(store);
 }

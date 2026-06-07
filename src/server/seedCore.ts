@@ -405,25 +405,52 @@ export async function seedCoreLearningData(db: Queryable) {
 
 export async function seedAuthUsers(db: Queryable) {
   await cleanupParentSeedData(db);
-  const credential = hashPassword("parent16");
-  await db.query(
-    `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, linked_student_id, created_at)
-     VALUES ($1,$2,$3,$4,$5,'parent',true,$6,$7)
-     ON CONFLICT (email) DO UPDATE SET
-       name = EXCLUDED.name,
-       role = EXCLUDED.role,
-       linked_student_id = EXCLUDED.linked_student_id`,
-    ["user_parent_demo", "parent@mcna.local", credential.hash, credential.salt || null, "Parent Demo", "user_student", new Date().toISOString()]
-  );
-  await db.query(
-    `INSERT INTO parent_links (id, parent_id, student_id, created_at)
-     VALUES ($1,$2,$3,$4)
-     ON CONFLICT (parent_id, student_id) DO NOTHING`,
-    [generateId("plink"), "user_parent_demo", "user_student", new Date().toISOString()]
-  );
 
   const studentCount = Number((await db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'student'")).rows[0].count);
   const teacherCount = Number((await db.query("SELECT COUNT(*) AS count FROM users WHERE role = 'teacher'")).rows[0].count);
-  if (studentCount >= 300 && teacherCount >= 20) return;
-  await usersRepository.seed(db, getBackfilledSeedStore().users);
+  if (studentCount < 300 || teacherCount < 20) {
+    await usersRepository.seed(db, getBackfilledSeedStore().users);
+  }
+
+  // Synchronize parent accounts for all student accounts in the database
+  const credential = hashPassword("parent16");
+  const students = (await db.query("SELECT id, email, name, created_at FROM users WHERE role = 'student'")).rows;
+  
+  if (students.length > 0) {
+    const userValues: any[] = [];
+    const userPlaceholders: string[] = [];
+    const linkValues: any[] = [];
+    const linkPlaceholders: string[] = [];
+
+    students.forEach((student, idx) => {
+      const parentId = student.id === "user_student" ? "user_parent_demo" : `parent_${student.id}`;
+      const parentEmail = "parents" + student.email;
+      const parentName = `Phụ Huynh ${student.name}`;
+      
+      const uOffset = idx * 7;
+      userPlaceholders.push(`($${uOffset + 1}, $${uOffset + 2}, $${uOffset + 3}, $${uOffset + 4}, $${uOffset + 5}, 'parent', true, $${uOffset + 6}, $${uOffset + 7})`);
+      userValues.push(parentId, parentEmail, credential.hash, credential.salt || null, parentName, student.id, student.created_at);
+
+      const lOffset = idx * 4;
+      linkPlaceholders.push(`($${lOffset + 1}, $${lOffset + 2}, $${lOffset + 3}, $${lOffset + 4})`);
+      linkValues.push(`plink_${student.id}`, parentId, student.id, new Date().toISOString());
+    });
+
+    await db.query(
+      `INSERT INTO users (id, email, password_hash, password_salt, name, role, is_active, linked_student_id, created_at)
+       VALUES ${userPlaceholders.join(", ")}
+       ON CONFLICT (email) DO UPDATE SET
+         name = EXCLUDED.name,
+         role = EXCLUDED.role,
+         linked_student_id = EXCLUDED.linked_student_id`,
+      userValues
+    );
+
+    await db.query(
+      `INSERT INTO parent_links (id, parent_id, student_id, created_at)
+       VALUES ${linkPlaceholders.join(", ")}
+       ON CONFLICT (parent_id, student_id) DO NOTHING`,
+      linkValues
+    );
+  }
 }
