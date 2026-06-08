@@ -144,7 +144,7 @@ export const courseRegistrationsRepository = {
       )).rows[0];
 
       await client.query("COMMIT");
-      await notifyUsers(db, [section.teacher_id], { type: "info", message: `Student registered for section ${section.section_code}.`, relatedEntityType: "course_registration", relatedEntityId: row.id });
+      await notifyUsers(db, [section.teacher_id], { type: "info", message: `Học viên đã đăng ký vào lớp học phần ${section.section_code}.`, relatedEntityType: "course_registration", relatedEntityId: row.id });
       return { row };
     } catch (error) {
       await client.query("ROLLBACK");
@@ -186,8 +186,8 @@ export const courseRegistrationsRepository = {
        RETURNING *`,
       [reg.section_id]
     )).rows[0];
-    if (promoted) await notifyStudent(db, promoted.student_id, "You have been promoted from the waitlist.", { relatedEntityType: "course_registration", relatedEntityId: promoted.id });
-    await notifyUsers(db, [reg.teacher_id], { type: "info", message: "A student dropped or withdrew from your section.", relatedEntityType: "course_registration", relatedEntityId: registrationId });
+    if (promoted) await notifyStudent(db, promoted.student_id, "Bạn đã được chuyển từ danh sách chờ sang đăng ký chính thức thành công.", { relatedEntityType: "course_registration", relatedEntityId: promoted.id });
+    await notifyUsers(db, [reg.teacher_id], { type: "info", message: "Một học viên đã hủy đăng ký hoặc rút lui khỏi lớp học phần của bạn.", relatedEntityType: "course_registration", relatedEntityId: registrationId });
     await eventBus.emit("registration.dropped", { registrationId, studentId, status: nextStatus }, pool);
     return row;
   }

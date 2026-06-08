@@ -34,6 +34,7 @@ import {
   BadgeAlert,
   LifeBuoy
 } from "lucide-react";
+import NotificationInbox from "./NotificationInbox";
 import { LMSDataStore, User as UserType, Course, Lesson, Enrollment, LessonProgress, Quiz, Question, QuizAttempt, Assignment, Submission, Certificate, Notification, Transaction, AttendanceRecord, AttendanceSession, TuitionFee, AcademicWarning } from "../types";
 import { AppStore } from "../store";
 import CourseCatalog from "./student/CourseCatalog";
@@ -457,7 +458,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
         };
         storeData.certificates.push(cert);
         AppStore.log(currentUser.id, "issue_certificate", cert.certificateCode, `Course: ${quiz.courseId}`);
-        AppStore.notify(currentUser.id, "success", `Congratulations! Certificate issued with verification code ${code}. Check the certificates tab.`);
+        AppStore.notify(currentUser.id, "success", `Chúc mừng! Chứng chỉ khóa học đã được cấp với mã xác thực ${code}. Hãy kiểm tra tab Chứng nhận.`);
       }
     }
 
@@ -1001,117 +1002,12 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
 
         {/* Tab 5: alerts and Notifications list panel */}
         {activeSubTab === "notifications" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-base font-display font-semibold text-white">Hộp thư thông báo từ Hệ thống</h4>
-              {myNotifications.some(n => !n.isRead) && (
-                <button
-                  onClick={() => handleMarkAllNotificationsRead()}
-                  className="text-[10px] text-indigo-300 hover:text-white bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 px-3 py-1.5 rounded-xl transition cursor-pointer font-mono"
-                >
-                  Đánh dấu tất cả đã đọc
-                </button>
-              )}
-            </div>
-
-            {/* Paginated notification list */}
-            <div className="space-y-2.5">
-              {myNotifications
-                .slice(notifPage * NOTIF_PER_PAGE, (notifPage + 1) * NOTIF_PER_PAGE)
-                .map((note) => (
-                <div
-                  key={note.id}
-                  onClick={() => {
-                    if (note.type !== "attendance_link") {
-                      handleMarkNotificationRead(note.id);
-                    }
-                  }}
-                  className={`p-4 rounded-2xl border flex items-start gap-3.5 transition duration-150 cursor-pointer ${
-                    note.isRead
-                      ? "bg-white/5 border-white/5 text-white/50"
-                      : "bg-[#2563eb]/10 border-indigo-500/25 text-indigo-200"
-                  }`}
-                >
-                  <Bell className={`h-4 w-4 flex-shrink-0 mt-0.5 ${note.isRead ? "text-white/30" : "text-indigo-400"}`} />
-                  <div className="space-y-1 text-xs flex-1 min-w-0">
-                    <p className="leading-relaxed font-sans">{note.message}</p>
-                    
-                    {note.type === "attendance_link" && note.relatedEntityId && (() => {
-                      const hasCheckedIn = (store.attendanceRecords || []).some(
-                        r => r.sessionId === note.relatedEntityId && 
-                             r.studentId === currentUser.id && 
-                             r.status === "present"
-                      );
-                      
-                      if (hasCheckedIn) {
-                        return (
-                          <div className="mt-2.5 p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl font-bold flex items-center gap-1.5 w-fit font-sans">
-                            <span>✅ Bạn đã xác nhận điểm danh thành công!</span>
-                          </div>
-                        );
-                      }
-                      
-                      return (
-                        <div 
-                          onClick={(e) => e.stopPropagation()} 
-                          className="mt-2.5 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center gap-2 max-w-sm"
-                        >
-                          <input
-                            type="text"
-                            placeholder="Mã Code (6 ký tự)"
-                            value={checkinCodes[note.id] || ""}
-                            onChange={(e) => setCheckinCodes(prev => ({ ...prev, [note.id]: e.target.value }))}
-                            maxLength={6}
-                            className="w-32 px-2.5 py-1.5 bg-black/45 text-white border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 text-center font-mono font-bold uppercase placeholder-white/20 text-xs"
-                          />
-                          <button
-                            onClick={() => handleSelfCheckinSubmit(note.relatedEntityId!, checkinCodes[note.id] || "", note.id)}
-                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition duration-150 text-xs shrink-0 cursor-pointer"
-                          >
-                            Xác nhận Có mặt ✍️
-                          </button>
-                        </div>
-                      );
-                    })()}
-                    
-                    <span className="text-[10px] text-white/30 block font-mono">
-                      {new Date(note.createdAt).toLocaleDateString("vi-VN")} - {new Date(note.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                  {!note.isRead && (
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full flex-shrink-0 mt-1.5" />
-                  )}
-                </div>
-              ))}
-
-              {myNotifications.length === 0 && (
-                <p className="text-xs text-white/40 text-center py-12">Hiện chưa có cập nhật/thông báo nào mới gửi tới tài khoản của bạn.</p>
-              )}
-            </div>
-
-            {/* Pagination controls */}
-            {myNotifications.length > NOTIF_PER_PAGE && (
-              <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                <button
-                  onClick={() => setNotifPage(p => Math.max(0, p - 1))}
-                  disabled={notifPage === 0}
-                  className="px-4 py-1.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-                >
-                  ← Trước
-                </button>
-                <span className="text-[11px] text-white/40 font-mono">
-                  Trang {notifPage + 1} / {Math.ceil(myNotifications.length / NOTIF_PER_PAGE)}
-                </span>
-                <button
-                  onClick={() => setNotifPage(p => Math.min(Math.ceil(myNotifications.length / NOTIF_PER_PAGE) - 1, p + 1))}
-                  disabled={(notifPage + 1) * NOTIF_PER_PAGE >= myNotifications.length}
-                  className="px-4 py-1.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
-                >
-                  Tiếp →
-                </button>
-              </div>
-            )}
-          </div>
+          <NotificationInbox
+            store={store}
+            currentUser={currentUser}
+            onRefreshData={onRefreshData}
+            title="Hộp thư thông báo từ Hệ thống"
+          />
         )}
 
         {/* Tab SIS 1: My Profile Section */}

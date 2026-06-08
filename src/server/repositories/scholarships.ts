@@ -72,7 +72,7 @@ export const scholarshipsRepository = {
       "UPDATE scholarship_applications SET status = 'rejected', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
       [id, reviewerId, reviewNote || null]
     )).rows[0];
-    if (row) await notifyStudent(db, row.student_id, `Scholarship application rejected.${reviewNote ? ` ${reviewNote}` : ""}`, { relatedEntityType: "scholarship_application", relatedEntityId: id });
+    if (row) await notifyStudent(db, row.student_id, `Đơn xin học bổng đã bị từ chối.${reviewNote ? ` Lý do: ${reviewNote}` : ""}`, { relatedEntityType: "scholarship_application", relatedEntityId: id });
     return row || null;
   }
 };

@@ -67,7 +67,7 @@ export const graduationRepository = {
     )).rows[0];
     if (!row) return null;
     await db.query("UPDATE student_profiles SET status = 'graduated' WHERE user_id = $1", [row.student_id]);
-    await notifyStudent(db, row.student_id, "Graduation application approved.", { relatedEntityType: "graduation_application", relatedEntityId: id });
+    await notifyStudent(db, row.student_id, "Hồ sơ xét tốt nghiệp đã được phê duyệt.", { relatedEntityType: "graduation_application", relatedEntityId: id });
     return row;
   },
 
@@ -76,7 +76,7 @@ export const graduationRepository = {
       "UPDATE graduation_applications SET status = 'rejected', reviewed_by = $2, note = $3 WHERE id = $1 RETURNING *",
       [id, reviewerId, note || null]
     )).rows[0];
-    if (row) await notifyStudent(db, row.student_id, `Graduation application rejected.${note ? ` ${note}` : ""}`, { relatedEntityType: "graduation_application", relatedEntityId: id });
+    if (row) await notifyStudent(db, row.student_id, `Hồ sơ xét tốt nghiệp đã bị từ chối.${note ? ` Lý do: ${note}` : ""}`, { relatedEntityType: "graduation_application", relatedEntityId: id });
     return row || null;
   }
 };

@@ -367,7 +367,7 @@ export function getInitialStore(): LMSDataStore {
         id: "note_welcome_admin",
         userId: adminId,
         type: "success",
-        message: "Welcome to Arthur's executive portal. System diagnostic traces indicate 100% active state.",
+        message: "Chào mừng bạn đến với Cổng điều hành của Arthur. Các dấu hiệu kiểm tra hệ thống cho thấy trạng thái hoạt động ổn định 100%.",
         isRead: false,
         createdAt: new Date("2026-05-25T08:00:00Z").toISOString()
       },
@@ -375,9 +375,49 @@ export function getInitialStore(): LMSDataStore {
         id: "note_welcome_student",
         userId: studentId,
         type: "info",
-        message: "You are currently active in: Full-Stack Web Development Bootcamp.",
+        message: "Bạn hiện đang tham gia lớp học: Full-Stack Web Development Bootcamp.",
         isRead: false,
         createdAt: new Date("2026-05-25T08:10:00Z").toISOString()
+      },
+      {
+        id: "note_welcome_academic",
+        userId: academicId,
+        type: "success",
+        message: "Chào mừng cán bộ học vụ. Hệ thống quản trị học học phần SIS-LMS đã sẵn sàng hoạt động để theo dõi điểm danh, lịch học, kết quả học tập và cảnh báo học thuật.",
+        isRead: false,
+        createdAt: new Date("2026-05-25T08:15:00Z").toISOString()
+      },
+      {
+        id: "note_welcome_finance",
+        userId: financeId,
+        type: "success",
+        message: "Chào mừng nhân viên quản trị tài vụ. Sổ thu học phí, biểu phí học phần và đối soát giao dịch trực tuyến của sinh viên đã sẵn sàng.",
+        isRead: false,
+        createdAt: new Date("2026-05-25T08:20:00Z").toISOString()
+      },
+      {
+        id: "note_welcome_letan",
+        userId: letanId,
+        type: "success",
+        message: "Chào mừng bộ phận lễ tân. Cổng thông tin hỗ trợ sinh viên nhanh, reset mật khẩu khẩn cấp và tra cứu lý lịch học vụ đã trực tuyến.",
+        isRead: false,
+        createdAt: new Date("2026-05-25T08:25:00Z").toISOString()
+      },
+      {
+        id: "note_welcome_teacher",
+        userId: teacherId,
+        type: "info",
+        message: "Chào mừng giảng viên Linus Torvalds. Lớp học phần, giáo án bài học, ngân hàng câu hỏi đề thi trắc nghiệm (Quizzes) và chấm bài tập đã sẵn sàng.",
+        isRead: false,
+        createdAt: new Date("2026-05-25T08:30:00Z").toISOString()
+      },
+      {
+        id: "note_welcome_advisor",
+        userId: "user_advisor",
+        type: "info",
+        message: "Chào mừng Cố vấn học tập. Danh sách sinh viên được phân công cố vấn, sổ nhật ký tư vấn và phê duyệt lộ trình đăng ký lớp học kỳ mới đã sẵn sàng.",
+        isRead: false,
+        createdAt: new Date("2026-05-25T08:35:00Z").toISOString()
       }
     ],
     forumPosts: [

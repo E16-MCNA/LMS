@@ -315,6 +315,17 @@ async function main() {
     }
     console.log(`[Seeding] Successfully backfilled ${unprovisionedStudents.length} students.`);
 
+    console.log("[Seeding] Seeding initial notifications...");
+    await insertBatch(
+      client,
+      "notifications",
+      ["id", "user_id", "type", "message", "is_read", "created_at"],
+      (store.notifications || []).map(note => [
+        note.id, note.userId, note.type, note.message, Boolean(note.isRead), note.createdAt
+      ]),
+      `(id) DO UPDATE SET user_id = EXCLUDED.user_id, type = EXCLUDED.type, message = EXCLUDED.message, is_read = EXCLUDED.is_read, created_at = EXCLUDED.created_at`
+    );
+
     await client.query("COMMIT");
     console.log(`Seeded Postgres database with ${store.users.filter(u => u.role === "student").length} students and ${store.courses.length} courses.`);
   } catch (error) {

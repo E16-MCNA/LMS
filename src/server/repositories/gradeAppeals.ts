@@ -85,7 +85,7 @@ export const gradeAppealsRepository = {
       );
       await eventBus.emit("grade.saved", { studentId: row.student_id, courseRegistrationId: row.course_registration_id, grade: letterGrade }, pool);
     }
-    await notifyStudent(db, row.student_id, status === "approved" ? "Grade appeal approved." : `Grade appeal rejected.${resolutionNote ? ` ${resolutionNote}` : ""}`, { relatedEntityType: "grade_appeal", relatedEntityId: appealId });
+    await notifyStudent(db, row.student_id, status === "approved" ? "Phúc khảo điểm số đã được phê duyệt." : `Phúc khảo điểm số đã bị từ chối.${resolutionNote ? ` Lý do: ${resolutionNote}` : ""}`, { relatedEntityType: "grade_appeal", relatedEntityId: appealId });
     return row;
   },
 

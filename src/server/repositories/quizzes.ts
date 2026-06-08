@@ -110,7 +110,7 @@ export const quizzesRepository = {
     await notifyStudent(
       db,
       studentId,
-      `Quiz "${quiz.title}" scored ${score}%${passed ? " — passed" : ""}.`,
+      `Bài thi trắc nghiệm "${quiz.title}" đạt điểm số: ${score}%${passed ? " — Đạt" : " — Không đạt"}.`,
       { relatedEntityType: "quiz", relatedEntityId: quizId }
     );
     return { row: { ...attempt, correctAnswers: correctCount, total: questions.length } };

@@ -36,7 +36,7 @@ export const leaveRequestsRepository = {
       "UPDATE leave_requests SET status = 'rejected', reviewed_by = $2, review_note = $3 WHERE id = $1 RETURNING *",
       [id, reviewerId, reviewNote || null]
     )).rows[0];
-    if (row) await notifyStudent(db, row.student_id, `Leave request rejected.${reviewNote ? ` ${reviewNote}` : ""}`, { relatedEntityType: "leave_request", relatedEntityId: id });
+    if (row) await notifyStudent(db, row.student_id, `Yêu cầu nghỉ học/bảo lưu đã bị từ chối.${reviewNote ? ` Lý do: ${reviewNote}` : ""}`, { relatedEntityType: "leave_request", relatedEntityId: id });
     return row || null;
   }
 };
