@@ -199,7 +199,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         title: courseTitle,
         description: courseDesc,
         teacherId: currentUser.id,
-        status: "published",
+        status: "draft",
         category: courseCategory,
         thumbnail: courseThumb || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60",
         createdAt: new Date().toISOString(),
@@ -251,17 +251,17 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     const storeData = AppStore.get();
     storeData.courses = storeData.courses.map(c => {
       if (c.id === courseId) {
-        AppStore.log(currentUser.id, "publish_course_direct", c.title, "Published course without manager approval queue.");
-        return { ...c, status: "published" };
+        AppStore.log(currentUser.id, "submit_course_for_review", c.title, "Submitted course for manager approval.");
+        return { ...c, status: "pending" };
       }
       return c;
     });
 
-    api.submitCourse(courseId).catch(err => console.warn("Failed to publish course on server:", err));
+    api.submitCourse(courseId).catch(err => console.warn("Failed to submit course for approval on server:", err));
 
     AppStore.save(storeData);
     onRefreshData();
-    triggerToast("Khóa học đã được xuất bản.");
+    triggerToast("Khóa học đã được gửi duyệt thành công.");
   };
 
   // Add Lesson to current Course

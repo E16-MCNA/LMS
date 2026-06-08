@@ -24,6 +24,7 @@ interface AttendanceManagerProps {
   onRefreshData: () => void;
   triggerToast: (msg: string) => void;
   defaultCourseId?: string;
+  defaultSessionId?: string;
   lockSelectors?: boolean;
   courseId?: string | null;
   sectionId?: string | null;
@@ -36,6 +37,7 @@ export default function AttendanceManager({
   onRefreshData,
   triggerToast,
   defaultCourseId,
+  defaultSessionId = "",
   lockSelectors = false,
   courseId = null,
   sectionId = null,
@@ -45,7 +47,7 @@ export default function AttendanceManager({
   const [selectedCourseId, setSelectedCourseId] = useState(courseId || defaultCourseId || "");
   const [selectedSectionId, setSelectedSectionId] = useState(sectionId || "");
   // Session selection (or create new)
-  const [activeSessionId, setActiveSessionId] = useState("");
+  const [activeSessionId, setActiveSessionId] = useState(defaultSessionId || "");
 
   // Sync locked values if they change
   useEffect(() => {
@@ -54,6 +56,15 @@ export default function AttendanceManager({
       if (sectionId) setSelectedSectionId(sectionId);
     }
   }, [lockSelectors, courseId, sectionId]);
+
+  useEffect(() => {
+    if (!defaultSessionId) return;
+    const session = (store.attendanceSessions || []).find(s => s.id === defaultSessionId);
+    if (!session) return;
+    setActiveSessionId(session.id);
+    if (session.courseId) setSelectedCourseId(session.courseId);
+    if (session.sectionId) setSelectedSectionId(session.sectionId);
+  }, [defaultSessionId, store.attendanceSessions]);
 
   // Auto-select latest session if locked and no session is active yet
   useEffect(() => {

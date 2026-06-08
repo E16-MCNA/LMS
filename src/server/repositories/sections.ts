@@ -1,6 +1,22 @@
 import { CourseSection, CourseRegistration } from "../../types";
 import { Queryable } from "../db";
 
+const scheduleDateOnly = (slot: any): string => {
+  const value = slot?.specificDate || slot?.specific_date;
+  return value ? String(value).slice(0, 10) : "";
+};
+
+const scheduleDay = (slot: any): string => String(slot?.dayOfWeek || slot?.day_of_week || "").toLowerCase();
+
+const schedulesCanOverlap = (targetSlot: any, existingSlot: any): boolean => {
+  const targetDate = scheduleDateOnly(targetSlot);
+  const existingDate = scheduleDateOnly(existingSlot);
+  if (targetDate && existingDate) return targetDate === existingDate;
+  const targetDay = scheduleDay(targetSlot);
+  const existingDay = scheduleDay(existingSlot);
+  return Boolean(targetDay && existingDay && targetDay === existingDay);
+};
+
 export const sectionsRepository = {
   async createSection(db: Queryable, section: CourseSection): Promise<CourseSection> {
     await db.query(
@@ -77,10 +93,10 @@ export const sectionsRepository = {
         : [];
     });
 
-    // 3. Compare day of week and overlapping times
+    // 3. Compare calendar date/day and overlapping times.
     for (const t of targetSchedule) {
       for (const e of existingSchedules) {
-        if (t.dayOfWeek.toLowerCase() === e.dayOfWeek.toLowerCase()) {
+        if (schedulesCanOverlap(t, e)) {
           const tStart = this.timeToMinutes(t.startTime);
           const tEnd = this.timeToMinutes(t.endTime);
           const eStart = this.timeToMinutes(e.startTime);
