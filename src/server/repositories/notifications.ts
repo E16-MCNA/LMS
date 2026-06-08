@@ -2,6 +2,7 @@ import { Notification } from "../../types";
 import { Queryable } from "../db";
 import { generateId } from "../ids";
 import { sendEmailNotification, sendEmailDirect } from "../services/email";
+import { provisioningService } from "../emailProvisioning/provisioningService";
 
 type CreateNotificationInput = {
   userId: string;
@@ -38,11 +39,18 @@ export const notificationsRepository = {
     // Fetch user details synchronously using the active transaction/query client
     let userEmail: string | null = null;
     let userName: string | null = null;
+    let userRole: string | null = null;
+    let emailProvisioned = false;
     try {
-      const userRes = await db.query("SELECT email, name FROM users WHERE id = $1", [notification.userId]);
+      const userRes = await db.query(
+        "SELECT email, name, role, email_provisioned FROM users WHERE id = $1",
+        [notification.userId]
+      );
       if (userRes.rows[0]) {
         userEmail = userRes.rows[0].email;
         userName = userRes.rows[0].name;
+        userRole = userRes.rows[0].role;
+        emailProvisioned = Boolean(userRes.rows[0].email_provisioned);
       }
     } catch (dbErr) {
       console.error("[Notifications Repository] Synchronous user email fetch failed:", dbErr);
@@ -63,11 +71,27 @@ export const notificationsRepository = {
       ]
     );
 
-    // Dispatch email notification asynchronously without querying db
-    if (userEmail) {
-      sendEmailDirect(userEmail, userName || "Học viên", notification.message).catch(err => {
-        console.error("[Email Notification dispatch error]:", err);
-      });
+    // Dispatch email notification asynchronously
+    if (userRole === "student") {
+      if (emailProvisioned) {
+        // Fire and forget
+        provisioningService.sendNotificationEmail(db as any, notification.userId, {
+          subject: "Cập nhật thông báo từ LMS",
+          body: notification.message,
+          type: notification.type
+        }).catch(err => {
+          console.error("[Notifications Repository] School email notification dispatch error:", err);
+        });
+      } else {
+        console.log(`[Notifications Repository] Skipping email for unprovisioned student ${notification.userId}`);
+      }
+    } else {
+      // Non-students still use the legacy sendEmailDirect
+      if (userEmail) {
+        sendEmailDirect(userEmail, userName || "Học viên", notification.message).catch(err => {
+          console.error("[Email Notification dispatch error]:", err);
+        });
+      }
     }
 
     return notification;

@@ -17,6 +17,9 @@ export interface User {
   phone?: string;
   createdAt: string;
   linkedStudentId?: string; // parent account links to student
+  schoolEmail?: string;
+  emailProvisioned?: boolean;
+  emailProvisionedAt?: string;
 }
 
 export interface Course {

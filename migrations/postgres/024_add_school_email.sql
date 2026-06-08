@@ -1,0 +1,6 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS school_email VARCHAR(255) UNIQUE,
+  ADD COLUMN IF NOT EXISTS email_provisioned BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS email_provisioned_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_users_school_email ON users(school_email);

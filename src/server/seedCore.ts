@@ -4,6 +4,7 @@ import { Queryable } from "./db";
 import { usersRepository } from "./repositories/users";
 import { hashPassword } from "../authHash";
 import { generateId } from "./ids";
+import { generateUsername } from "./emailProvisioning/googleWorkspaceClient";
 
 async function cleanupParentSeedData(db: Queryable) {
   await db.query("SELECT 1");
@@ -453,4 +454,34 @@ export async function seedAuthUsers(db: Queryable) {
       linkValues
     );
   }
+
+  // Backfill school email for all student users in DB during seeding to satisfy new requirements
+  console.log("[Seeding] Backfilling school emails for seeded students...");
+  const unprovisionedStudents = (await db.query(
+    "SELECT id, name FROM users WHERE role = 'student' AND (school_email IS NULL OR email_provisioned = false)"
+  )).rows;
+
+  for (const student of unprovisionedStudents) {
+    const baseUsername = generateUsername(student.name);
+    let suffix = "";
+    let counter = 1;
+    let schoolEmail = `${baseUsername}@mcna.edu.vn`;
+    while (true) {
+      schoolEmail = `${baseUsername}${suffix}@mcna.edu.vn`;
+      const check = await db.query(
+        "SELECT 1 FROM users WHERE school_email = $1 AND id != $2",
+        [schoolEmail, student.id]
+      );
+      if (check.rowCount === 0) {
+        break;
+      }
+      counter++;
+      suffix = String(counter);
+    }
+    await db.query(
+      "UPDATE users SET school_email = $1, email_provisioned = true, email_provisioned_at = NOW() WHERE id = $2",
+      [schoolEmail, student.id]
+    );
+  }
+  console.log(`[Seeding] Successfully backfilled ${unprovisionedStudents.length} students.`);
 }

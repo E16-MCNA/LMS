@@ -35,6 +35,7 @@ Hệ thống kế thừa cấu trúc phân quyền cốt lõi của phiên bản
 * **Cảnh báo học tập tự động [Cải tiến]**: Hệ thống tự động quét và phát cảnh báo học tập đỏ (chuyên cần dưới 80%, trễ hạn học phí) gửi thẳng tới học viên và phụ huynh.
 * **Tài chính & Sổ thu chi**: Phát nợ học phí tự động; Student thanh toán QR ngân hàng; Kế toán đối chiếu sao kê và phê duyệt giao dịch kích hoạt khóa học tự động.
 * **Học bạ & Chứng chỉ**: Bảng điểm thành phần chi tiết (30% tự luận + 70% trắc nghiệm); cấp chứng chỉ tự động; trang xác thực chứng chỉ công khai bảo vệ quyền riêng tư học viên.
+* **Cấp phát Email tự động [Mới]**: Tự động cấp phát tài khoản email trường thật trên Google Workspace (`username@SCHOOL_DOMAIN`) cho sinh viên mới; tự động thu hồi/xóa email khi deactive tài khoản; định tuyến toàn bộ thông báo hệ thống về hòm thư trường học.
 
 ### 3.2. Ngoài phạm vi hoạt động (Out-of-Scope)
 * Lớp học trực tuyến tương tác realtime (Zoom/Meet integration).
@@ -156,6 +157,16 @@ graph TD
 * **QLV-002 [Must]**: Hệ thống tự động phát cờ cảnh báo đỏ nếu tỉ lệ chuyên cần thực tế của sinh viên tại một lớp học phần dưới mốc **80%**.
 * **QLV-003 [Must]**: Tự động gỡ bỏ cờ cảnh báo nợ học phí quá hạn của sinh viên khi hóa đơn học phí tương ứng được chuyển sang trạng thái đã nộp đủ (`paid`).
 
+### 7.6. Cấp phát Email tự động (Google Workspace Provisioning) [Mới]
+* **PROV-001 [Must]**: Tự động khởi tạo tài khoản email thật trên Google Workspace với phần mở rộng tên miền của trường (`SCHOOL_EMAIL_DOMAIN`) khi tài khoản sinh viên được tạo mới.
+* **PROV-002 [Must]**: Quy tắc sinh tên đăng nhập (`username`): Sử dụng tên đầy đủ, loại bỏ hoàn toàn dấu tiếng Việt, chuyển thành chữ thường, phân tách bằng dấu chấm và đảo ngược các từ (ví dụ: "Nguyễn Văn Tiến" -> `tien.van.nguyen`).
+* **PROV-003 [Must]**: Cơ chế xử lý trùng lặp: Nếu tên đăng nhập đề xuất đã tồn tại trên hệ thống Google hoặc cơ sở dữ liệu, tự động tăng chỉ số số đằng sau bắt đầu từ số 2 (ví dụ: `tien.van.nguyen2`, `tien.van.nguyen3`).
+* **PROV-004 [Must]**: Gửi email chào mừng chứa thông tin đăng nhập email trường và mật khẩu tạm thời vào địa chỉ email cá nhân đăng ký ban đầu của sinh viên. Mật khẩu tạm thời không được lưu trữ dưới bất kỳ hình thức nào trong DB.
+* **PROV-005 [Must]**: Khi vô hiệu hóa tài khoản sinh viên (`isActive = false`), tự động gửi yêu cầu thu hồi/xóa tài khoản email trường tương ứng trên Google Workspace và xóa trắng dữ liệu hòm thư trường trong database để có thể tái cấp phát nếu cần.
+* **PROV-006 [Must]**: Hỗ trợ Admin/Super Admin kích hoạt lại luồng cấp phát thủ công thông qua API `POST /api/admin/users/:id/reprovision-email` trong trường hợp cấp phát tự động bị gián đoạn.
+* **PROV-007 [Must]**: Bảo vệ an toàn dữ liệu: Loại bỏ các trường `school_email`, `email_provisioned`, `email_provisioned_at` khỏi payload đồng bộ `syncClientStoreToDb` để ngăn chặn client ghi đè dữ liệu cũ.
+* **PROV-008 [Must]**: Khi sinh viên đã được cấp phát email thành công, toàn bộ email thông báo học vụ tiếp theo (điểm số, khóa học, tài chính...) bắt buộc phải gửi tới email trường thay vì email cá nhân.
+
 ---
 
 ## 8. YÊU CẦU DỮ LIỆU & BẢO MẬT (DATA & PRIVACY REQUIREMENTS)
@@ -200,6 +211,7 @@ graph TD
 4. Giao diện modal hiển thị cân đối 100% tại trung tâm màn hình dưới mọi mức cuộn trang của người dùng.
 5. Sổ thu chi kế toán và biểu đồ SVG thu học phí vận hành chuẩn xác, chống méo mó giao diện.
 6. Toàn bộ tài liệu vận hành và chính sách rollback đã được cấu hình sẵn sàng bàn giao cho ban quản trị.
+7. Luồng cấp phát tự động và thu hồi email Google Workspace thông qua Service Account hoạt động ổn định, vượt qua các kiểm thử E2E tích hợp.
 
 ---
 *Tài liệu được phê duyệt chính thức cho giai đoạn Production.*

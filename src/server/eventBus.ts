@@ -8,7 +8,8 @@ export type EventType =
   | "registration.dropped"
   | "scholarship.approved"
   | "leave.approved"
-  | "program.completed";
+  | "program.completed"
+  | "user.created";
 
 type Handler<T = any> = (payload: T, pool: Pool) => Promise<void>;
 

@@ -11,6 +11,9 @@ export type DbUserRow = {
   phone?: string | null;
   linked_student_id?: string | null;
   created_at: string;
+  school_email?: string | null;
+  email_provisioned?: boolean;
+  email_provisioned_at?: string | null;
 };
 
 export function normalizeRole(role: string): UserRole {
@@ -39,7 +42,10 @@ export function toPublicUser(row: DbUserRow): User {
     isActive: Boolean(row.is_active),
     phone: row.phone || undefined,
     linkedStudentId: row.linked_student_id || undefined,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    schoolEmail: row.school_email || undefined,
+    emailProvisioned: Boolean(row.email_provisioned),
+    emailProvisionedAt: row.email_provisioned_at || undefined
   };
 }
 

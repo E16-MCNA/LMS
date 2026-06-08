@@ -63,6 +63,8 @@ import { eventBus } from "./src/server/eventBus";
 import { registerEventHandlers } from "./src/server/eventHandlers";
 import { toGradePoint, toLetterGrade } from "./src/server/gpaCalculator";
 import { startScheduler } from "./src/server/scheduler";
+import { provisioningService } from "./src/server/emailProvisioning/provisioningService";
+import { deleteSchoolEmail } from "./src/server/emailProvisioning/googleWorkspaceClient";
 
 dotenv.config();
 
@@ -500,6 +502,18 @@ let isSyncing = false;
 const syncQueue: (() => void)[] = [];
 
 async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
+  // Protect school email fields from client sync
+  if (store.users) {
+    for (const u of store.users) {
+      delete (u as any).school_email;
+      delete (u as any).schoolEmail;
+      delete (u as any).email_provisioned;
+      delete (u as any).emailProvisioned;
+      delete (u as any).email_provisioned_at;
+      delete (u as any).emailProvisionedAt;
+    }
+  }
+
   // Serialize syncs to prevent PostgreSQL deadlocks on concurrent saves
   await new Promise<void>((resolve) => {
     if (!isSyncing) {
@@ -1186,7 +1200,18 @@ app.post("/api/auth/logout", requireAuth, asyncHandler(async (req, res) => {
   clearAuthCookie(res);
   res.status(204).send();
 }));
-app.get("/api/auth/me", requireAuth, (req: AuthRequest, res) => res.json({ user: req.user }));
+app.get("/api/auth/me", requireAuth, (req: AuthRequest, res) => {
+  res.json({
+    user: req.user
+      ? {
+          ...req.user,
+          school_email: req.user.schoolEmail,
+          email_provisioned: req.user.emailProvisioned,
+          email_provisioned_at: req.user.emailProvisionedAt,
+        }
+      : null
+  });
+});
 
 app.post("/api/users/change-password", requireAuth, asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
@@ -1894,6 +1919,11 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin"]
       ]
     );
   }
+
+  if (created.role === "student") {
+    await eventBus.emit("user.created", created, pool);
+  }
+
   await audit(req, "create_user", created.id, created.email);
   res.status(201).json(created);
 }));
@@ -1910,6 +1940,34 @@ app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manag
   await audit(req, "reception_reset_password", req.params.id, `Reset password for student: ${user.email}`);
   res.json({ ok: true, message: `Mật khẩu đã được đặt lại thành công về mặc định: ${defaultNewPass}` });
 }));
+
+app.post("/api/admin/users/:id/reprovision-email", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const userId = req.params.id;
+  const user = await usersRepository.findById(pool, userId);
+  if (!user) {
+    return res.status(404).json({ error: "User not found." });
+  }
+  if (user.role !== "student") {
+    return res.status(400).json({ error: "Only students can have emails provisioned." });
+  }
+
+  try {
+    if (user.emailProvisioned) {
+      return res.json({ ok: true, message: "Email already provisioned.", schoolEmail: user.schoolEmail });
+    }
+    await provisioningService.provisionStudentEmail(pool, userId);
+    const updatedUser = await usersRepository.findById(pool, userId);
+    res.json({
+      ok: true,
+      message: "Email provisioning completed successfully.",
+      schoolEmail: updatedUser?.schoolEmail
+    });
+  } catch (err: any) {
+    console.error("[reprovision-email] failed:", err);
+    res.status(500).json({ error: `Provisioning failed: ${err.message || err}` });
+  }
+}));
+
 app.patch("/api/admin/users/:id/role", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
   const { role } = req.body;
   const allowedRoles = ["student", "teacher", "manager", "admin", "parent"];
@@ -1948,6 +2006,22 @@ app.patch("/api/admin/users/:id/role", requireAuth, requireRole(["manager", "sup
 app.patch("/api/admin/users/:id/status", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.setUserActive), asyncHandler(async (req, res) => {
   const user = await usersRepository.setActive(pool, req.params.id, req.body.isActive);
   if (!user) return res.status(404).json({ error: "User not found." });
+
+  // If deactivated student, delete their Google Workspace email
+  if (req.body.isActive === false && user.role === "student" && user.schoolEmail) {
+    try {
+      await deleteSchoolEmail(user.schoolEmail);
+      await pool.query(
+        "UPDATE users SET email_provisioned = false, school_email = NULL, email_provisioned_at = NULL WHERE id = $1",
+        [user.id]
+      );
+      user.emailProvisioned = false;
+      user.schoolEmail = undefined;
+    } catch (err) {
+      console.error(`[deleteSchoolEmail] Failed to delete workspace account for ${user.schoolEmail}:`, err);
+    }
+  }
+
   await audit(req, "toggle_user_status", user.id, `isActive=${user.isActive}`);
   res.json(user);
 }));

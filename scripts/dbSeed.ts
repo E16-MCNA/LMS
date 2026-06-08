@@ -4,6 +4,7 @@ import { getInitialStore } from "../src/store";
 import { backfillMegaDemoData } from "../src/mockSeeds";
 import { runMigrations } from "../src/dbMigrations";
 import { hashPassword } from "../src/authHash";
+import { generateUsername } from "../src/server/emailProvisioning/googleWorkspaceClient";
 
 dotenv.config();
 
@@ -283,6 +284,36 @@ async function main() {
       (store.attendanceRecords || []).map(record => [record.id, record.sessionId, record.studentId, record.status, record.note || null]),
       `(id) DO UPDATE SET session_id = EXCLUDED.session_id, student_id = EXCLUDED.student_id, status = EXCLUDED.status, note = EXCLUDED.note`
     );
+
+    // Backfill school email for all student users in DB during seeding to satisfy new requirements
+    console.log("[Seeding] Backfilling school emails for seeded students...");
+    const unprovisionedStudents = (await client.query(
+      "SELECT id, name FROM users WHERE role = 'student' AND (school_email IS NULL OR email_provisioned = false)"
+    )).rows;
+
+    for (const student of unprovisionedStudents) {
+      const baseUsername = generateUsername(student.name);
+      let suffix = "";
+      let counter = 1;
+      let schoolEmail = `${baseUsername}@mcna.edu.vn`;
+      while (true) {
+        schoolEmail = `${baseUsername}${suffix}@mcna.edu.vn`;
+        const check = await client.query(
+          "SELECT 1 FROM users WHERE school_email = $1 AND id != $2",
+          [schoolEmail, student.id]
+        );
+        if (check.rowCount === 0) {
+          break;
+        }
+        counter++;
+        suffix = String(counter);
+      }
+      await client.query(
+        "UPDATE users SET school_email = $1, email_provisioned = true, email_provisioned_at = NOW() WHERE id = $2",
+        [schoolEmail, student.id]
+      );
+    }
+    console.log(`[Seeding] Successfully backfilled ${unprovisionedStudents.length} students.`);
 
     await client.query("COMMIT");
     console.log(`Seeded Postgres database with ${store.users.filter(u => u.role === "student").length} students and ${store.courses.length} courses.`);

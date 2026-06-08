@@ -1,6 +1,8 @@
 import { eventBus } from "./eventBus";
 import { recalculateGPA } from "./gpaCalculator";
 import { notifyAdvisorOf, notifyParentOf, notifyRole, notifyStudent, notifyUsers } from "./notify";
+import { provisioningService } from "./emailProvisioning/provisioningService";
+import { auditRepository } from "./repositories/audit";
 
 export function registerEventHandlers() {
   eventBus.on("grade.saved", async ({ studentId, courseRegistrationId, grade }, pool) => {
@@ -153,5 +155,25 @@ export function registerEventHandlers() {
     await notifyAdvisorOf(pool, studentId, "Assigned student is eligible for graduation.");
     await notifyRole(pool, "admin", "A student is eligible for graduation.");
     await notifyParentOf(pool, studentId, "Student is eligible for graduation.");
+  });
+
+  eventBus.on("user.created", async (user: any, pool) => {
+    if (user.role !== "student") return;
+    try {
+      await provisioningService.provisionStudentEmail(pool, user.id);
+    } catch (err: any) {
+      console.error("[email-provisioning] failed for", user.id, err);
+      try {
+        await auditRepository.log(
+          pool,
+          user.id,
+          "email_provisioning_failed",
+          "email",
+          String(err.message || err)
+        );
+      } catch (logErr) {
+        console.error("[email-provisioning] failed to log audit error:", logErr);
+      }
+    }
   });
 }
