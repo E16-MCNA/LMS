@@ -66,7 +66,7 @@ async function checkGPAWarnings() {
         `INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at)
          VALUES ($1,$2,'low_gpa',$3,false,$4)
          ON CONFLICT (student_id, type, COALESCE(course_id, '')) DO UPDATE
-         SET message = EXCLUDED.message`,
+         SET message = EXCLUDED.message, is_resolved = false, resolved_at = null, resolved_by = null`,
         [`warning_low_gpa_${studentId}`, studentId, `GPA is below 2.0 (${gpa}).`, new Date().toISOString()]
       );
       await pool.query("UPDATE student_profiles SET academic_probation = true WHERE user_id = $1", [studentId]);

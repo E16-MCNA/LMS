@@ -16,7 +16,7 @@ export function registerEventHandlers() {
         `INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at)
          VALUES ($1,$2,'low_gpa',$3,false,$4)
          ON CONFLICT (student_id, type, COALESCE(course_id, '')) DO UPDATE
-         SET message = EXCLUDED.message`,
+         SET message = EXCLUDED.message, is_resolved = false, resolved_at = null, resolved_by = null`,
         [`warning_low_gpa_${studentId}`, studentId, `Điểm trung bình (GPA) dưới 2.0 (${gpa}).`, new Date().toISOString()]
       );
       await pool.query("UPDATE student_profiles SET academic_probation = true WHERE user_id = $1", [studentId]);
@@ -60,7 +60,7 @@ export function registerEventHandlers() {
           `INSERT INTO academic_warnings (id, student_id, type, course_id, message, is_resolved, created_at)
            VALUES ($1,$2,'low_attendance',$3,$4,false,$5)
            ON CONFLICT (student_id, type, COALESCE(course_id, '')) DO UPDATE
-           SET message = EXCLUDED.message`,
+           SET message = EXCLUDED.message, is_resolved = false, resolved_at = null, resolved_by = null`,
           [`warning_att_${studentId}_${courseId}`, studentId, courseId, warningMessage, new Date().toISOString()]
         );
         if (!existingWarning) {
@@ -104,7 +104,8 @@ export function registerEventHandlers() {
     await pool.query(
       `INSERT INTO academic_warnings (id, student_id, type, message, is_resolved, created_at)
        VALUES ($1,$2,'unpaid_fee','Học phí học phần đã quá hạn thanh toán.',false,$3)
-       ON CONFLICT (student_id, type, COALESCE(course_id, '')) DO NOTHING`,
+       ON CONFLICT (student_id, type, COALESCE(course_id, '')) DO UPDATE
+       SET message = EXCLUDED.message, is_resolved = false, resolved_at = null, resolved_by = null`,
       [`warning_fee_${studentId}`, studentId, new Date().toISOString()]
     );
     await pool.query("UPDATE student_profiles SET fee_hold = true WHERE user_id = $1", [studentId]);
