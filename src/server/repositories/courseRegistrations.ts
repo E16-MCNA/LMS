@@ -4,6 +4,22 @@ import { generateId } from "../ids";
 import { notifyStudent, notifyUsers } from "../notify";
 import { eventBus } from "../eventBus";
 
+const scheduleDateOnly = (slot: any): string => {
+  const value = slot?.specificDate || slot?.specific_date;
+  return value ? String(value).slice(0, 10) : "";
+};
+
+const scheduleDay = (slot: any): string => String(slot?.dayOfWeek || slot?.day_of_week || "").toLowerCase();
+
+const schedulesCanOverlap = (targetSlot: any, existingSlot: any): boolean => {
+  const targetDate = scheduleDateOnly(targetSlot);
+  const existingDate = scheduleDateOnly(existingSlot);
+  if (targetDate && existingDate) return targetDate === existingDate;
+  const targetDay = scheduleDay(targetSlot);
+  const existingDay = scheduleDay(existingSlot);
+  return Boolean(targetDay && existingDay && targetDay === existingDay);
+};
+
 async function resolveSectionCredits(db: Queryable, sectionId: string, courseId: string): Promise<number> {
   const row = (await db.query(
     `SELECT COALESCE(MAX(pc.credits), 3) AS credits
@@ -102,14 +118,10 @@ export const courseRegistrationsRepository = {
         return hrs * 60 + mins;
       };
 
-      const getDay = (x: any) => (x.dayOfWeek || x.day_of_week || "").toString().toLowerCase();
-
       let hasConflict = false;
       for (const t of targetSchedule) {
         for (const e of existingSchedules) {
-          const tDay = getDay(t);
-          const eDay = getDay(e);
-          if (tDay && eDay && tDay === eDay) {
+          if (schedulesCanOverlap(t, e)) {
             const tStart = timeToMinutes(t.startTime || t.start_time);
             const tEnd = timeToMinutes(t.endTime || t.end_time);
             const eStart = timeToMinutes(e.startTime || e.start_time);

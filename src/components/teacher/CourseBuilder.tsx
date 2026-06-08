@@ -111,9 +111,12 @@ export default function CourseBuilder(props: ComponentProps) {
     triggerToast
   } = props;
 
+  const [preselectedSessionId, setPreselectedSessionId] = React.useState("");
+
   React.useEffect(() => {
     setActiveCourseTab("curriculum");
     setSelectedForumSectionId("");
+    setPreselectedSessionId("");
   }, [selectedCourseId]);
 
   // Local states for CourseSection management inside CourseBuilder
@@ -335,6 +338,9 @@ export default function CourseBuilder(props: ComponentProps) {
   };
 
   const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === activeCourse?.id);
+  const courseAttendanceSessions = (store.attendanceSessions || [])
+    .filter((session: any) => session.courseId === activeCourse?.id)
+    .sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")));
   const forumSections = courseSections.filter((s: any) => s.status !== "cancelled");
   const activeForumSectionId = selectedForumSectionId && forumSections.some((s: any) => s.id === selectedForumSectionId)
     ? selectedForumSectionId
@@ -524,20 +530,20 @@ export default function CourseBuilder(props: ComponentProps) {
                       onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
                       className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
                     >
-                      Xuất bản khóa học
+                      Gửi duyệt khóa học
                     </button>
                   )}
 
                   {activeCourse.status === "rejected" && (
                     <div className="space-y-2">
                       <div className="bg-red-500/15 border border-red-500/20 rounded-xl p-3 text-[11px] text-red-200/90 leading-relaxed">
-                        Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và xuất bản lại.
+                        Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và gửi duyệt lại.
                       </div>
                       <button
                         onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
                         className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl cursor-pointer"
                       >
-                        Xuất bản lại khóa học
+                        Gửi duyệt lại khóa học
                       </button>
                     </div>
                   )}
@@ -550,7 +556,7 @@ export default function CourseBuilder(props: ComponentProps) {
 
                   {activeCourse.status === "pending" && (
                     <div className="bg-amber-500/15 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-normal">
-                      Khóa học cũ còn ở trạng thái chờ duyệt; bấm xuất bản lại để đưa lên danh mục công khai.
+                      Khóa học đã gửi duyệt và đang chờ quản lý phê duyệt trước khi công khai.
                     </div>
                   )}
                 </div>
@@ -564,11 +570,51 @@ export default function CourseBuilder(props: ComponentProps) {
                     Giảng viên có thể khởi động ca điểm danh tự động gửi link 5 phút hoặc tích điểm danh thủ công trực tiếp cho lớp học phần này.
                   </p>
                   <button
-                    onClick={() => setShowAttendanceModal(true)}
+                    onClick={() => {
+                      setPreselectedSessionId("");
+                      setShowAttendanceModal(true);
+                    }}
                     className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-sans"
                   >
                     <span>Điểm danh lớp học ✍️</span>
                   </button>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-semibold text-white block">Lịch sử buổi điểm danh đã tạo</span>
+                      <span className="text-[10px] text-white/40 block">{courseAttendanceSessions.length} buổi trong khóa học này</span>
+                    </div>
+                    <Calendar className="h-4 w-4 text-indigo-400" />
+                  </div>
+                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                    {courseAttendanceSessions.map((session: any) => {
+                      const sessionSection = courseSections.find((section: any) => section.id === session.sectionId);
+                      return (
+                        <button
+                          key={session.id}
+                          onClick={() => {
+                            setPreselectedSessionId(session.id);
+                            setShowAttendanceModal(true);
+                          }}
+                          className="w-full text-left text-xs bg-black/25 hover:bg-white/5 border border-white/5 hover:border-indigo-400/30 rounded-xl p-3 transition cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-white truncate">{session.topic}</span>
+                            <span className="text-[9px] font-mono text-cyan-300 shrink-0">{session.date}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-[10px] text-white/45 font-mono">
+                            <span>{sessionSection?.sectionCode || "Chưa gắn lớp"}</span>
+                            {session.code && <span className="text-indigo-300">Code: {session.code}</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {courseAttendanceSessions.length === 0 && (
+                      <p className="text-[11px] text-white/40 italic">Chưa có buổi điểm danh nào được tạo cho khóa học này.</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Class sections list for this course */}
@@ -1162,6 +1208,7 @@ export default function CourseBuilder(props: ComponentProps) {
                 else console.log(msg);
               }}
               defaultCourseId={activeCourse.id}
+              defaultSessionId={preselectedSessionId}
             />
           </div>
         </div>

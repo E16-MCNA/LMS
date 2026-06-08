@@ -1294,7 +1294,7 @@ app.post("/api/courses", requireAuth, requireRole(["teacher", "manager", "admin"
     title: body.title,
     description: body.description,
     teacherId: req.user!.role === "teacher" ? req.user!.id : body.teacherId || req.user!.id,
-    status: "published",
+    status: req.user!.role === "teacher" ? "draft" : "published",
     category: body.category,
     thumbnail: body.thumbnail,
     price: body.price,
@@ -1307,20 +1307,21 @@ app.post("/api/courses", requireAuth, requireRole(["teacher", "manager", "admin"
 }));
 app.post("/api/courses/:id/submit", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.params.id)) return res.status(403).json({ error: "Permission denied." });
-  const course = await coursesRepository.setStatus(pool, req.params.id, "published");
+  const nextStatus = req.user!.role === "teacher" ? "pending" : "published";
+  const course = await coursesRepository.setStatus(pool, req.params.id, nextStatus);
   if (!course) return res.status(404).json({ error: "Course not found." });
   invalidateStoreCache();
-  await audit(req, "publish_course_direct", course.id, course.title);
+  await audit(req, req.user!.role === "teacher" ? "submit_course_for_review" : "publish_course_direct", course.id, course.title);
   res.json(course);
 }));
-app.post("/api/courses/:id/publish", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/courses/:id/publish", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const course = await coursesRepository.setStatus(pool, req.params.id, "published");
   if (!course) return res.status(404).json({ error: "Course not found." });
   invalidateStoreCache();
   await audit(req, "approve_course", course.id, course.title);
   res.json(course);
 }));
-app.post("/api/courses/:id/reject", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.rejectCourse), asyncHandler(async (req, res) => {
+app.post("/api/courses/:id/reject", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.rejectCourse), asyncHandler(async (req, res) => {
   const course = await coursesRepository.setStatus(pool, req.params.id, "rejected", req.body.rejectionReason);
   if (!course) return res.status(404).json({ error: "Course not found." });
   invalidateStoreCache();
@@ -2061,11 +2062,11 @@ app.patch("/api/advisor/student-profile/:studentId", requireAuth, requireRole(["
   await audit(req, "update_student_notes", req.params.studentId, "Advisor updated student academic plan/notes.");
   res.json({ ok: true, message: "Cập nhật đề xuất lộ trình thành công!" });
 }));
-app.post("/api/advisor/assignments", requireAuth, requireRole(["admin", "admin", "super_admin"]), validateBody(schemas.advisorAssignment), asyncHandler(async (req, res) => {
+app.post("/api/advisor/assignments", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.advisorAssignment), asyncHandler(async (req, res) => {
   const assignment = await advisorsRepository.assignStudent(pool, req.body.advisorId, req.body.studentId, req.body.semesterId);
   res.status(assignment ? 201 : 409).json(assignment || { error: "Advisor assignment already exists." });
 }));
-app.delete("/api/advisor/assignments/:id", requireAuth, requireRole(["admin", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.delete("/api/advisor/assignments/:id", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const assignment = await advisorsRepository.unassignStudent(pool, req.params.id);
   if (!assignment) return res.status(404).json({ error: "Advisor assignment not found." });
   res.json(assignment);
@@ -2164,7 +2165,7 @@ app.post("/api/grade-appeals", requireAuth, requireRole(["student"]), validateBo
   if ("error" in result) return res.status(result.status).json({ error: result.error });
   res.status(201).json(result.row);
 }));
-app.get("/api/grade-appeals", requireAuth, requireRole(["student", "teacher", "admin", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await gradeAppealsRepository.list(pool, req.user!))));
+app.get("/api/grade-appeals", requireAuth, requireRole(["student", "teacher", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await gradeAppealsRepository.list(pool, req.user!))));
 app.patch("/api/grade-appeals/:id/review", requireAuth, requireRole(["teacher"]), validateBody(schemas.gradeAppealReview), asyncHandler(async (req, res) => {
   const appeal = await gradeAppealsRepository.review(pool, req.params.id, req.user!.id, req.body.revisedGrade);
   if (!appeal) return res.status(404).json({ error: "Grade appeal not found." });
@@ -2182,7 +2183,7 @@ app.patch("/api/grade-appeals/:id/escalate", requireAuth, requireRole(["student"
 }));
 
 app.post("/api/leave-requests", requireAuth, requireRole(["student"]), validateBody(schemas.leaveRequest), asyncHandler(async (req, res) => res.status(201).json(await leaveRequestsRepository.create(pool, req.user!.id, req.body))));
-app.get("/api/leave-requests", requireAuth, requireRole(["student", "admin", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await leaveRequestsRepository.list(pool, req.user!))));
+app.get("/api/leave-requests", requireAuth, requireRole(["student", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => res.json(await leaveRequestsRepository.list(pool, req.user!))));
 app.patch("/api/leave-requests/:id/approve", requireAuth, requireRole(["admin"]), validateBody(schemas.reviewNote), asyncHandler(async (req, res) => {
   const request = await leaveRequestsRepository.approve(pool, req.params.id, req.user!.id, req.body.reviewNote);
   if (!request) return res.status(404).json({ error: "Leave request not found." });
@@ -2370,10 +2371,24 @@ app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["super_a
   res.json({ overdueCount: overdue.length, fees: overdue });
 }));
 
+async function validateAttendanceSectionAccess(courseId: string, sectionId: string | undefined, user: User): Promise<{ section?: any; status?: number; error?: string }> {
+  if (!sectionId) return {};
+  const section = (await pool.query(
+    "SELECT id, course_id, teacher_id FROM course_sections WHERE id = $1",
+    [sectionId]
+  )).rows[0];
+  if (!section) return { status: 404, error: "Course section not found." };
+  if (section.course_id !== courseId) return { status: 400, error: "Selected section does not belong to this course." };
+  if (user.role === "teacher" && section.teacher_id !== user.id) return { status: 403, error: "Permission denied for this class section." };
+  return { section };
+}
+
 app.post("/api/attendance/sessions", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.attendanceSession), asyncHandler(async (req, res) => {
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });
   if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) return res.status(403).json({ error: "Permission denied." });
+  const sectionValidation = await validateAttendanceSectionAccess(req.body.courseId, req.body.sectionId, req.user!);
+  if (sectionValidation.error) return res.status(sectionValidation.status!).json({ error: sectionValidation.error });
   const session = {
     id: generateId("ats"),
     courseId: req.body.courseId,
@@ -2422,6 +2437,8 @@ app.post("/api/attendance/sessions/generate-link", requireAuth, requireRole(["te
   if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) {
     return res.status(403).json({ error: "Permission denied." });
   }
+  const sectionValidation = await validateAttendanceSectionAccess(courseId, sectionId, req.user!);
+  if (sectionValidation.error) return res.status(sectionValidation.status!).json({ error: sectionValidation.error });
 
   // Generate unique 6-character random uppercase code
   const code = Math.random().toString(36).substring(2, 8).toUpperCase();

@@ -471,16 +471,16 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
               {activeSemester.name} — Năm học {activeYear?.name || "Hiện tại"}
             </h3>
             <p className="text-xs text-white/60">
-              Thời gian học kỳ: <span className="text-white font-medium">{activeSemester.startDate}</span> đến <span className="text-white font-medium">{activeSemester.endDate}</span>
+              Thời gian học kỳ: <span className="text-white font-medium">{formatDateOnly(activeSemester.startDate)}</span> đến <span className="text-white font-medium">{formatDateOnly(activeSemester.endDate)}</span>
             </p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-xs space-y-1">
             <span className="text-white/40 block text-[9px] uppercase font-bold tracking-wider">Cổng đăng ký môn học</span>
             <div className="text-white font-medium">
-              Mở: <span className="text-cyan-400 font-mono">{activeSemester.registrationOpen}</span>
+              Mở: <span className="text-cyan-400 font-mono">{formatDateOnly(activeSemester.registrationOpen)}</span>
             </div>
             <div className="text-white font-medium">
-              Đóng: <span className="text-red-400 font-mono">{activeSemester.registrationClose}</span>
+              Đóng: <span className="text-red-400 font-mono">{formatDateOnly(activeSemester.registrationClose)}</span>
             </div>
           </div>
         </div>
