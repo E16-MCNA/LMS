@@ -21,10 +21,47 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname.replace(/[^a-zA-Z0-9.-]/g, ''));
+    const ext = path.extname(file.originalname).toLowerCase();
+    const base = path.basename(file.originalname, path.extname(file.originalname)).replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 80) || "upload";
+    cb(null, `${uniqueSuffix}-${base}${ext}`);
   }
 });
-const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB limit
+const allowedUploadExtensions = new Set([
+  ".jpg", ".jpeg", ".png", ".gif", ".webp",
+  ".pdf", ".txt", ".md", ".csv",
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+  ".zip"
+]);
+const allowedUploadMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/zip",
+  "application/x-zip-compressed"
+]);
+const uploadFileFilter = (_req: express.Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile?: boolean) => void) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mime = String(file.mimetype || "").toLowerCase();
+  if (allowedUploadExtensions.has(ext) && allowedUploadMimeTypes.has(mime)) {
+    cb(null, true);
+    return;
+  }
+  const err = new Error("Unsupported file type. Allowed uploads: raster images, PDF, office documents, text/CSV/Markdown, and ZIP archives.");
+  (err as any).status = 400;
+  cb(err, false);
+};
+const upload = multer({ storage, fileFilter: uploadFileFilter, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB limit
 
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
@@ -82,7 +119,11 @@ const csrfSafeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 app.use(express.json({ limit: "10mb" }));
 
-app.use("/uploads", express.static(uploadDir));
+app.use("/uploads", express.static(uploadDir, {
+  setHeaders: (res) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+  }
+}));
 
 app.post("/api/upload", requireCsrf, requireAuth, upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -105,6 +146,142 @@ function asyncHandler(handler: AsyncRoute) {
   return (req: AuthRequest, res: express.Response, next: express.NextFunction) => {
     handler(req, res, next).catch(next);
   };
+}
+
+type StudentProfileDefaults = {
+  programId?: string;
+  departmentId?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  address?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+};
+
+type UserCreateInput = {
+  email: string;
+  name: string;
+  role: User["role"];
+  phone?: string;
+  linkedStudentId?: string;
+  programId?: string;
+  departmentId?: string;
+};
+
+async function resolveStudentProgramDefaults(db: Queryable, programId?: string, departmentId?: string) {
+  if (programId) {
+    const row = (await db.query(
+      `SELECT p.id AS program_id, p.department_id
+       FROM programs p
+       WHERE p.id = $1 AND ($2::text IS NULL OR p.department_id = $2)
+       LIMIT 1`,
+      [programId, departmentId || null]
+    )).rows[0];
+    if (row) {
+      return { programId: row.program_id as string, departmentId: row.department_id as string };
+    }
+  }
+
+  if (departmentId) {
+    const row = (await db.query(
+      `SELECT p.id AS program_id, p.department_id
+       FROM programs p
+       WHERE p.department_id = $1
+       ORDER BY p.id
+       LIMIT 1`,
+      [departmentId]
+    )).rows[0];
+    if (row) {
+      return { programId: row.program_id as string, departmentId: row.department_id as string };
+    }
+  }
+
+  const row = (await db.query(
+    `SELECT p.id AS program_id, p.department_id
+     FROM programs p
+     ORDER BY p.id
+     LIMIT 1`
+  )).rows[0];
+  if (!row) {
+    const err = new Error("No academic program is configured for student profile creation.");
+    (err as any).status = 400;
+    throw err;
+  }
+  return { programId: row.program_id as string, departmentId: row.department_id as string };
+}
+
+async function generateStudentCode(db: Queryable) {
+  const prefix = `SV${new Date().getFullYear()}`;
+  const latest = (await db.query(
+    "SELECT student_code FROM student_profiles WHERE student_code LIKE $1 ORDER BY student_code DESC LIMIT 1",
+    [`${prefix}%`]
+  )).rows[0]?.student_code as string | undefined;
+  const suffix = latest?.startsWith(prefix) && /^\d+$/.test(latest.slice(prefix.length))
+    ? Number(latest.slice(prefix.length))
+    : 0;
+  return `${prefix}${String(suffix + 1).padStart(4, "0")}`;
+}
+
+async function ensureStudentProfile(db: Queryable, userId: string, defaults: StudentProfileDefaults = {}) {
+  const exists = (await db.query("SELECT id FROM student_profiles WHERE user_id = $1", [userId])).rowCount;
+  if (exists) return false;
+
+  const { programId, departmentId } = await resolveStudentProgramDefaults(db, defaults.programId, defaults.departmentId);
+  const enrollmentDate = new Date().toISOString().slice(0, 10);
+  const expectedGraduation = new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10);
+  await db.query(
+    `INSERT INTO student_profiles (
+       id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
+       expected_graduation, status, gpa, total_credits_earned, phone, date_of_birth, gender,
+       address, guardian_name, guardian_phone
+     ) VALUES ($1, $2, $3, $4, $5, 1, $6, $7, 'active', 0.0, 0, $8, $9, $10, $11, $12, $13)`,
+    [
+      generateId("profile"),
+      userId,
+      await generateStudentCode(db),
+      programId,
+      departmentId,
+      enrollmentDate,
+      expectedGraduation,
+      defaults.phone || null,
+      defaults.dateOfBirth || null,
+      defaults.gender || null,
+      defaults.address || null,
+      defaults.guardianName || null,
+      defaults.guardianPhone || null
+    ]
+  );
+  return true;
+}
+
+async function createUserAccount(db: Queryable, input: UserCreateInput, password: string) {
+  const credential = hashPassword(password);
+  const user: User = {
+    id: generateId("user"),
+    email: input.email.toLowerCase().trim(),
+    passwordHash: credential.hash,
+    passwordSalt: credential.salt,
+    name: input.name.trim(),
+    role: input.role,
+    isActive: true,
+    phone: input.phone,
+    linkedStudentId: input.linkedStudentId,
+    createdAt: new Date().toISOString()
+  };
+  const created = await usersRepository.create(db, user);
+  if (created.role === "student") {
+    await ensureStudentProfile(db, created.id, {
+      programId: input.programId,
+      departmentId: input.departmentId,
+      phone: input.phone
+    });
+  }
+  return created;
+}
+
+function generateTemporaryPassword() {
+  return `Lms-${crypto.randomBytes(8).toString("base64url")}-1`;
 }
 
 function base64Url(input: string | Buffer) {
@@ -1133,7 +1310,7 @@ app.post("/api/auth/force-logout", asyncHandler(async (req, res) => {
 
 app.use("/api", requireCsrf);
 
-app.post("/api/analyze", asyncHandler(async (req, res) => {
+app.post("/api/analyze", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const { code } = req.body;
   if (!code) return res.status(400).json({ error: "Code content is required." });
   if (!ai) return res.status(503).json({ error: "Gemini API Key is not configured in the workspace secrets. Please configure GEMINI_API_KEY in Settings." });
@@ -1237,21 +1414,14 @@ app.patch("/api/student/profile", requireAuth, requireRole(["student"]), validat
   const exists = (await pool.query("SELECT id FROM student_profiles WHERE user_id = $1", [req.user!.id])).rowCount;
 
   if (!exists) {
-    const profileId = generateId("profile");
-    const studentCode = `SV${new Date().getFullYear()}${req.user!.id.slice(-4).toUpperCase()}`;
-    await pool.query(
-      `INSERT INTO student_profiles (
-         id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
-         expected_graduation, status, gpa, total_credits_earned, phone, date_of_birth, gender,
-         address, guardian_name, guardian_phone
-       ) VALUES ($1, $2, $3, 'prog_se', 'dept_cs', 1, $4, $5, 'active', 0.0, 0, $6, $7, $8, $9, $10, $11)`,
-      [
-        profileId, req.user!.id, studentCode,
-        new Date().toISOString().slice(0, 10),
-        new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
-        phone || null, dateOfBirth || null, gender || null, address || null, guardianName || null, guardianPhone || null
-      ]
-    );
+    await ensureStudentProfile(pool, req.user!.id, {
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      guardianName,
+      guardianPhone
+    });
   } else {
     await pool.query(
       `UPDATE student_profiles
@@ -1887,38 +2057,17 @@ app.post("/api/forum/posts/:postId/replies", requireAuth, requireRole(["student"
 }));
 
 app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin"]), validateBody(schemas.createUser), asyncHandler(async (req, res) => {
-  const credential = hashPassword(req.body.password);
-  const user: User = {
-    id: generateId("user"),
-    email: req.body.email,
-    passwordHash: credential.hash,
-    passwordSalt: credential.salt,
-    name: req.body.name,
-    role: req.body.role,
-    isActive: true,
-    phone: req.body.phone,
-    linkedStudentId: req.body.linkedStudentId,
-    createdAt: new Date().toISOString()
-  };
-  const created = await usersRepository.create(pool, user);
-  if (created.role === "student") {
-    // Auto-create default student profile
-    await pool.query(
-      "INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
-      [
-        "profile_" + created.id,
-        created.id,
-        "SV2025" + created.id.slice(-4).toUpperCase(),
-        req.body.programId || "prog_se",
-        req.body.departmentId || "dept_cs",
-        1,
-        new Date().toISOString().slice(0, 10),
-        "2029-06-30",
-        "active",
-        0.0,
-        0
-      ]
-    );
+  const client = await pool.connect();
+  let created: User;
+  try {
+    await client.query("BEGIN");
+    created = await createUserAccount(client, req.body, req.body.password);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
 
   if (created.role === "student") {
@@ -1929,17 +2078,84 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin"]
   res.status(201).json(created);
 }));
 
+app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_admin", "admin"]), validateBody(schemas.bulkCreateUsers), asyncHandler(async (req, res) => {
+  const errors: Array<{ row: number; email?: string; reason: string }> = [];
+  const created: User[] = [];
+  const seenEmails = new Set<string>();
+
+  for (const [index, input] of req.body.users.entries()) {
+    const row = index + 1;
+    const email = input.email.toLowerCase().trim();
+
+    if (seenEmails.has(email)) {
+      errors.push({ row, email, reason: "Duplicate email in import payload." });
+      continue;
+    }
+    seenEmails.add(email);
+
+    if (req.user!.role === "admin" && input.role !== "student") {
+      errors.push({ row, email, reason: "Admins can bulk import student accounts only." });
+      continue;
+    }
+
+    const existing = await usersRepository.findAuthByEmail(pool, email);
+    if (existing) {
+      errors.push({ row, email, reason: "Email already exists." });
+      continue;
+    }
+
+    const client = await pool.connect();
+    let newUser: User | null = null;
+    try {
+      await client.query("BEGIN");
+      newUser = await createUserAccount(client, input, req.body.defaultPassword || generateTemporaryPassword());
+      await client.query("COMMIT");
+    } catch (error: any) {
+      await client.query("ROLLBACK");
+      errors.push({
+        row,
+        email,
+        reason: error?.code === "23505" ? "Duplicate user or student code." : error?.message || "Unable to create user."
+      });
+      continue;
+    } finally {
+      client.release();
+    }
+
+    created.push(newUser);
+    if (newUser.role === "student") {
+      await eventBus.emit("user.created", newUser, pool);
+    }
+  }
+
+  if (created.length > 0) {
+    await audit(req, "bulk_create_users", "users", `Created ${created.length} users from CSV import; skipped ${errors.length}.`);
+  }
+
+  res.status(created.length > 0 ? 201 : 200).json({
+    createdCount: created.length,
+    skippedCount: errors.length,
+    errorCount: errors.length,
+    errors,
+    created
+  });
+}));
+
 app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
   const user = await usersRepository.findById(pool, req.params.id);
   if (!user) return res.status(404).json({ error: "User not found." });
-  const defaultNewPass = "studente16";
-  const credential = hashPassword(defaultNewPass);
+  const temporaryPassword = generateTemporaryPassword();
+  const credential = hashPassword(temporaryPassword);
   await pool.query(
     "UPDATE users SET password_hash = $1, password_salt = $2 WHERE id = $3",
     [credential.hash, credential.salt, req.params.id]
   );
-  await audit(req, "reception_reset_password", req.params.id, `Reset password for student: ${user.email}`);
-  res.json({ ok: true, message: `Mật khẩu đã được đặt lại thành công về mặc định: ${defaultNewPass}` });
+  await audit(req, "reset_user_password", req.params.id, `Temporary password issued for: ${user.email}`);
+  res.json({
+    ok: true,
+    temporaryPassword,
+    message: `Mật khẩu tạm thời đã được tạo: ${temporaryPassword}`
+  });
 }));
 
 app.post("/api/admin/users/:id/reprovision-email", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
@@ -1984,18 +2200,7 @@ app.patch("/api/admin/users/:id/role", requireAuth, requireRole(["manager", "sup
   await pool.query("UPDATE users SET role = $1 WHERE id = $2", [role, req.params.id]);
 
   if (role === "student") {
-    const profileRes = await pool.query("SELECT id FROM student_profiles WHERE user_id = $1", [req.params.id]);
-    if (profileRes.rows.length === 0) {
-      const profileId = `profile_${Math.random().toString(36).substring(2, 9)}`;
-      const studentCode = `SV${Math.floor(100000 + Math.random() * 900000)}`;
-      const enrollmentDate = new Date().toISOString().slice(0, 10);
-      const expectedGraduation = new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10);
-      await pool.query(
-        `INSERT INTO student_profiles (id, user_id, student_code, program_id, department_id, academic_year, enrollment_date, expected_graduation, status, gpa, total_credits_earned)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [profileId, req.params.id, studentCode, "", "", enrollmentDate.slice(0, 4), enrollmentDate, expectedGraduation, "active", 0.0, 0]
-      );
-    }
+    await ensureStudentProfile(pool, req.params.id);
   }
 
   await audit(req, "update_user_role", req.params.id, `role=${role}`);
@@ -2297,7 +2502,7 @@ app.post("/api/tuition/confirm-transfer", requireAuth, requireRole(["student"]),
   res.json({ ok: true, transactionId: txId });
 }));
 
-app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
+app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let result: any;
   try {
@@ -2322,7 +2527,7 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["sup
   res.json(result);
 }));
 
-app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
   const { semesterId, amount, dueDate } = req.body;
   const dueDateValue = dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const client = await pool.connect();
@@ -2365,7 +2570,7 @@ app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["super_adm
   }
 }));
 
-app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const overdue = await financeRepository.checkOverdueFees(pool);
   await audit(req, "scan_overdue_tuition", "tuition_fees", `Found ${overdue.length} overdue fees.`);
   res.json({ overdueCount: overdue.length, fees: overdue });

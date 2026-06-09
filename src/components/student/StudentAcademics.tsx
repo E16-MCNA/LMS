@@ -860,7 +860,7 @@ export default function StudentAcademics(props: ComponentProps) {
                       <div className="flex gap-4 items-center bg-black/25 p-4 rounded-xl border border-white/5 flex-col md:flex-row text-xs">
                         <div className="flex-1 space-y-1.5 text-xs text-white/70">
                           <p className="font-bold text-white font-sans text-xs">Cổng chuyển khoản nộp trực tuyến an toàn:</p>
-                          <p className="leading-relaxed font-sans text-[11.5px]">Quét mã VietQR nộp trực tuyến dưới đây, kế toán sẽ đối soát và cập nhật tình trạng phê duyệt học viện tự động.</p>
+                          <p className="leading-relaxed font-sans text-[11.5px]">Quét mã VietQR nộp trực tuyến dưới đây. Trạng thái sẽ được cập nhật sau khi bên xử lý thanh toán xác nhận giao dịch.</p>
                           <button
                             onClick={async () => {
                               const customAmountStr = window.prompt(`Tổng số dư nợ học phí còn lại là: ${remaining.toLocaleString()} VND.\nNhập số tiền bạn đã chuyển khoản để gửi xác nhận (VND):`, remaining.toString());
@@ -876,7 +876,7 @@ export default function StudentAcademics(props: ComponentProps) {
                               }
                               try {
                                 await api.confirmTransfer({ feeId: fee.id, amount: customAmount });
-                                triggerToast(`✅ Gửi xác nhận chuyển khoản ${customAmount.toLocaleString()} VND thành công! Giao dịch đang chờ phòng kế toán đối soát.`);
+                                triggerToast(`Gửi xác nhận chuyển khoản ${customAmount.toLocaleString()} VND thành công. Giao dịch đang chờ bên xử lý thanh toán xác nhận.`);
                                 await onRefreshData();
                               } catch (err: any) {
                                 console.error(err);
@@ -914,7 +914,7 @@ export default function StudentAcademics(props: ComponentProps) {
                       <FileText className="h-4 w-4 text-indigo-400" /> Nhật ký nộp học phí trực tuyến (Double check)
                     </h5>
                     <p className="text-[11px] text-white/50 leading-relaxed font-sans">
-                      Danh sách các giao dịch đóng tiền bạn đã gửi lên hệ thống. Giao dịch ở trạng thái "Chờ kế toán duyệt" đang được phòng tài vụ đối soát ngân hàng tự động.
+                      Danh sách các giao dịch đóng tiền bạn đã gửi lên hệ thống. Giao dịch ở trạng thái "Chờ xác nhận thanh toán" đang chờ bên xử lý thanh toán cập nhật kết quả.
                     </p>
                   </div>
 
@@ -951,7 +951,7 @@ export default function StudentAcademics(props: ComponentProps) {
                           Thời gian nộp {txSortField === "createdAt" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
                         </th>
                         <th className="p-3 text-right text-[10.5px] cursor-pointer select-none hover:text-white transition" onClick={() => handleTxSort("status")}>
-                          Trạng thái duyệt {txSortField === "status" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                          Trạng thái thanh toán {txSortField === "status" ? (txSortOrder === "asc" ? "▲" : "▼") : "↕"}
                         </th>
                       </tr>
                     </thead>
@@ -982,7 +982,7 @@ export default function StudentAcademics(props: ComponentProps) {
                                 <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Thành công ✅</span>
                               )}
                               {tx.status === "pending" && (
-                                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">Chờ kế toán duyệt ⏳</span>
+                                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">Chờ xác nhận thanh toán</span>
                               )}
                               {tx.status === "rejected" && (
                                 <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Từ chối ❌</span>

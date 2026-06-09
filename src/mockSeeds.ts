@@ -673,7 +673,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           createdAt: paidAt,
           processedAt: paidAt,
           processedBy: "user_finance",
-          notes: "Giao dịch chuyển khoản tự động khớp sao kê"
+          notes: "Giao dịch chuyển khoản đã được xác nhận"
         });
       } else if (isPending) {
         const pendingAt = new Date(Date.now() - Math.floor(Math.random() * 3) * 24 * 60 * 60 * 1000).toISOString();

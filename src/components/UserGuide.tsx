@@ -68,7 +68,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
               "Nhấp chọn khóa học để xem tóm tắt mô tả đề cương môn học.",
               "Ấn nút 'Đăng ký ghi danh môn học' để ghi danh môn học ngay lập tức."
             ],
-            tips: "💡 Phí ghi danh môn học sẽ được tự động kết toán và tạo hóa đơn nợ học phí gửi về phân hệ SIS của bạn."
+            tips: "💡 Phí ghi danh môn học sẽ được tạo thành khoản học phí trong phân hệ SIS để bạn theo dõi và thanh toán."
           },
           {
             title: "Tham gia Học tập & Làm bài trắc nghiệm cuối khóa",
@@ -145,7 +145,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
               "Vào tab 'Đóng học phí' để xem danh sách các đợt học phí chưa thanh toán.",
               "Nhấp nút 'Nhận hướng dẫn chuyển khoản' để thực hiện đóng tiền trực tuyến hoặc chuyển khoản ngân hàng."
             ],
-            tips: "💡 Sau khi chuyển khoản, bộ phận Kế toán sẽ phê duyệt và gửi biên lai có mã số xác thực về hòm thư của bạn."
+            tips: "💡 Sau khi chuyển khoản, trạng thái sẽ được cập nhật khi bên xử lý thanh toán xác nhận giao dịch."
           },
           {
             title: "Xem Bảng điểm & Học bạ điện tử (E-Transcript)",
@@ -332,7 +332,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
             "Vào tab 'Phân quyền người dùng' (LMS) hoặc 'Sổ học sinh sinh viên' (SIS).",
             "Để thêm học viên mới hàng loạt, Giáo vụ/Manager truy cập mục 'Nhập dữ liệu CSV'. Tải lên tệp danh sách Excel/CSV nhân sự học viện có cấu trúc định sẵn.",
             "Ấn nút 'Xác nhận Nhập dữ liệu CSV'. Hệ thống sẽ tự động khởi tạo hàng loạt tài khoản người dùng, mã hóa mật khẩu bảo mật và gửi thông báo kích hoạt tài khoản.",
-            "Để phân quyền nhân sự hành chính, nhấp chọn người dùng, chỉnh sửa role (Manager, admin, finance, sale, teacher, advisor, student) để gán đúng quyền hạn trong SIS/LMS."
+            "Để phân quyền nhân sự hành chính, nhấp chọn người dùng, chỉnh sửa role (Manager, Admin, Teacher, Student, Parent) để gán đúng quyền hạn trong SIS/LMS."
           ],
           tips: "💡 Sổ nhật ký hệ thống (Audit Logs) ghi nhận chính xác 100% từng hành động của tất cả nhân sự (ai điều chỉnh điểm, ai phê duyệt khóa học, ai import CSV) phục vụ mục đích bảo mật kỹ thuật tối đa."
         },
@@ -386,28 +386,28 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
             "Vào tab 'Sổ Học Phí & Biên Lai' dưới Menu SIS.",
             "Theo dõi danh sách các kỳ học phí đang nợ, kỳ hạn chót đóng tiền và số tiền cụ thể.",
             "Sử dụng thông tin chuyển khoản ngân hàng hoặc mã quét thanh toán hiển thị để chuyển khoản đóng tiền.",
-            "Sau khi chuyển tiền, bộ phận Kế toán sẽ rà soát sao kê và phát hành biên lai thu tiền điện tử gửi trực tiếp vào tab này."
+            "Sau khi chuyển tiền, bên xử lý thanh toán xác nhận giao dịch và hệ thống cập nhật trạng thái/biên lai trực tiếp trong tab này."
           ],
-          tips: "💡 Trạng thái hóa đơn sẽ chuyển từ 'Chờ đóng tiền' sang màu xanh lá 'Đã thanh toán' ngay khi kế toán xác nhận khớp giao dịch."
+          tips: "💡 Trạng thái hóa đơn sẽ chuyển từ 'Chờ đóng tiền' sang màu xanh lá 'Đã thanh toán' khi giao dịch được xác nhận."
         }
       ];
     }
 
-    // 6. FINANCE GUIDES
+    // 6. LEGACY PAYMENT OPERATIONS GUIDES
     if (role === "finance") {
       return [
         {
-          title: "Đối soát thanh toán & Duyệt quyền tham gia khóa học",
-          description: "Rà soát yêu cầu chuyển khoản ngân hàng từ học viên và phê duyệt kích hoạt quyền học.",
+          title: "Vận hành trạng thái thanh toán học phí",
+          description: "Theo dõi yêu cầu chuyển khoản từ học viên và cập nhật trạng thái khi có xác nhận từ bên xử lý thanh toán.",
           icon: <DollarSign className="h-5 w-5 text-emerald-400" /> as any,
           steps: [
-            "Vào tab 'Đối soát & Giao dịch' trên Bàn làm việc Kế toán.",
-            "Rà soát các giao dịch ở trạng thái 'Chờ đối soát' màu vàng do học sinh gửi yêu cầu thanh toán lên.",
-            "Đối chiếu số tiền chuyển khoản và nội dung giao dịch thực tế trên tài khoản sao kê ngân hàng.",
-            "If khớp thông tin, ấn nút 'Phê duyệt'. Hệ thống sẽ tự động kích hoạt quyền tham gia khóa học cho sinh viên và gửi thư báo thành công.",
-            "If thông tin bị sai lệch, nhấp 'Từ chối', ghi rõ nguyên do (Ví dụ: Chuyển thiếu tiền, sai thông tin khóa học) để thông báo gửi về tài khoản học viên."
+            "Vào tab quản lý giao dịch thanh toán học phí.",
+            "Theo dõi các giao dịch ở trạng thái 'Chờ xác nhận thanh toán' do học sinh gửi yêu cầu thanh toán lên.",
+            "Nhận trạng thái từ bên xử lý thanh toán hoặc kênh vận hành được cấp quyền.",
+            "Khi giao dịch hợp lệ, cập nhật trạng thái thanh toán để hệ thống mở bước học vụ tiếp theo.",
+            "Nếu giao dịch sai lệch, ghi rõ lý do để thông báo gửi về tài khoản học viên."
           ],
-          tips: "💡 Sổ thu chi lưu trữ vĩnh viễn dấu vân tay số của kế toán xử lý giao dịch phục vụ mục đích kiểm toán."
+          tips: "💡 Ứng dụng chỉ lưu trạng thái thanh toán phục vụ học vụ; đối chiếu tài chính chính thức nằm ngoài hệ thống."
         },
         {
           title: "Quản lý Công nợ học phí & Phát hành hóa đơn",
@@ -416,7 +416,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
           steps: [
             "Vào tab 'Quản lý Học phí & Công nợ' dưới phân hệ SIS.",
             "Nhấp nút 'Tạo đợt học phí mới', chọn học kỳ, gán số tiền (VND) và đặt thời hạn đóng học phí quy định.",
-            "Tại Sổ theo dõi học phí, kế toán có thể quét nhanh toàn bộ sinh viên quá hạn đóng tiền.",
+            "Tại Sổ theo dõi học phí, bộ phận vận hành có thể quét nhanh toàn bộ sinh viên quá hạn đóng tiền.",
             "Sử dụng tính năng 'Gửi SMS/Email nhắc nợ' để hệ thống gửi thư cảnh báo nợ tự động đến học sinh và phụ huynh liên quan."
           ],
           tips: "💡 Thuận tiện xuất tệp CSV danh sách nợ học phí quá hạn bất cứ khi nào để chuyển giao cho bộ phận xử lý nợ."
@@ -446,7 +446,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
           steps: [
             "Vào tab 'Đăng ký tài khoản học viên' dưới bàn làm việc Tiếp tân.",
             "Nhập chính xác Họ tên học viên, Email cá nhân (rất quan trọng để gửi kích hoạt) và Số điện thoại.",
-            "Thiết lập mật khẩu mặc định (Hệ thống gợi ý sẵn 'studente16' theo quy chuẩn tuyển sinh).",
+            "Kiểm tra mật khẩu tạm thời do hệ thống sinh sẵn hoặc nhập mật khẩu tạm thời riêng theo quy trình tiếp nhận.",
             "Ấn nút 'Tạo tài khoản học viên'. Hệ thống sẽ tự động lưu thông tin vào DB, cấp quyền 'student' và gửi thông báo kích hoạt hòm thư."
           ],
           tips: "💡 Học viên sau khi có tài khoản có thể tự đăng nhập cổng LMS để bổ sung hồ sơ học bạ."
@@ -459,9 +459,9 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
             "Vào tab 'Tra cứu học viên' trên Menu chính.",
             "Nhập tên học viên hoặc email/sđt vào ô tìm kiếm nhanh.",
             "Bảng kết quả hiển thị thông tin: trạng thái hoạt động, số khóa học đăng ký của học sinh.",
-            "If học viên bị quên mật khẩu hoặc lỗi đăng nhập, nhấp nút 'Reset Mật khẩu'. Hệ thống sẽ tự động đặt lại mật khẩu về mặc định (studente16) để giúp học sinh đăng nhập khẩn cấp ngay tại quầy."
+            "Nếu học viên bị quên mật khẩu hoặc lỗi đăng nhập, nhấp nút 'Reset Mật khẩu'. Hệ thống sẽ tạo một mật khẩu tạm thời mới để hỗ trợ đăng nhập khẩn cấp ngay tại quầy."
           ],
-          tips: "💡 Khuyên học viên đổi lại mật khẩu cá nhân ngay sau khi đăng nhập thành công bằng mật khẩu mặc định."
+          tips: "💡 Khuyên học viên đổi lại mật khẩu cá nhân ngay sau khi đăng nhập thành công bằng mật khẩu tạm thời."
         },
         {
           title: "Tư vấn lộ trình khóa học & Cấp học bổng đào tạo",
@@ -592,7 +592,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
                 {role === "admin" && "Admin học tập"}
                 {role === "manager" && "Quản trị viên Hệ thống"}
                 {role === "parent" && "Phụ Huynh Học Viên"}
-                {role === "finance" && "Phòng Tài Chính"}
+                {role === "finance" && "Vận hành thanh toán"}
                 {role === "sale" && "Tuyển sinh Lễ tân"}
                 {role === "advisor" && "Cố Vấn Học Tập"}
               </span>

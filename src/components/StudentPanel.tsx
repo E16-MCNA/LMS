@@ -262,7 +262,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
 
     // Safety check
     if (storeData.enrollments.find(e => e.courseId === courseId && e.studentId === currentUser.id)) {
-      triggerToast("Bạn đã có lượt đăng ký hoặc đang chờ phê duyệt học phí khóa học này!");
+      triggerToast("Bạn đã có lượt đăng ký hoặc đang chờ xác nhận thanh toán học phí khóa học này!");
       return;
     }
 
@@ -378,32 +378,6 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
   const handleAutoSubmitQuiz = () => {
     if (!activeQuizId) return;
     const answers = quizAnswersRef.current;
-    const storeData = AppStore.get();
-    const quiz = storeData.quizzes.find(q => q.id === activeQuizId)!;
-    const questions = storeData.questions.filter(qst => qst.quizId === activeQuizId);
-
-    let correctCount = 0;
-    questions.forEach(q => {
-      const studentAns = answers[q.id] || "";
-      if (q.type === "text") {
-        // Matching text key values lower cases
-        const cleanAnswerList = (q.correctAnswer || "").toLowerCase().split(",").map(itm => itm.trim());
-        const matched = cleanAnswerList.some(kw => studentAns.toLowerCase().includes(kw));
-        if (matched) correctCount++;
-      } else if (q.type === "multiple") {
-        const sortedStudent = studentAns.split(",").map(x => x.trim()).filter(Boolean).sort().join(",");
-        const sortedCorrect = q.correctAnswer.split(",").map(x => x.trim()).filter(Boolean).sort().join(",");
-        if (sortedStudent === sortedCorrect) correctCount++;
-      } else {
-        // Exact option indexes selection match
-        if (studentAns === q.correctAnswer) {
-          correctCount++;
-        }
-      }
-    });
-
-    const finalScore = Math.round((correctCount / (questions.length || 1)) * 100);
-    const passed = finalScore >= quiz.passingScore;
     api.submitQuiz({ quizId: activeQuizId, answers, startedAt: quizStartedAt || new Date().toISOString() })
       .then((result: any) => {
         setQuizFinishedState({
@@ -416,60 +390,6 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
         onRefreshData();
       })
       .catch((err: any) => triggerToast(err.message || "Không thể nộp bài trắc nghiệm."));
-    return;
-
-    // Track attempt logs
-    const attemptItem: QuizAttempt = {
-      id: generateId("attempt"),
-      quizId: activeQuizId,
-      studentId: currentUser.id,
-      answers: quizAnswers,
-      score: finalScore,
-      passed,
-      startedAt: quizStartedAt || new Date().toISOString(),
-      submittedAt: new Date().toISOString()
-    };
-
-    storeData.quizAttempts.push(attemptItem);
-    AppStore.log(currentUser.id, "submit_quiz_attempt", quiz.title, `Score obtained: ${finalScore}% (${passed ? "PASSED" : "FAILED"}).`);
-
-    // Complete curriculum enrollment status & auto-certificate issuing
-    const enrollment = storeData.enrollments.find(e => e.courseId === quiz.courseId && e.studentId === currentUser.id);
-    if (enrollment && passed) {
-      // Check if all lessons are also completed to issue certificate
-      const lessonsCount = storeData.lessons.filter(l => l.courseId === quiz.courseId).length;
-      const progressCompleted = storeData.lessonProgress.filter(
-        p => p.enrollmentId === enrollment.id && p.completed
-      ).length;
-
-      if (progressCompleted === lessonsCount && enrollment.status !== "completed") {
-        enrollment.status = "completed";
-        enrollment.completedAt = new Date().toISOString();
-
-        // Autocall Certificates mapping
-        const code = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const cert: Certificate = {
-          id: generateId("cert"),
-          enrollmentId: enrollment.id,
-          studentId: currentUser.id,
-          courseId: quiz.courseId,
-          issuedAt: new Date().toISOString(),
-          certificateCode: code
-        };
-        storeData.certificates.push(cert);
-        AppStore.log(currentUser.id, "issue_certificate", cert.certificateCode, `Course: ${quiz.courseId}`);
-        AppStore.notify(currentUser.id, "success", `Chúc mừng! Chứng chỉ khóa học đã được cấp với mã xác thực ${code}. Hãy kiểm tra tab Chứng nhận.`);
-      }
-    }
-
-    AppStore.save(storeData);
-    setQuizFinishedState({
-      score: finalScore,
-      passed,
-      correctAnswers: correctCount,
-      total: questions.length
-    });
-    onRefreshData();
   };
 
   // Send assignment files

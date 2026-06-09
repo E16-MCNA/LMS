@@ -14,9 +14,7 @@ import {
   CheckCircle,
   PiggyBank
 } from "lucide-react";
-import { LMSDataStore, TuitionFee, User, AcademicWarning } from "../types";
-import { AppStore } from "../store";
-import { generateId } from "../utils";
+import { LMSDataStore, User } from "../types";
 import { api } from "../api";
 import ModalPortal from "./ModalPortal";
 
@@ -27,7 +25,7 @@ interface TuitionManagerProps {
   triggerToast: (msg: string) => void;
 }
 
-export default function TuitionManager({ store, currentUser, onRefreshData, triggerToast }: TuitionManagerProps) {
+export default function TuitionManager({ store, onRefreshData, triggerToast }: TuitionManagerProps) {
   const [selectedSemesterId, setSelectedSemesterId] = useState("sem_spring25");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterOverdueOnly, setFilterOverdueOnly] = useState(false);
@@ -129,8 +127,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
       return;
     }
 
-    const storeData = AppStore.get();
-    const activeProfiles = storeData.studentProfiles.filter(p => p.status === "active");
+    const activeProfiles = students.filter(p => p.status === "active");
     if (activeProfiles.length === 0) {
       triggerToast("Không có sinh viên đang hoạt động trong niên học khóa để lập học phí.");
       return;
@@ -140,45 +137,10 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
       const result = await api.bulkIssueTuition({ semesterId: selectedSemesterId, amount: 15000000 });
       onRefreshData();
       triggerToast(result.createdCount > 0
-        ? `ÄÃ£ Ä‘á»“ng loáº¡t thÃ´ng bÃ¡o ná»£ phÃ­ cho ${result.createdCount} sinh viÃªn.`
-        : "Há»c phÃ­ Ä‘Ã£ Ä‘Æ°á»£c xuáº¥t báº£n Ä‘áº§y Ä‘á»§ trÆ°á»›c Ä‘Ã³ cho há»‡ sinh viÃªn khÃ³a nÃ y.");
+        ? `Đã phát hành học phí cho ${result.createdCount} sinh viên.`
+        : "Học phí đã được phát hành đầy đủ trước đó cho nhóm sinh viên này.");
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ láº­p há»c phÃ­ hÃ ng loáº¡t.");
-    }
-    return;
-
-    let createdCount = 0;
-    activeProfiles.forEach(prof => {
-      // Check duplicated fee
-      const exists = storeData.tuitionFees.some(f => f.studentId === prof.userId && f.semesterId === selectedSemesterId);
-      if (!exists) {
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 30);
-        const dueDateStr = dueDate.toISOString().slice(0, 10); // YYYY-MM-DD
-        const feeItem: TuitionFee = {
-          id: generateId("tf"),
-          studentId: prof.userId,
-          semesterId: selectedSemesterId,
-          amount: 15000000, // 15M standard tuition
-          dueDate: dueDateStr,
-          status: "unpaid",
-          paidAmount: 0
-        };
-        storeData.tuitionFees.push(feeItem);
-        
-        // Notify student of new bill
-        AppStore.notify(prof.userId, "info", `Thông báo nộp học phí: Đợt học phí Học kỳ ${selectedSemesterId === "sem_spring25" ? "Spring 2025" : selectedSemesterId} đã được xuất bản (Số tiền 15.000.000 VND).`);
-        createdCount++;
-      }
-    });
-
-    if (createdCount > 0) {
-      AppStore.log(currentUser.id, "bulk_issue_tuition", selectedSemesterId, `Lập hóa đơn nợ học phí cho ${createdCount} sinh viên.`);
-      AppStore.save(storeData);
-      onRefreshData();
-      triggerToast(`Đã đồng loạt thông báo nợ phí cho ${createdCount} sinh viên.`);
-    } else {
-      triggerToast("Học phí đã được xuất bản đầy đủ trước đó cho hệ sinh viên khóa này.");
+      triggerToast(err.message || "Không thể phát hành học phí hàng loạt.");
     }
   };
 
@@ -210,7 +172,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
       await api.payTuition({ feeId: activePaymentFeeId, paidAmount: Number(paymentAmount) });
       setActivePaymentFeeId(null);
       onRefreshData();
-      triggerToast("Ghi nhận bút toán thanh toán học phí thành công.");
+      triggerToast("Ghi nhận thanh toán học phí thành công.");
     } catch (err: any) {
       triggerToast(err.message || "Không thể ghi nhận thanh toán.");
     }
@@ -222,49 +184,10 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
       const result = await api.scanOverdueTuition();
       onRefreshData();
       triggerToast(result.overdueCount > 0
-        ? `ÄÃ£ rÃ  soÃ¡t vÃ  gá»­i cáº£nh bÃ¡o ná»£ xáº¥u quÃ¡ háº¡n cho ${result.overdueCount} sinh viÃªn.`
-        : "KhÃ´ng phÃ¡t hiá»‡n thÃªm trÆ°á»ng há»£p trá»… Ä‘Ã³ng há»c phÃ­ quÃ¡ sá»‘ má»‘c quy Ä‘á»‹nh.");
+        ? `Đã rà soát và gửi cảnh báo học phí quá hạn cho ${result.overdueCount} sinh viên.`
+        : "Không phát hiện thêm trường hợp trễ đóng học phí quá hạn.");
     } catch (err: any) {
-      triggerToast(err.message || "KhÃ´ng thá»ƒ rÃ  soÃ¡t há»c phÃ­ quÃ¡ háº¡n.");
-    }
-    return;
-    const storeData = AppStore.get();
-    let warnCount = 0;
-
-    storeData.tuitionFees.forEach(fee => {
-      const isOverdue = new Date(fee.dueDate) < new Date() && fee.status !== "paid";
-      if (isOverdue) {
-        // Issue unpaid_fee Warning if not exist
-        const exists = storeData.academicWarnings.some(w => 
-          w.studentId === fee.studentId && 
-          (w.type === "unpaid_fee" || w.type === "unpaid-fee") && 
-          !w.isResolved
-        );
-
-        if (!exists) {
-          const warn: AcademicWarning = {
-            id: generateId("warn"),
-            studentId: fee.studentId,
-            type: "unpaid_fee",
-            message: `Hệ hỏa hạn nộp học phí học kỳ này quá thời hạn quy định (${fee.dueDate}). Vui lòng hoàn tất học phí để bảo lưu điều kiện thi cử cuối khóa.`,
-            isResolved: false,
-            createdAt: new Date().toISOString()
-          };
-          storeData.academicWarnings.push(warn);
-          
-          // Notify student
-          AppStore.notify(fee.studentId, "danger", `Cảnh báo học phí trễ hạn: Đã quá hạn đu chỉ định đóng học phí đợt này. Yêu cầu nộp gấp để không ảnh hưởng học tập.`);
-          warnCount++;
-        }
-      }
-    });
-
-    if (warnCount > 0) {
-      AppStore.save(storeData);
-      onRefreshData();
-      triggerToast(`Đã rà soát và gửi cảnh báo nợ xấu quá hạn cho ${warnCount} sinh viên.`);
-    } else {
-      triggerToast("Không phát hiện thêm trường hợp trễ đóng học phí quá số mốc quy định.");
+      triggerToast(err.message || "Không thể rà soát học phí quá hạn.");
     }
   };
 
@@ -303,7 +226,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
             <CheckCircle className="h-4 w-4 text-emerald-400" /> Thực tế đã thu hồi
           </div>
           <h3 className="text-xl font-mono font-black text-emerald-400 mt-1.5">{totalCollected.toLocaleString()} <span className="text-[10px] text-emerald-400/40">VND</span></h3>
-          <p className="text-[9.5px] text-emerald-400/60 mt-1">Giao dịch đã khớp sau biên sao</p>
+          <p className="text-[9.5px] text-emerald-400/60 mt-1">Giao dịch đã được xác nhận</p>
         </div>
 
         {/* Visual responsive SVG collected bar graph */}
@@ -326,7 +249,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
 
       </div>
 
-      {/* Phân nhóm học viên đóng học phí (Dashboard Kế toán) */}
+      {/* Phân nhóm học viên theo trạng thái thanh toán */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
         <div className="bg-emerald-950/25 border border-emerald-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
           <div className="space-y-1">
@@ -392,7 +315,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
           </div>
 
           <div className="space-y-0.5">
-            <span className="text-[10px] text-white/50 block">Trạng Thái Thu</span>
+            <span className="text-[10px] text-white/50 block">Trạng thái thanh toán</span>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -413,7 +336,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
               onChange={(e) => setFilterOverdueOnly(e.target.checked)}
               className="rounded"
             />
-            <label htmlFor="overdue-only" className="text-white/70">Môn nợ quá hạn nộp</label>
+            <label htmlFor="overdue-only" className="text-white/70">Học phí quá hạn</label>
           </div>
         </div>
 
@@ -423,13 +346,13 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
             onClick={handleScanOverdueWarnings}
             className="px-3 py-1.5 text-xs text-red-400 hover:bg-red-400/10 border border-red-500/20 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer font-bold"
           >
-            <AlertTriangle className="h-3.5 w-3.5" /> Quét nợ quá hạn
+            <AlertTriangle className="h-3.5 w-3.5" /> Quét quá hạn
           </button>
           <button
             onClick={handleBulkIssueTuition}
             className="px-4 py-1.5 bg-white text-indigo-950 rounded-xl hover:bg-slate-100 transition cursor-pointer font-bold text-xs"
           >
-            Phát nợ học phí hàng loạt
+            Phát hành học phí hàng loạt
           </button>
         </div>
       </div>
@@ -460,7 +383,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
                 <th className="py-2 px-3 text-center cursor-pointer select-none hover:text-white transition" onClick={() => handleTuitionSort("status")}>
                   Tình Trạng {tuitionSortField === "status" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}
                 </th>
-                <th className="py-2 px-4 text-right">Bút toán</th>
+                <th className="py-2 px-4 text-right">Thanh toán</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-white/95 text-xs font-medium">
@@ -495,7 +418,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
                         onClick={() => handleOpenPaymentModal(fee)}
                         className="px-2 py-1 bg-white text-indigo-950 font-black rounded-lg hover:bg-slate-50 transition cursor-pointer text-[10px]"
                       >
-                        Ghi thu
+                        Ghi nhận
                       </button>
                     ) : (
                       <span className="text-white/40 text-[10px] font-serif italic text-[11px]">Đã lập biên lai</span>
@@ -526,7 +449,7 @@ export default function TuitionManager({ store, currentUser, onRefreshData, trig
             </button>
 
             <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3 uppercase tracking-wider">
-              <DollarSign className="h-5 w-5 text-indigo-400" /> Bút toán thu ngân học trực tiếp
+              <DollarSign className="h-5 w-5 text-indigo-400" /> Ghi nhận thanh toán học phí
             </h3>
 
             <div className="space-y-4 text-xs pt-1">

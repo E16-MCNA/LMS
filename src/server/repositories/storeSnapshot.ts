@@ -237,31 +237,109 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
 }
 
 export function limitStoreForRole(store: any, user: User) {
+  const safeUser = (item: User) => ({ ...item, passwordHash: "" });
+  const sanitizeQuestion = (item: any) => ({ ...item, correctAnswer: "" });
+  const sanitizeLessonPreview = (item: any) => ({ ...item, content: "", videoUrl: undefined });
+  const sanitizeAttendanceSession = (item: any) => ({ ...item, code: undefined });
+  const baseScopedStore = () => ({
+    users: [],
+    courses: [],
+    lessons: [],
+    enrollments: [],
+    lessonProgress: [],
+    quizzes: [],
+    questions: [],
+    quizAttempts: [],
+    assignments: [],
+    submissions: [],
+    certificates: [],
+    notifications: [],
+    forumPosts: [],
+    auditLogs: [],
+    transactions: [],
+    academicYears: store.academicYears || [],
+    semesters: store.semesters || [],
+    departments: store.departments || [],
+    programs: store.programs || [],
+    programCourses: store.programCourses || [],
+    studentProfiles: [],
+    attendanceSessions: [],
+    attendanceRecords: [],
+    tuitionFees: [],
+    academicWarnings: [],
+    officialTranscripts: [],
+    advisorNotes: [],
+    courseSections: [],
+    registrationPeriods: store.registrationPeriods || [],
+    courseRegistrations: [],
+    scholarships: store.scholarships || [],
+    scholarshipApplications: [],
+    gradeAppeals: [],
+    advisorAssignments: [],
+    leaveRequests: [],
+    graduationApplications: [],
+    systemEvents: [],
+    teacherAttendance: []
+  });
+
   if (user.role === "manager" || user.role === "super_admin" || user.role === "admin") {
     return {
       ...store,
-      users: store.users.map((item: User) => ({ ...item, passwordHash: "" }))
+      users: store.users.map(safeUser)
     };
   }
 
   if (user.role === "teacher") {
     const teacherCourseIds = new Set(store.courses.filter((course: Course) => course.teacherId === user.id).map((course: Course) => course.id));
+    const myAdvisorAssignments = (store.advisorAssignments || []).filter((item: any) => item.advisorId === user.id);
+    const assignedStudentIds = new Set(myAdvisorAssignments.map((item: any) => item.studentId));
     const visibleEnrollments = store.enrollments.filter((item: Enrollment) => teacherCourseIds.has(item.courseId));
     const visibleStudentIds = new Set(visibleEnrollments.map((item: Enrollment) => item.studentId));
-    visibleStudentIds.add(user.id);
+    assignedStudentIds.forEach((studentId: any) => visibleStudentIds.add(studentId));
+    const visibleProfiles = (store.studentProfiles || []).filter((profile: any) => visibleStudentIds.has(profile.userId));
+    const advisorProgramIds = new Set(visibleProfiles.map((profile: any) => profile.programId).filter(Boolean));
+    const advisorCourseIds = new Set((store.programCourses || [])
+      .filter((pc: any) => advisorProgramIds.has(pc.programId))
+      .map((pc: any) => pc.courseId));
+    const visibleCourseIds = new Set([...teacherCourseIds, ...advisorCourseIds]);
     const mySections = new Set((store.courseSections || [])
       .filter((cs: any) => cs.teacherId === user.id)
       .map((cs: any) => cs.id)
     );
+    const visibleQuizIds = new Set(store.quizzes.filter((quiz: any) => teacherCourseIds.has(quiz.courseId)).map((quiz: any) => quiz.id));
+    const visibleAssignmentIds = new Set(store.assignments.filter((assignment: any) => teacherCourseIds.has(assignment.courseId)).map((assignment: any) => assignment.id));
+    const visibleSessionIds = new Set((store.attendanceSessions || [])
+      .filter((session: any) => teacherCourseIds.has(session.courseId) || mySections.has(session.sectionId))
+      .map((session: any) => session.id));
+    const visibleUserIds = new Set<string>([user.id]);
+    visibleStudentIds.forEach((studentId: any) => visibleUserIds.add(studentId));
+    (store.courses || [])
+      .filter((course: Course) => visibleCourseIds.has(course.id))
+      .forEach((course: Course) => visibleUserIds.add(course.teacherId));
     return {
-      ...store,
-      users: store.users.filter((item: User) => visibleStudentIds.has(item.id) || item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
-      courses: store.courses.filter((course: Course) => teacherCourseIds.has(course.id)),
+      ...baseScopedStore(),
+      users: store.users.filter((item: User) => visibleUserIds.has(item.id)).map(safeUser),
+      courses: store.courses.filter((course: Course) => visibleCourseIds.has(course.id)),
+      lessons: store.lessons.filter((lesson: any) => teacherCourseIds.has(lesson.courseId)),
       enrollments: visibleEnrollments,
       lessonProgress: store.lessonProgress.filter((item: LessonProgress) => visibleEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
       quizzes: store.quizzes.filter((quiz: any) => teacherCourseIds.has(quiz.courseId)),
+      questions: store.questions.filter((question: any) => visibleQuizIds.has(question.quizId)),
+      quizAttempts: store.quizAttempts.filter((attempt: any) => visibleStudentIds.has(attempt.studentId) && visibleQuizIds.has(attempt.quizId)),
       assignments: store.assignments.filter((assignment: any) => teacherCourseIds.has(assignment.courseId)),
-      submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId)),
+      submissions: store.submissions.filter((submission: any) => visibleStudentIds.has(submission.studentId) && visibleAssignmentIds.has(submission.assignmentId)),
+      studentProfiles: visibleProfiles,
+      attendanceSessions: (store.attendanceSessions || []).filter((session: any) => visibleSessionIds.has(session.id)),
+      attendanceRecords: (store.attendanceRecords || []).filter((record: any) => visibleSessionIds.has(record.sessionId) && visibleStudentIds.has(record.studentId)),
+      notifications: (store.notifications || []).filter((item: any) => item.userId === user.id),
+      academicWarnings: (store.academicWarnings || []).filter((item: any) => visibleStudentIds.has(item.studentId)),
+      advisorNotes: (store.advisorNotes || []).filter((item: any) => item.advisorId === user.id || assignedStudentIds.has(item.studentId)),
+      advisorAssignments: myAdvisorAssignments,
+      courseSections: (store.courseSections || []).filter((section: any) => mySections.has(section.id)),
+      courseRegistrations: (store.courseRegistrations || []).filter((registration: any) => visibleStudentIds.has(registration.studentId) || mySections.has(registration.sectionId)),
+      gradeAppeals: (store.gradeAppeals || []).filter((appeal: any) => visibleStudentIds.has(appeal.studentId)),
+      leaveRequests: (store.leaveRequests || []).filter((request: any) => visibleStudentIds.has(request.studentId)),
+      graduationApplications: (store.graduationApplications || []).filter((application: any) => visibleStudentIds.has(application.studentId)),
       teacherAttendance: (store.teacherAttendance || []).filter((ta: any) => ta.teacherId === user.id),
       certificates: (store.certificates || []).filter((cert: any) => teacherCourseIds.has(cert.courseId)),
       forumPosts: (store.forumPosts || []).filter((post: any) => teacherCourseIds.has(post.courseId) && (!post.sectionId || mySections.has(post.sectionId)))
@@ -271,22 +349,57 @@ export function limitStoreForRole(store: any, user: User) {
   if (user.role === "student") {
     const myEnrollments = store.enrollments.filter((item: Enrollment) => item.studentId === user.id);
     const myCourseIds = new Set(myEnrollments.map((item: Enrollment) => item.courseId));
+    const activeCourseIds = new Set(myEnrollments
+      .filter((item: Enrollment) => item.status === "active" || item.status === "completed")
+      .map((item: Enrollment) => item.courseId));
+    const publicCourseIds = new Set(store.courses
+      .filter((course: Course) => course.status === "published")
+      .map((course: Course) => course.id));
+    const visibleCourseIds = new Set([...publicCourseIds, ...myCourseIds]);
+    const visibleQuizzes = store.quizzes.filter((quiz: any) => activeCourseIds.has(quiz.courseId));
+    const visibleQuizIds = new Set(visibleQuizzes.map((quiz: any) => quiz.id));
+    const visibleAssignmentIds = new Set(store.assignments
+      .filter((assignment: any) => activeCourseIds.has(assignment.courseId))
+      .map((assignment: any) => assignment.id));
     const myRegisteredSections = new Set((store.courseRegistrations || [])
       .filter((cr: any) => cr.studentId === user.id && cr.status === "registered")
       .map((cr: any) => cr.sectionId)
     );
+    const visibleSessionIds = new Set((store.attendanceSessions || [])
+      .filter((session: any) => activeCourseIds.has(session.courseId) && (!session.sectionId || myRegisteredSections.has(session.sectionId)))
+      .map((session: any) => session.id));
+    const visibleTeacherIds = new Set(store.courses
+      .filter((course: Course) => visibleCourseIds.has(course.id))
+      .map((course: Course) => course.teacherId));
     return {
-      ...store,
-      users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
+      ...baseScopedStore(),
+      users: store.users.filter((item: User) => item.id === user.id || visibleTeacherIds.has(item.id)).map(safeUser),
+      courses: store.courses.filter((course: Course) => visibleCourseIds.has(course.id)),
+      lessons: store.lessons
+        .filter((lesson: any) => visibleCourseIds.has(lesson.courseId))
+        .map((lesson: any) => activeCourseIds.has(lesson.courseId) ? lesson : sanitizeLessonPreview(lesson)),
       enrollments: myEnrollments,
       lessonProgress: store.lessonProgress.filter((item: LessonProgress) => myEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
+      quizzes: visibleQuizzes,
+      questions: store.questions.filter((question: any) => visibleQuizIds.has(question.quizId)).map(sanitizeQuestion),
       quizAttempts: store.quizAttempts.filter((item: any) => item.studentId === user.id),
       submissions: store.submissions.filter((item: any) => item.studentId === user.id),
       tuitionFees: store.tuitionFees.filter((item: any) => item.studentId === user.id),
       academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === user.id),
-      assignments: store.assignments.filter((item: any) => myCourseIds.has(item.courseId)),
+      assignments: store.assignments.filter((item: any) => activeCourseIds.has(item.courseId)),
+      studentProfiles: store.studentProfiles.filter((item: any) => item.userId === user.id),
+      attendanceSessions: (store.attendanceSessions || []).filter((session: any) => visibleSessionIds.has(session.id)).map(sanitizeAttendanceSession),
+      attendanceRecords: (store.attendanceRecords || []).filter((record: any) => record.studentId === user.id),
       notifications: store.notifications.filter((item: any) => item.userId === user.id),
-      teacherAttendance: [],
+      transactions: (store.transactions || []).filter((item: any) => item.studentId === user.id),
+      advisorNotes: (store.advisorNotes || []).filter((item: any) => item.studentId === user.id),
+      courseSections: (store.courseSections || []).filter((section: any) => visibleCourseIds.has(section.courseId) || myRegisteredSections.has(section.id)),
+      courseRegistrations: (store.courseRegistrations || []).filter((item: any) => item.studentId === user.id),
+      scholarshipApplications: (store.scholarshipApplications || []).filter((item: any) => item.studentId === user.id),
+      gradeAppeals: (store.gradeAppeals || []).filter((item: any) => item.studentId === user.id),
+      leaveRequests: (store.leaveRequests || []).filter((item: any) => item.studentId === user.id),
+      graduationApplications: (store.graduationApplications || []).filter((item: any) => item.studentId === user.id),
+      teacherAttendance: (store.teacherAttendance || []).filter((item: any) => activeCourseIds.has(item.courseId) && (!item.sectionId || myRegisteredSections.has(item.sectionId))),
       certificates: (store.certificates || []).filter((cert: any) => cert.studentId === user.id),
       forumPosts: (store.forumPosts || []).filter((post: any) => myCourseIds.has(post.courseId) && (!post.sectionId || myRegisteredSections.has(post.sectionId)))
     };
@@ -296,19 +409,41 @@ export function limitStoreForRole(store: any, user: User) {
     const childId = user.linkedStudentId || "";
     const childEnrollments = store.enrollments.filter((item: Enrollment) => item.studentId === childId);
     const childCourseIds = new Set(childEnrollments.map((item: Enrollment) => item.courseId));
+    const childRegisteredSections = new Set((store.courseRegistrations || [])
+      .filter((cr: any) => cr.studentId === childId)
+      .map((cr: any) => cr.sectionId));
+    const childSessionIds = new Set((store.attendanceSessions || [])
+      .filter((session: any) => childCourseIds.has(session.courseId) && (!session.sectionId || childRegisteredSections.has(session.sectionId)))
+      .map((session: any) => session.id));
+    const visibleTeacherIds = new Set(store.courses
+      .filter((course: Course) => childCourseIds.has(course.id))
+      .map((course: Course) => course.teacherId));
     return {
-      ...store,
-      users: store.users.filter((item: User) => item.id === user.id || item.id === childId).map((item: User) => ({ ...item, passwordHash: "" })),
+      ...baseScopedStore(),
+      users: store.users.filter((item: User) => item.id === user.id || item.id === childId || visibleTeacherIds.has(item.id)).map(safeUser),
+      courses: store.courses.filter((course: Course) => childCourseIds.has(course.id)),
+      lessons: store.lessons.filter((lesson: any) => childCourseIds.has(lesson.courseId)).map(sanitizeLessonPreview),
       enrollments: childEnrollments,
       lessonProgress: store.lessonProgress.filter((item: LessonProgress) => childEnrollments.some((enroll: Enrollment) => enroll.id === item.enrollmentId)),
+      quizzes: store.quizzes.filter((quiz: any) => childCourseIds.has(quiz.courseId)),
       quizAttempts: store.quizAttempts.filter((item: any) => item.studentId === childId),
       submissions: store.submissions.filter((item: any) => item.studentId === childId),
       tuitionFees: store.tuitionFees.filter((item: any) => item.studentId === childId),
       academicWarnings: store.academicWarnings.filter((item: any) => item.studentId === childId),
       assignments: store.assignments.filter((item: any) => childCourseIds.has(item.courseId)),
       studentProfiles: store.studentProfiles.filter((item: any) => item.userId === childId),
+      attendanceSessions: (store.attendanceSessions || []).filter((session: any) => childSessionIds.has(session.id)).map(sanitizeAttendanceSession),
+      attendanceRecords: (store.attendanceRecords || []).filter((record: any) => record.studentId === childId),
       notifications: store.notifications.filter((item: any) => item.userId === user.id || item.userId === childId),
-      teacherAttendance: [],
+      transactions: (store.transactions || []).filter((item: any) => item.studentId === childId),
+      advisorNotes: (store.advisorNotes || []).filter((item: any) => item.studentId === childId && item.shareWithParent === true),
+      courseSections: (store.courseSections || []).filter((section: any) => childCourseIds.has(section.courseId) || childRegisteredSections.has(section.id)),
+      courseRegistrations: (store.courseRegistrations || []).filter((item: any) => item.studentId === childId),
+      scholarshipApplications: (store.scholarshipApplications || []).filter((item: any) => item.studentId === childId),
+      gradeAppeals: (store.gradeAppeals || []).filter((item: any) => item.studentId === childId),
+      leaveRequests: (store.leaveRequests || []).filter((item: any) => item.studentId === childId),
+      graduationApplications: (store.graduationApplications || []).filter((item: any) => item.studentId === childId),
+      teacherAttendance: (store.teacherAttendance || []).filter((item: any) => childCourseIds.has(item.courseId) && (!item.sectionId || childRegisteredSections.has(item.sectionId))),
       certificates: (store.certificates || []).filter((cert: any) => cert.studentId === childId),
       forumPosts: (store.forumPosts || []).filter((post: any) => childCourseIds.has(post.courseId))
     };
@@ -316,17 +451,7 @@ export function limitStoreForRole(store: any, user: User) {
 
 
   return {
-    ...store,
-    users: store.users.filter((item: User) => item.id === user.id).map((item: User) => ({ ...item, passwordHash: "" })),
-    enrollments: [],
-    lessonProgress: [],
-    quizAttempts: [],
-    submissions: [],
-    tuitionFees: [],
-    academicWarnings: [],
-    assignments: [],
-    teacherAttendance: [],
-    certificates: [],
-    forumPosts: []
+    ...baseScopedStore(),
+    users: store.users.filter((item: User) => item.id === user.id).map(safeUser)
   };
 }

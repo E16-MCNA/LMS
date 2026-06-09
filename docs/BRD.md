@@ -1,217 +1,408 @@
-# TÀI LIỆU YÊU CẦU NGHIỆP VỤ HỢP NHẤT (MASTER BUSINESS REQUIREMENTS DOCUMENT)
-## HỆ THỐNG QUẢN LÝ ĐÀO TẠO E16 LMS (PRODUCTION VERSION 1.2)
-*Hợp nhất Tiêu chuẩn BRD v1.1 (2026-05-22) và các Cải tiến Thực tế Hệ thống (2026-05-29)*
+# Tài liệu yêu cầu nghiệp vụ E16 LMS/SIS
+
+Phiên bản: 2.0
+Ngày cập nhật: 2026-06-09
+Phạm vi: Viết lại theo cấu trúc code hiện tại của repo `D:\LMS`
 
 ---
 
-## 1. TÓM TẮT ĐIỀU HÀNH (EXECUTIVE SUMMARY)
-**E16 LMS** là nền tảng quản lý học tập (Learning Management System) doanh nghiệp được thiết kế tối ưu hóa cho các cơ sở giáo dục, trường học và trung tâm đào tạo chuyên nghiệp. 
+## 1. Tóm tắt điều hành
 
-Hệ thống kế thừa cấu trúc phân quyền cốt lõi của phiên bản **BRD v1.1** và được nâng cấp lên **phiên bản 1.2** nhằm phản ánh đầy đủ các cải tiến thực tế trên môi trường production, bao gồm sự bổ sung của vai trò **Phụ huynh (Parent)**, **Cố vấn học tập (Advisor)** và hệ thống quản trị chuyên cần độc lập.
+E16 LMS/SIS là ứng dụng quản lý đào tạo kết hợp hai không gian nghiệp vụ:
 
-**Quy tắc xác thực cốt lõi**:
-- Tài khoản người dùng **không được tự đăng ký** trên môi trường production. Mọi tài khoản phải được khởi tạo bởi **Admin** (hàng loạt qua CSV) hoặc **Lễ tân** (từng học sinh).
-- Quyền học của Sinh viên chỉ được kích hoạt sau khi **Kế toán** phê duyệt giao dịch thanh toán học phí hợp lệ trên sổ thu chi.
+- **LMS Học tập**: quản lý khóa học, bài học, quiz, bài tập, sổ điểm, chứng nhận, diễn đàn, thông báo và trải nghiệm học tập của học viên.
+- **Hành chính SIS**: quản lý hồ sơ sinh viên, học kỳ, ngành/khoa/chương trình đào tạo, lớp học phần, thời khóa biểu, chuyên cần, cảnh báo học vụ, học phí, học bổng, phúc khảo điểm, bảo lưu và xét tốt nghiệp.
 
----
+Ứng dụng hiện là React SPA chạy cùng Express backend. PostgreSQL là nguồn dữ liệu chính; Redis được dùng cho cache/rate-limit khi cấu hình sẵn; Google Workspace được tích hợp để cấp phát email trường cho sinh viên.
 
-## 2. MỤC TIÊU KINH DOANH (BUSINESS OBJECTIVES)
-1. Cung cấp nền tảng quản trị đào tạo ổn định, có khả năng sao lưu, khôi phục và bảo mật cao cấp trên dữ liệu thật.
-2. Tự động hóa tối đa các quy trình vận hành: tạo tài khoản, gửi mail kích hoạt, điểm danh, chấm quiz trắc nghiệm, khóa/mở bài tập, tự động cấp chứng chỉ và quản lý sổ thu chi kế toán.
-3. Hỗ trợ sự đồng hành của **Phụ huynh** và **Cố vấn học tập** để giảm tỉ lệ sinh viên bỏ học thông qua cơ chế cảnh báo sớm tự động.
+Quy tắc scope quan trọng:
 
----
-
-## 3. PHẠM VI SẢN PHẨM (PRODUCT SCOPE)
-
-### 3.1. Trong phạm vi hoạt động (In-Scope - Phiên bản 1.2)
-* **Xác thực & Bảo mật**: Đăng nhập email/mật khẩu bảo vệ CSRF; cơ chế Link kích hoạt (24 giờ, dùng 1 lần) và Link reset mật khẩu (1 giờ, dùng 1 lần); quản lý phiên làm việc active.
-* **Phân quyền 8 vai trò chính**: Admin, Giảng viên (Teacher), Học viên (Student), Kế Toán (Finance), Lễ Tân (Receptionist), Quản Lý Học Vụ (Academic Admin), Phụ huynh (Parent) [Cải tiến], Cố vấn học tập (Advisor) [Cải tiến].
-* **Vòng đời khóa học**: Quy trình duyệt khóa học nghiêm ngặt (Nháp $\rightarrow$ Gửi duyệt $\rightarrow$ Duyệt/Từ chối có lý do từ Admin).
-* **Đánh giá học thuật**:
-  - Quiz tự động chấm điểm (Một đáp án, nhiều đáp án, điền từ tự do) có bộ đếm ngược tự động khóa đề khi hết giờ.
-  - Bài tập tự luận (Assignments) hỗ trợ nộp văn bản hoặc tệp tin đính kèm; bộ lọc Regex chống phình to văn bản; visual emerald giữ tệp cũ thông minh.
-* **Chuyên cần & Điểm danh độc lập [Cải tiến]**: Chuyển giao quyền điểm danh hoàn toàn sang cho **Học vụ**. Học vụ quét sự tuân thủ điểm danh của giảng viên và chốt danh sách chuyên cần.
-* **Cảnh báo học tập tự động [Cải tiến]**: Hệ thống tự động quét và phát cảnh báo học tập đỏ (chuyên cần dưới 80%, trễ hạn học phí) gửi thẳng tới học viên và phụ huynh.
-* **Tài chính & Sổ thu chi**: Phát nợ học phí tự động; Student thanh toán QR ngân hàng; Kế toán đối chiếu sao kê và phê duyệt giao dịch kích hoạt khóa học tự động.
-* **Học bạ & Chứng chỉ**: Bảng điểm thành phần chi tiết (30% tự luận + 70% trắc nghiệm); cấp chứng chỉ tự động; trang xác thực chứng chỉ công khai bảo vệ quyền riêng tư học viên.
-* **Cấp phát Email tự động [Mới]**: Tự động cấp phát tài khoản email trường thật trên Google Workspace (`username@SCHOOL_DOMAIN`) cho sinh viên mới; tự động thu hồi/xóa email khi deactive tài khoản; định tuyến toàn bộ thông báo hệ thống về hòm thư trường học.
-
-### 3.2. Ngoài phạm vi hoạt động (Out-of-Scope)
-* Lớp học trực tuyến tương tác realtime (Zoom/Meet integration).
-* Ứng dụng di động Native (App iOS/Android).
-* Trợ lý ảo AI chấm bài tự động.
+- Không có tự đăng ký tài khoản công khai. Tài khoản được tạo bởi người có quyền quản trị.
+- Hệ thống chỉ còn **giao diện và trạng thái thanh toán**. Đối soát kế toán, sổ sách kế toán và phê duyệt giao dịch bởi kế toán nội bộ đã chuyển cho đơn vị/bên xử lý bên ngoài.
+- Các vai trò nghiệp vụ cũ như `finance`, `sale`, `academic_admin`, `advisor` đã được chuẩn hóa vào 6 vai trò hệ thống hiện tại.
 
 ---
 
-## 4. STAKEHOLDERS (CÁC BÊN LIÊN QUAN)
-* **Chủ sản phẩm (Product Owner)**: Định hướng roadmap, phê duyệt điều kiện nghiệm thu.
-* **Dev / DevOps**: Triển khai hệ thống, tối ưu hóa P95 load time, thiết lập sao lưu tự động hàng ngày và chính sách rollback.
-* **Đội ngũ Vận hành (Admin, Học vụ, Lễ tân, Kế toán, Cố vấn)**: Thực thi công tác nghiệp vụ đào tạo và quản trị tài chính hàng ngày.
-* **Người dùng cuối (Student, Parent, Teacher)**: Đối tượng thụ hưởng dịch vụ học tập và tương tác đào tạo.
+## 2. Mục tiêu sản phẩm
+
+1. Cung cấp một nền tảng đào tạo có đủ luồng học tập, học vụ, hồ sơ sinh viên và giám sát phụ huynh.
+2. Tách rõ trách nhiệm giữa hệ thống học vụ và đơn vị xử lý thanh toán bên ngoài.
+3. Đảm bảo các quyền học chỉ được mở khi trạng thái học phí/thanh toán hợp lệ.
+4. Tự động hóa các tác vụ lặp lại: cấp phát email trường, thông báo, chấm quiz, cập nhật điểm tổng kết, chuyên cần, cảnh báo học vụ và cấp chứng nhận.
+5. Duy trì kiến trúc dễ vận hành: migration PostgreSQL, seed dữ liệu mẫu, lint/build, smoke test và rollback checklist.
 
 ---
 
-## 5. PERSONA & NHU CẦU NGHIỆP VỤ CHI TIẾT
+## 3. Cấu trúc hệ thống theo code
 
-### 5.1. Kế Toán (Finance)
-Chịu trách nhiệm đối soát tài chính, ngăn chặn thất thoát và phê duyệt kích hoạt quyền học của sinh viên.
-- **Nhu cầu cốt lõi**:
-  - Dashboard tổng doanh thu thực tế, số giao dịch chờ đối soát, biểu đồ xu hướng 30 ngày.
-  - Phê duyệt/từ chối giao dịch chuyển khoản (Student quét QR); tự động kích hoạt quyền học và đồng bộ cờ cảnh báo nợ khi duyệt.
-  - Quản lý sổ thu chi chi tiết và export báo cáo doanh thu CSV.
-  - **Quy tắc chặn**: Không có quyền can thiệp vào điểm số, bài học hoặc hồ sơ cá nhân của người dùng.
+### 3.1. Frontend
 
-### 5.2. Lễ Tân (Receptionist)
-Hỗ trợ onboarding học viên offline và xử lý các sự cố tài khoản ban đầu.
-- **Nhu cầu cốt lõi**:
-  - Khởi tạo tài khoản học viên mới (gắn role Student mặc định) và gửi link kích hoạt 24h.
-  - Kích hoạt gửi link đặt lại mật khẩu hộ học viên và tra cứu thông tin nhanh dưới 1 giây.
-  - Tra cứu danh sách môn học đang mở để tư vấn.
-  - **Quy tắc chặn**: Không có quyền sửa đổi điểm số, nội dung khóa học hay cấu hình hệ thống.
+- `src/App.tsx`: shell đăng nhập, session, đổi mật khẩu, switch hệ thống SIS/LMS và điều hướng theo role.
+- `src/components/AdminPanel.tsx`: phân hệ quản trị/học vụ dành cho `manager`, `admin`, `super_admin`.
+- `src/components/TeacherPanel.tsx`: phân hệ giảng viên, lớp học, sổ điểm, thời khóa biểu, cố vấn.
+- `src/components/StudentPanel.tsx`: phân hệ học viên, catalog, học tập, học vụ cá nhân, học phí, thông báo.
+- `src/components/ParentPanel.tsx`: phân hệ phụ huynh theo dõi con/em được liên kết.
+- `src/components/student/*`: workspace học tập, catalog khóa học, hồ sơ học vụ cá nhân.
+- `src/components/teacher/*`: xây dựng khóa học, quiz, bài tập, sổ điểm và analytics.
 
-### 5.3. Quản Lý Học Vụ (Academic Admin)
-Giám sát chất lượng đào tạo, chuyên cần toàn hệ thống và thực thi chế tài cảnh báo học thuật.
-- **Nhu cầu cốt lõi**:
-  - Quản lý buổi điểm danh lớp học, chốt danh sách chuyên cần thay cho giảng viên.
-  - Giám sát sự tuân thủ điểm danh của giảng viên phụ trách môn và gửi email cảnh cáo kỷ luật.
-  - Quản trị danh sách Cảnh báo học tập (Academic Warnings) đối với sinh viên có chuyên cần dưới 80% hoặc nợ học phí quá hạn.
-  - Xem dashboard tổng hợp đào tạo, so sánh hiệu quả và tỉ lệ bỏ dở bài học.
-  - **Quy tắc chặn**: Không có quyền chỉnh sửa nội dung bài giảng của giảng viên.
+### 3.2. Backend
 
-### 5.4. Phụ huynh (Parent) [Cải tiến bổ sung]
-Đồng hành, giám sát chuyên cần và nghĩa vụ tài chính của sinh viên.
-- **Nhu cầu cốt lõi**:
-  - Xem bảng điểm chi tiết thành phần thực tế (30% Tự luận lý thuyết, 70% Trắc nghiệm thực hành) cùng điểm tổng kết môn bôi màu trực quan thay vì hiển thị dữ liệu tĩnh (mock).
-  - Giám sát chuyên cần thực tế hàng tuần của con và xem học lực phân loại tự động.
-  - Theo dõi cờ cảnh báo học thuật (Cảnh báo chuyên cần, cảnh báo trễ học phí) để kịp thời đôn đốc.
+- `server.ts`: Express server, auth/session, CSRF, upload, dashboard, API route và Vite dev integration.
+- `src/server/repositories/*`: lớp truy cập dữ liệu theo domain: courses, enrollments, finance/tuition, attendance, academics, advisors, parent, notifications, scholarships, leave requests, graduation, forum.
+- `src/server/validation.ts`: schema Zod cho request body.
+- `src/server/mappers.ts`: map DB row sang type frontend và normalize role legacy.
+- `src/server/emailProvisioning/*`: cấp phát Google Workspace và gửi email onboarding.
+- `src/server/eventBus.ts`, `eventHandlers.ts`, `scheduler.ts`: xử lý event học vụ/thông báo bất đồng bộ.
 
-### 5.5. Cố Vấn Học Tập (Advisor) [Cải tiến bổ sung]
-Hỗ trợ sâu sát học vụ và đưa ra biện pháp cải thiện học lực cho sinh viên được phân công.
-- **Nhu cầu cốt lõi**:
-  - Quản lý chi tiết học bạ, cảnh báo đỏ của lớp phụ trách.
-  - Soạn thảo Ghi chú cố vấn học tập (Advisor Notes) định kỳ để gửi cho nhà trường và phụ huynh phối hợp giải quyết.
+### 3.3. Dữ liệu và vận hành
+
+- `src/types.ts`: mô hình dữ liệu dùng chung giữa client và server.
+- `migrations/postgres/*`: migration PostgreSQL theo thứ tự phiên bản.
+- `scripts/dbMigrate.ts`, `dbSeed.ts`, `dbDriftCheck.ts`: công cụ vận hành DB.
+- `scripts/e2eAcademicFlow.ts`, `smokeDeploy.ts`: kiểm thử luồng chính và smoke test deploy.
+- `docs/backup-restore-policy.md`, `docs/rollback-checklist.md`: tài liệu vận hành sự cố.
 
 ---
 
-## 6. QUY TRÌNH NGHIỆP VỤ & WORKFLOWS (CHI TIẾT CHUẨN HOÁ)
+## 4. Vai trò hệ thống
 
-### 6.1. Quy trình Điểm danh Chuyên cần độc lập (Học vụ)
+Hệ thống hiện có 6 role chính trong `UserRole`:
+
+| Role | Ý nghĩa | Phạm vi chính |
+| --- | --- | --- |
+| `super_admin` | Quản trị tối cao | Toàn quyền, audit, phân quyền, học vụ, học phí, thao tác vận hành nhạy cảm |
+| `manager` | Ban quản lý | Quản lý người dùng, phê duyệt khóa học, cấu hình học vụ, vận hành SIS |
+| `admin` | Nhân viên học đường/học vụ | Hồ sơ sinh viên, chuyên cần, lớp học phần, cảnh báo, thời khóa biểu, hỗ trợ thanh toán học phí |
+| `teacher` | Giảng viên/cố vấn | Tạo khóa học, bài học, quiz, bài tập, chấm điểm, điểm danh, cố vấn sinh viên |
+| `student` | Học viên | Đăng ký khóa/lớp, học tập, làm bài, xem điểm, học phí, phúc khảo, bảo lưu, tốt nghiệp |
+| `parent` | Phụ huynh | Xem điểm, chuyên cần, cảnh báo, học phí và thông báo của học viên liên kết |
+
+Chuẩn hóa role legacy:
+
+- `finance`, `ke_toan`, `sale`, `le_tan`, `academic`, `academic_admin`, `quan_ly_hoc_vu` được map về `admin`.
+- `advisor` được map về `teacher`.
+- Không còn persona kế toán nội bộ trong BRD sản phẩm.
+
+---
+
+## 5. Phạm vi sản phẩm
+
+### 5.1. Trong phạm vi
+
+1. Đăng nhập email/mật khẩu, session cookie HttpOnly, CSRF token và đăng xuất.
+2. Quản trị tài khoản, trạng thái hoạt động, đổi/reset mật khẩu, cấp phát lại email trường.
+3. Quản lý khóa học: tạo draft, thêm bài học, quiz, câu hỏi, bài tập, submit duyệt, publish/reject.
+4. Trải nghiệm học viên: catalog, đăng ký khóa học/lớp học phần, học bài, làm quiz, nộp bài tập, xem chứng nhận.
+5. Sổ điểm: quiz tự chấm, bài tập do giảng viên chấm, điểm tổng kết theo trọng số hiện tại.
+6. Học vụ SIS: năm học, học kỳ, khoa, ngành, chương trình, lớp học phần, thời khóa biểu, hồ sơ sinh viên.
+7. Chuyên cần: tạo buổi điểm danh, cập nhật record, link/code self check-in, teacher check-in, cảnh báo giảng viên.
+8. Cảnh báo học vụ: GPA thấp, chuyên cần thấp, học phí quá hạn, cấm thi, bài tập quá hạn.
+9. Phụ huynh: theo dõi điểm, chuyên cần, cảnh báo, học phí và thông báo của học viên liên kết.
+10. Cố vấn học tập: phân công cố vấn, xem sinh viên rủi ro, ghi chú cố vấn, chia sẻ ghi chú với phụ huynh.
+11. Học phí/thanh toán: hiển thị khoản phải đóng, xác nhận chuyển khoản, ghi nhận trạng thái thanh toán, biên nhận và cảnh báo quá hạn.
+12. Thông báo nội bộ, audit log, upload tài liệu, diễn đàn khóa học.
+13. Học bổng, phúc khảo điểm, bảo lưu và xét tốt nghiệp.
+14. Cấp phát email Google Workspace cho sinh viên khi cấu hình Google/SMTP sẵn sàng.
+
+### 5.2. Ngoài phạm vi
+
+1. Đối soát kế toán nội bộ và màn hình kế toán duyệt giao dịch.
+2. Sổ sách kế toán pháp lý, bảng lương kế toán, quyết toán hoặc báo cáo tài chính chính thức.
+3. Tự động đối soát sao kê ngân hàng nếu chưa có tích hợp provider/callback riêng.
+4. Ứng dụng mobile native iOS/Android.
+5. Tích hợp lớp học realtime Zoom/Google Meet.
+6. AI tự chấm bài tự luận hoặc thay thế quyết định học vụ.
+
+---
+
+## 6. Quy trình nghiệp vụ chính
+
+### 6.1. Đăng nhập và session
+
 ```mermaid
-graph TD
-    A[Học vụ kiểm tra dashboard tuân thủ] --> B{Phát hiện môn chưa điểm danh?}
-    B -- Có --> C[Bấm "Bắn mail Cảnh cáo" gửi tới Giảng viên]
-    B -- Không --> D[Tiếp tục giám sát]
-    C --> E[Học vụ chọn lớp phần và bấm "Bắt đầu buổi học mới"]
-    E --> F[Điền ngày học, giờ học và đề tài bài dạy]
-    F --> G[Hệ thống tạo sẵn danh sách sinh viên]
-    G --> H[Học vụ tích chọn trạng thái chuyên cần cho từng SV]
-    H --> I[Chốt lưu dữ liệu chuyên cần thực tế vào DB]
+flowchart TD
+  A["Người dùng nhập email/mật khẩu"] --> B["POST /api/auth/login"]
+  B --> C{"Thông tin hợp lệ và tài khoản active?"}
+  C -- "Không" --> D["Trả lỗi đăng nhập chung"]
+  C -- "Có" --> E["Set session cookie HttpOnly + CSRF token"]
+  E --> F["Load /api/store theo role"]
+  F --> G["Render panel theo role và hệ SIS/LMS"]
 ```
 
-### 6.2. Quy trình Ghi thu Học phí & Đồng bộ Chống đè dữ liệu
+Tiêu chí nghiệp vụ:
+
+- Không tiết lộ email có tồn tại hay không khi đăng nhập sai.
+- Tài khoản `isActive = false` bị chặn đăng nhập.
+- Các request ghi dữ liệu phải có CSRF token hợp lệ, trừ login/force logout.
+
+### 6.2. Vòng đời khóa học
+
 ```mermaid
-graph TD
-    A[Sinh viên quét QR thanh toán học phí] --> B[Giao dịch chờ duyệt ở trạng thái pending]
-    B --> C{Kế toán đối soát sao kê ngân hàng}
-    C -- Không khớp --> D[Từ chối giao dịch & Ghi nhật ký hệ thống]
-    C -- Khớp chuẩn --> E[Bấm Phê duyệt trên sổ thu chi]
-    E --> F[Kích hoạt quyền học ngay lập tức]
-    F --> G[Ghi nhận sổ thu chi & Sinh mã biên lai RECEIPT-XXXXXX]
-    G --> H[Tự động xóa cờ cảnh báo trễ học phí]
-    H --> I[Gỡ bỏ trạng thái tạm đình chỉ cờ feeHold trên hồ sơ học viên]
+flowchart TD
+  A["Teacher/Admin tạo course draft"] --> B["Thêm lesson, quiz, assignment"]
+  B --> C["Submit course"]
+  C --> D{"Manager/Admin/Super Admin duyệt?"}
+  D -- "Reject" --> E["Course rejected + lưu lý do"]
+  D -- "Publish" --> F["Course published"]
+  F --> G["Student nhìn thấy trong catalog"]
 ```
 
+Quy tắc:
+
+- Course có trạng thái `draft`, `pending`, `published`, `rejected`.
+- Teacher quản lý course của mình; admin/manager/super_admin có quyền duyệt và vận hành rộng hơn.
+- Course đã có enrollment active không được xóa nếu gây mất dữ liệu học tập.
+
+### 6.3. Đăng ký học và mở quyền học
+
+```mermaid
+flowchart TD
+  A["Student chọn course/lớp học phần"] --> B{"Course miễn phí hay có phí?"}
+  B -- "Miễn phí" --> C["Tạo enrollment pending"]
+  B -- "Có phí" --> D["Tạo enrollment pending_payment + transaction/payment request"]
+  D --> E["Student xem hướng dẫn/QR/chuyển khoản"]
+  E --> F["Đơn vị thanh toán bên ngoài xử lý và xác nhận"]
+  F --> G["Hệ thống cập nhật trạng thái thanh toán"]
+  C --> H["Admin/Học vụ xếp lớp hoặc activate"]
+  G --> H
+  H --> I["Enrollment active, student được học/làm bài"]
+```
+
+Quy tắc:
+
+- `pending_payment` nghĩa là chưa đủ điều kiện mở quyền học.
+- Hệ thống không yêu cầu kế toán nội bộ duyệt giao dịch.
+- Đơn vị thanh toán bên ngoài chịu trách nhiệm đối soát. Ứng dụng chỉ lưu trạng thái, giao dịch tham chiếu, số tiền và lịch sử thao tác cần thiết cho học vụ.
+- Khi thanh toán hợp lệ, hệ thống phải cho phép chuyển enrollment sang bước học vụ tiếp theo (`pending` hoặc `active` tùy luồng xếp lớp).
+
+### 6.4. Học tập, quiz, bài tập và chứng nhận
+
+```mermaid
+flowchart TD
+  A["Student có enrollment active"] --> B["Học lesson và toggle progress"]
+  B --> C["Làm quiz trong time limit/max attempts"]
+  B --> D["Nộp assignment text/file"]
+  C --> E["Server chấm quiz và lưu attempt"]
+  D --> F["Teacher chấm submission"]
+  E --> G["Tính điểm tổng kết"]
+  F --> G
+  G --> H{"Đủ điều kiện hoàn thành?"}
+  H -- "Có" --> I["Issue certificate"]
+  H -- "Không" --> J["Tiếp tục học/cải thiện"]
+```
+
+Điểm tổng kết hiện tại:
+
+- Nếu có cả assignment và quiz: `final = assignmentAvg * 30% + quizAvg * 70%`.
+- Nếu chỉ có một loại đánh giá: dùng điểm trung bình của loại đó.
+- Quiz quá hạn hoặc assignment quá hạn chưa làm/chưa chấm được tính theo quy tắc trong `src/gradeUtils.ts`.
+- Thang chữ: A từ 90, B từ 80, C từ 70, D từ 60, F dưới 60.
+
+### 6.5. Chuyên cần
+
+```mermaid
+flowchart TD
+  A["Teacher/Admin tạo attendance session"] --> B["Có thể tạo code/link self check-in"]
+  B --> C["Student nhập code để check-in"]
+  A --> D["Teacher/Admin cập nhật record thủ công"]
+  C --> E["Lưu attendance_records"]
+  D --> E
+  E --> F["Event kiểm tra chuyên cần"]
+  F --> G{"Tỷ lệ thấp?"}
+  G -- "Có" --> H["Tạo cảnh báo học vụ"]
+  G -- "Không" --> I["Không cảnh báo"]
+```
+
+Quy tắc:
+
+- Trạng thái chuyên cần gồm `present`, `absent`, `late`, `excused`.
+- Code self check-in phải đúng, chưa hết hạn và student phải thuộc lớp/course hợp lệ.
+- Teacher check-in dùng để xác nhận buổi dạy theo course/section/slot/date.
+
+### 6.6. Học phí và thanh toán
+
+```mermaid
+flowchart TD
+  A["Admin/Super Admin phát hành học phí theo kỳ"] --> B["Student/Parent xem khoản phải đóng"]
+  B --> C["Student xác nhận chuyển khoản hoặc thanh toán qua UI"]
+  C --> D["Tạo/ghi nhận transaction pending hoặc payment record"]
+  D --> E["Provider/bên ngoài xử lý đối soát"]
+  E --> F["Hệ thống nhận trạng thái đã thanh toán qua kênh được kiểm soát"]
+  F --> G["Cập nhật tuition_fees: partial/paid"]
+  G --> H{"Đã paid?"}
+  H -- "Có" --> I["Cấp receiptCode, gỡ feeHold, resolve warning học phí"]
+  H -- "Chưa" --> J["Giữ trạng thái partial/unpaid"]
+```
+
+Quy tắc scope mới:
+
+- UI thanh toán được giữ trong app để học viên/phụ huynh biết cần đóng gì và trạng thái hiện tại.
+- Không có màn kế toán nội bộ là bước bắt buộc của sản phẩm.
+- Các endpoint/file legacy còn chứa tên `finance` chỉ là di sản kỹ thuật, không phải persona nghiệp vụ mới.
+- Trạng thái thanh toán phải idempotent: một giao dịch đã xử lý không được ghi nhận trùng tiền.
+
 ---
 
-## 7. YÊU CẦU CHỨC NĂNG & TIÊU CHÍ NGHIỆM THU (FUNCTIONAL REQUIREMENTS)
+## 7. Yêu cầu chức năng
 
-### 7.1. Xác thực và Phân quyền (Authentication & Authorization)
-* **AUTH-001 [Must]**: Không có trang tự đăng ký công khai. Toàn bộ tài khoản do Admin hoặc Lễ tân tạo qua console quản trị.
-* **AUTH-002 [Must]**: Đăng nhập bằng email/mật khẩu. Nhập sai trả thông báo lỗi chung chung (không tiết lộ sự tồn tại của email).
-* **AUTH-003 [Must]**: Tài khoản bị khóa (trạng thái `isActive = false`) phải bị chặn đăng nhập ngay lập tức.
-* **AUTH-004 [Must]**: Link kích hoạt tài khoản có hiệu lực trong 24 giờ. Link reset mật khẩu có hiệu lực trong 1 giờ. Cả hai link chỉ sử dụng được 1 lần duy nhất.
-* **AUTH-005 [Must]**: Sau khi đổi hoặc reset mật khẩu thành công, toàn bộ phiên làm việc (sessions) active trên các thiết bị khác phải bị vô hiệu hóa bắt buộc.
-* **AUTH-006 [Must]**: Bảo vệ chống tấn công CSRF trên toàn bộ các form chỉnh sửa/ghi dữ liệu.
+### 7.1. Authentication & Authorization
 
-### 7.2. Quản trị hệ thống (Admin)
-* **ADM-001 [Must]**: Xem danh sách người dùng đầy đủ, sắp xếp theo tài khoản mới nhất lên trước.
-* **ADM-002 [Must]**: Admin import danh sách người dùng bằng tệp CSV (tối đa 5MB, tối đa 5000 dòng). Các dòng lỗi bị bỏ qua và ghi log lỗi chi tiết, không dừng toàn bộ tiến trình import của các dòng hợp lệ.
-* **ADM-003 [Must]**: Admin không thể tự đổi vai trò, tự khóa hoặc tự xóa tài khoản của chính mình.
-* **ADM-004 [Must]**: Tự động ghi nhật ký hệ thống (Audit Logs) cho tất cả các thao tác nhạy cảm của Admin, Lễ tân và Kế toán.
+- **AUTH-001 [Must]**: Hệ thống không có public sign-up.
+- **AUTH-002 [Must]**: Login dùng email/mật khẩu, session cookie HttpOnly và CSRF token.
+- **AUTH-003 [Must]**: Tài khoản inactive không thể đăng nhập.
+- **AUTH-004 [Must]**: Force logout chỉ xóa session hiện tại, không thay đổi dữ liệu người dùng.
+- **AUTH-005 [Must]**: Đổi mật khẩu yêu cầu mật khẩu hiện tại và xác nhận mật khẩu mới.
+- **AUTH-006 [Must]**: API ghi dữ liệu phải kiểm tra `requireAuth`, `requireRole` và Zod validation khi có schema.
 
-### 7.3. Đánh giá Học thuật & Chấm điểm (Teacher & Student)
-* **TCH-001 [Must]**: Mỗi khóa học phải có ít nhất một bài học (Lesson) mới được quyền gửi duyệt xuất bản lên Admin.
-* **TCH-002 [Must]**: Điểm thi trắc nghiệm (Quizzes) tự động chấm điểm và hỗ trợ 3 loại câu hỏi: Một đáp án, nhiều đáp án, điền từ tự do.
-* **TCH-003 [Must]**: Bài trắc nghiệm có giới hạn thời gian phải tự động nộp bài ngay khi bộ đếm ngược về 0.
-* **TCH-004 [Must]**: Nộp bài tập tự luận (Assignments) hỗ trợ nộp văn bản gốc hoặc đính kèm tệp tin. Hệ thống tự động làm sạch chuỗi đính kèm cũ bằng Regex để tránh phình to văn bản bài làm khi SV cập nhật bài nộp nhiều lần.
-* **TCH-005 [Must]**: [Cải tiến UI/UX] Khi chấm điểm bài tập tự luận hoặc cập nhật thông tin khóa học, toàn bộ modal popup phải render qua `ModalPortal.tsx` để căn giữa Viewport hoàn hảo, chống lỗi Containing Block của CSS làm modal lệch vị trí khi cuộn trang.
+### 7.2. Role và điều hướng
 
-### 7.4. Tài chính và Ghi thu (Kế toán)
-* **KTO-001 [Must]**: Kế toán duyệt giao dịch quét QR ngân hàng thành công phải tự động kích hoạt quyền học và gỡ bỏ trạng thái khóa hồ sơ (`feeHold = false`) ngay lập tức mà không cần can thiệp thủ công.
-* **KTO-002 [Must]**: Giao dịch đã phê duyệt hoặc từ chối thành công không được phép xử lý lại lần hai để bảo toàn tính nhất quán của sổ thu chi.
-* **KTO-003 [Must]**: [Cải tiến An toàn Kế toán] Cấu hình hệ thống loại trừ đồng bộ ngược (chống ghi đè từ client-side) đối với các bảng tài chính cốt lõi: `tuition_fees`, `transactions`, `academic_warnings`, và `enrollments` để ngăn ngừa tuyệt đối lỗi đè dữ liệu kế toán cũ lên database.
+- **RBAC-001 [Must]**: `App.tsx` render panel theo 6 role hệ thống.
+- **RBAC-002 [Must]**: `manager`, `admin`, `super_admin`, `student`, `parent` có switch SIS/LMS theo quyền; `manager` tập trung vào SIS.
+- **RBAC-003 [Must]**: Role legacy phải được normalize về role hệ thống trước khi đưa lên client.
+- **RBAC-004 [Must]**: Mật khẩu hash/salt không được trả về client trong public user payload.
 
-### 7.5. Chuyên cần và Cảnh báo Học tập (Học vụ)
-* **QLV-001 [Must]**: Quyền điểm danh và chỉnh sửa chuyên cần thuộc về cán bộ **Học vụ**. Cấm hoàn toàn vai trò giảng viên hoặc sinh viên tự ý ghi nhận chuyên cần trực tiếp.
-* **QLV-002 [Must]**: Hệ thống tự động phát cờ cảnh báo đỏ nếu tỉ lệ chuyên cần thực tế của sinh viên tại một lớp học phần dưới mốc **80%**.
-* **QLV-003 [Must]**: Tự động gỡ bỏ cờ cảnh báo nợ học phí quá hạn của sinh viên khi hóa đơn học phí tương ứng được chuyển sang trạng thái đã nộp đủ (`paid`).
+### 7.3. Quản trị người dùng
 
-### 7.6. Cấp phát Email tự động (Google Workspace Provisioning) [Mới]
-* **PROV-001 [Must]**: Tự động khởi tạo tài khoản email thật trên Google Workspace với phần mở rộng tên miền của trường (`SCHOOL_EMAIL_DOMAIN`) khi tài khoản sinh viên được tạo mới.
-* **PROV-002 [Must]**: Quy tắc sinh tên đăng nhập (`username`): Sử dụng tên đầy đủ, loại bỏ hoàn toàn dấu tiếng Việt, chuyển thành chữ thường, phân tách bằng dấu chấm và đảo ngược các từ (ví dụ: "Nguyễn Văn Tiến" -> `tien.van.nguyen`).
-* **PROV-003 [Must]**: Cơ chế xử lý trùng lặp: Nếu tên đăng nhập đề xuất đã tồn tại trên hệ thống Google hoặc cơ sở dữ liệu, tự động tăng chỉ số số đằng sau bắt đầu từ số 2 (ví dụ: `tien.van.nguyen2`, `tien.van.nguyen3`).
-* **PROV-004 [Must]**: Gửi email chào mừng chứa thông tin đăng nhập email trường và mật khẩu tạm thời vào địa chỉ email cá nhân đăng ký ban đầu của sinh viên. Mật khẩu tạm thời không được lưu trữ dưới bất kỳ hình thức nào trong DB.
-* **PROV-005 [Must]**: Khi vô hiệu hóa tài khoản sinh viên (`isActive = false`), tự động gửi yêu cầu thu hồi/xóa tài khoản email trường tương ứng trên Google Workspace và xóa trắng dữ liệu hòm thư trường trong database để có thể tái cấp phát nếu cần.
-* **PROV-006 [Must]**: Hỗ trợ Admin/Super Admin kích hoạt lại luồng cấp phát thủ công thông qua API `POST /api/admin/users/:id/reprovision-email` trong trường hợp cấp phát tự động bị gián đoạn.
-* **PROV-007 [Must]**: Bảo vệ an toàn dữ liệu: Loại bỏ các trường `school_email`, `email_provisioned`, `email_provisioned_at` khỏi payload đồng bộ `syncClientStoreToDb` để ngăn chặn client ghi đè dữ liệu cũ.
-* **PROV-008 [Must]**: Khi sinh viên đã được cấp phát email thành công, toàn bộ email thông báo học vụ tiếp theo (điểm số, khóa học, tài chính...) bắt buộc phải gửi tới email trường thay vì email cá nhân.
+- **USR-001 [Must]**: `manager` và `super_admin` được tạo user qua API quản trị.
+- **USR-002 [Must]**: Khi tạo student, hệ thống tạo `student_profiles` và kích hoạt luồng cấp email trường nếu cấu hình sẵn.
+- **USR-003 [Must]**: Reset mật khẩu user phải ghi audit log.
+- **USR-004 [Must]**: Khi deactivate student, hệ thống phải thu hồi/xóa trạng thái email trường nếu tích hợp Google Workspace khả dụng.
+- **USR-005 [Should]**: Import CSV users trên UI phải đi qua API server để dữ liệu bền vững trong PostgreSQL, không chỉ cập nhật client snapshot.
+
+### 7.4. Course và nội dung học tập
+
+- **CRS-001 [Must]**: Teacher tạo course, lesson, quiz, question, assignment cho course được phân quyền.
+- **CRS-002 [Must]**: Course chỉ xuất hiện cho student khi `published`.
+- **CRS-003 [Must]**: Admin/manager/super_admin duyệt hoặc từ chối course kèm lý do.
+- **CRS-004 [Must]**: Upload tài liệu trả về URL dùng cho course/assignment/quiz attachment.
+- **CRS-005 [Should]**: Upload cần whitelist MIME/extension an toàn trước khi production public.
+
+### 7.5. Enrollment, lớp học phần và thời khóa biểu
+
+- **ENR-001 [Must]**: Student đăng ký course qua `/api/enrollments/register`.
+- **ENR-002 [Must]**: Course có `price > 0` tạo enrollment `pending_payment`.
+- **ENR-003 [Must]**: Course miễn phí tạo enrollment `pending`.
+- **ENR-004 [Must]**: Học vụ/admin có thể activate/approve enrollment và gắn section/semester khi cần.
+- **ENR-005 [Must]**: Lớp học phần có course, semester, teacher, section code, sĩ số tối đa, lịch học và trạng thái.
+- **ENR-006 [Must]**: Student chỉ được học/làm bài khi enrollment thuộc trạng thái `active` hoặc `completed`.
+
+### 7.6. Quiz, assignment và điểm
+
+- **ASM-001 [Must]**: Quiz hỗ trợ câu hỏi single, multiple, text.
+- **ASM-002 [Must]**: Server chấm quiz và lưu `quiz_attempts`.
+- **ASM-003 [Must]**: Assignment hỗ trợ nội dung text và file đính kèm.
+- **ASM-004 [Must]**: Teacher/admin/super_admin chấm assignment, lưu score/feedback/gradedAt.
+- **ASM-005 [Must]**: Điểm tổng kết thống nhất giữa Student, Parent, Teacher gradebook và transcript.
+- **ASM-006 [Should]**: Không gửi `correctAnswer` xuống client student/parent trong store snapshot.
+
+### 7.7. Học vụ SIS
+
+- **SIS-001 [Must]**: Quản lý năm học, học kỳ, khoa, chương trình, học phần thuộc chương trình.
+- **SIS-002 [Must]**: Quản lý hồ sơ sinh viên gồm mã SV, ngành, khoa, niên khóa, trạng thái, GPA, tín chỉ, thông tin liên hệ/người giám hộ.
+- **SIS-003 [Must]**: Quản lý cảnh báo học vụ và trạng thái resolve.
+- **SIS-004 [Must]**: Quản lý phúc khảo điểm, bảo lưu, học bổng và xét tốt nghiệp theo role.
+- **SIS-005 [Must]**: Cố vấn được phân công sinh viên, tạo ghi chú và có thể chia sẻ với phụ huynh.
+
+### 7.8. Chuyên cần
+
+- **ATT-001 [Must]**: Teacher/admin/super_admin tạo buổi điểm danh và record chuyên cần.
+- **ATT-002 [Must]**: Student self check-in phải kiểm tra code, hạn, section/course membership.
+- **ATT-003 [Must]**: Hệ thống lưu teacher attendance theo course/section/date/slot.
+- **ATT-004 [Should]**: Hệ thống tự phát cảnh báo khi chuyên cần thấp hơn ngưỡng vận hành.
+
+### 7.9. Học phí và thanh toán
+
+- **PAY-001 [Must]**: Student/Parent xem được danh sách học phí, số tiền đã đóng, còn nợ, hạn nộp và trạng thái.
+- **PAY-002 [Must]**: Student xác nhận chuyển khoản tạo transaction pending hoặc payment request tương ứng.
+- **PAY-003 [Must]**: Hệ thống không phụ thuộc vào persona kế toán nội bộ để hoàn tất thanh toán.
+- **PAY-004 [Must]**: Bên xử lý thanh toán/đối soát bên ngoài là nguồn xác nhận trạng thái thanh toán.
+- **PAY-005 [Must]**: Khi học phí chuyển `paid`, hệ thống gỡ `feeHold`, resolve cảnh báo học phí quá hạn và sinh `receiptCode`.
+- **PAY-006 [Must]**: Ghi nhận thanh toán phải chặn thanh toán âm, vượt số còn nợ và ghi trùng.
+- **PAY-007 [Should]**: Các nhãn UI cũ như “Kế toán”, “đợi kế toán duyệt” phải được đổi thành “chờ xác nhận thanh toán” hoặc “bên xử lý thanh toán”.
+- **PAY-008 [Should]**: Endpoint legacy `/api/finance/transactions/:id/review` cần được thay bằng callback/status API từ provider khi có thông tin tích hợp chính thức.
+
+### 7.10. Parent và notification
+
+- **PAR-001 [Must]**: Parent chỉ xem dữ liệu của `linkedStudentId`.
+- **PAR-002 [Must]**: Parent xem điểm, chuyên cần, cảnh báo, học phí và notification của con/em.
+- **NOT-001 [Must]**: Notification có trạng thái read/unread và có API mark one/all read.
+- **NOT-002 [Should]**: Các sự kiện học vụ quan trọng phải phát notification cho đúng người nhận.
+
+### 7.11. Email provisioning
+
+- **PROV-001 [Must]**: Khi tạo student, hệ thống phát event `user.created`.
+- **PROV-002 [Must]**: Nếu Google Workspace được cấu hình, hệ thống tạo school email theo domain `SCHOOL_EMAIL_DOMAIN`.
+- **PROV-003 [Must]**: Username email trường được chuẩn hóa từ tên, bỏ dấu, lower-case và chống trùng.
+- **PROV-004 [Must]**: Mật khẩu tạm thời chỉ gửi qua email onboarding, không lưu plaintext trong DB.
+- **PROV-005 [Must]**: Admin/super_admin có API reprovision email cho student khi provisioning lỗi.
 
 ---
 
-## 8. YÊU CẦU DỮ LIỆU & BẢO MẬT (DATA & PRIVACY REQUIREMENTS)
+## 8. Yêu cầu dữ liệu và bảo mật
 
-### 8.1. Quy tắc dữ liệu & Học thuật
-- **Công thức điểm tổng kết động**:
-  $$Điểm\ Tổng\ Kết = (Assignment\ Avg \times 30\%) + (Max\ Quiz\ Score \times 70\%)$$
-- **Quy tắc xếp loại học lực**:
-  - $\ge 90\%$: Học lực **Xuất sắc** (GPA 4.0).
-  - $\ge 80\%$: Học lực **Giỏi** (GPA 3.0).
-  - $\ge 70\%$: Học lực **Khá** (GPA 2.0).
-  - $\ge 60\%$: Học lực **Trung bình** (GPA 1.0).
-  - $< 60\%$: Học lực **Yếu / Không đạt** (Cần học lại).
-- **Quy tắc cấp chứng chỉ**: Chứng chỉ tốt nghiệp chỉ được cấp tự động một lần duy nhất cho mỗi học viên hoàn thành 100% bài học và đạt điểm tối thiểu bài thi cuối khóa. Trang công khai xác thực chứng chỉ chỉ hiển thị thông tin tối thiểu (Họ tên ẩn danh, ngày cấp, mã chứng chỉ) và bị vô hiệu hóa ngay nếu tài khoản hoặc khóa học bị khóa.
+### 8.1. Nguồn dữ liệu
 
-### 8.2. Chính sách bảo mật thông tin & Xóa dữ liệu
-- **Xóa tài khoản**: Xóa tài khoản mặc định là vô hiệu hóa trạng thái (`isActive = false`). Xóa hoàn toàn khỏi cơ sở dữ liệu chỉ được thực hiện theo quy trình kiểm soát nội bộ nghiêm ngặt có phê duyệt của PO.
-- **Ẩn danh dữ liệu**: Tài khoản bị vô hiệu hóa phải được tự động ẩn danh thông tin cá nhân trên tất cả các màn hình hiển thị báo cáo.
-- **Thời hạn lưu trữ dữ liệu pháp lý**:
-  - Lịch sử học tập: Tối thiểu 24 tháng.
-  - Lịch sử kiểm duyệt diễn đàn: Tối thiểu 12 tháng.
-  - Sổ thu chi kế toán / Giao dịch tài chính: Tối thiểu 60 tháng (5 năm) theo luật kế toán hiện hành.
+- PostgreSQL là nguồn dữ liệu chính.
+- Client nhận dữ liệu qua `/api/store` đã được scope theo role.
+- Các bảng nhạy cảm không được để client ghi đè bằng sync snapshot.
+- Migration phải chạy theo thứ tự trong `migrations/postgres`.
 
----
+### 8.2. Nhóm dữ liệu chính
 
-## 9. YÊU CẦU PHI CHỨC NĂNG (NON-FUNCTIONAL REQUIREMENTS)
+- Người dùng: `users`, role, trạng thái active, linked student, school email.
+- Học tập: `courses`, `lessons`, `quizzes`, `questions`, `assignments`, `submissions`, `quiz_attempts`, `lesson_progress`, `certificates`.
+- SIS: `student_profiles`, `academic_years`, `semesters`, `departments`, `programs`, `program_courses`, `course_sections`, `course_registrations`.
+- Chuyên cần: `attendance_sessions`, `attendance_records`, `teacher_attendance`.
+- Thanh toán/học phí: `tuition_fees`, `transactions`.
+- Học vụ mở rộng: `academic_warnings`, `advisor_notes`, `advisor_assignments`, `scholarships`, `scholarship_applications`, `grade_appeals`, `leave_requests`, `graduation_applications`.
+- Hệ thống: `notifications`, `audit_logs`, `system_events`, `forum_posts`.
 
-* **Mã hóa truyền tải**: Toàn bộ lưu lượng mạng giữa người dùng và máy chủ bắt buộc phải mã hóa qua giao thức HTTPS bảo mật.
-* **Thời gian đáp ứng (Latency)**:
-  - Thời gian tải trang chính: $\le 800$ms ở mức P95.
-  - Thời gian kết xuất và export báo cáo CSV dưới 10.000 dòng: $\le 5$ giây ở mức P95.
-  - Thời gian gửi link kích hoạt/reset mật khẩu qua email: $\le 60$ giây ở mức P95.
-* **Khả năng chịu tải (Capacity)**: Hệ thống đáp ứng tối thiểu 5.000 người dùng đăng ký, 500 người dùng hoạt động đồng thời và 1.000 khóa học hoạt động liên tục không trễ lag.
-* **Độ khả dụng (Availability)**: Cam kết thời gian hoạt động ổn định tối thiểu 99.5% mỗi tháng. Cơ chế sao lưu tự động hàng ngày và chính sách khôi phục nhanh (Rollback) ngay khi phát hiện sự cố sau khi cập nhật phiên bản mới.
+### 8.3. Quy tắc riêng tư
+
+- Student chỉ xem dữ liệu của chính mình và course/enrollment liên quan.
+- Parent chỉ xem dữ liệu của học viên được liên kết.
+- Teacher chỉ xem dữ liệu học viên trong course/section/cố vấn được phân công.
+- Admin/manager/super_admin có quyền rộng hơn nhưng mọi thao tác nhạy cảm phải ghi audit.
+- Đáp án quiz, transaction của người khác, audit log và hồ sơ cá nhân nhạy cảm không được lộ trong snapshot role thấp.
 
 ---
 
-## 10. ĐIỀU KIỆN SẴN SÀNG PRODUCTION (READY FOR PRODUCTION)
-1. Toàn bộ các yêu cầu **Must** quy định trong tài liệu BRD này đã được code và vượt qua các bài kiểm thử biên dịch thành công (`tsc --noEmit` trả về mã 0).
-2. Xóa bỏ hoặc vô hiệu hóa hoàn toàn trang tự đăng ký tài khoản công khai trên production.
-3. Luồng kế toán đối soát $\rightarrow$ phê duyệt $\rightarrow$ kích hoạt tự động $\rightarrow$ xóa cảnh báo học tập đã được kiểm thử đầu cuối (End-to-End) thành công tuyệt đối.
-4. Giao diện modal hiển thị cân đối 100% tại trung tâm màn hình dưới mọi mức cuộn trang của người dùng.
-5. Sổ thu chi kế toán và biểu đồ SVG thu học phí vận hành chuẩn xác, chống méo mó giao diện.
-6. Toàn bộ tài liệu vận hành và chính sách rollback đã được cấu hình sẵn sàng bàn giao cho ban quản trị.
-7. Luồng cấp phát tự động và thu hồi email Google Workspace thông qua Service Account hoạt động ổn định, vượt qua các kiểm thử E2E tích hợp.
+## 9. Yêu cầu phi chức năng
+
+- **NFR-001 [Must]**: `npm.cmd run lint` phải pass trước khi bàn giao.
+- **NFR-002 [Must]**: `npm.cmd run build` phải pass trước khi deploy.
+- **NFR-003 [Must]**: Production bắt buộc có `JWT_SECRET` mạnh và `DATABASE_URL`.
+- **NFR-004 [Must]**: HTTPS bắt buộc ở môi trường production.
+- **NFR-005 [Should]**: Redis nên được cấu hình để rate-limit login ổn định.
+- **NFR-006 [Should]**: Backup/rollback DB phải theo `docs/backup-restore-policy.md` và `docs/rollback-checklist.md`.
+- **NFR-007 [Should]**: Các API ghi dữ liệu phải có validation Zod và audit log khi tác động dữ liệu nhạy cảm.
+- **NFR-008 [Should]**: Không đưa secret, private key Google hoặc DB URL thật vào git.
 
 ---
-*Tài liệu được phê duyệt chính thức cho giai đoạn Production.*
+
+## 10. Legacy và việc cần dọn sau khi đổi scope thanh toán
+
+Các phần sau tồn tại trong code hoặc tài liệu cũ nhưng không còn là nghiệp vụ sản phẩm chính:
+
+1. `src/components/FinancePanel.tsx`: màn hình finance/kế toán cũ, không phải panel được mount trực tiếp trong `App.tsx`.
+2. `/api/finance/transactions/:id/review`: endpoint duyệt giao dịch legacy, hiện chỉ nên xem là công cụ vận hành tạm thời cho `manager/admin/super_admin` cho tới khi có callback/status API từ provider.
+3. Các copy UI đang mounted đã được đổi sang ngôn ngữ thanh toán mới; nếu phục hồi component legacy thì phải kiểm tra lại nhãn “Kế toán”, “chờ kế toán duyệt”, “đối soát sao kê”.
+4. README và E2E đã được cập nhật theo scope thanh toán mới; các script kiểm thử tương lai không được đưa lại persona kế toán nội bộ.
+5. Mọi yêu cầu tương lai liên quan thanh toán phải ưu tiên mô hình payment provider/external processing, không phục hồi persona kế toán nội bộ.
+
+---
+
+## 11. Điều kiện sẵn sàng production
+
+1. BRD, README, UserGuide và UI copy thống nhất scope thanh toán mới, không còn luồng kế toán nội bộ là bước bắt buộc.
+2. TypeScript lint và production build pass.
+3. Migration PostgreSQL áp dụng sạch và drift check không phát hiện lệch schema nghiêm trọng.
+4. `/api/store` không lộ đáp án quiz, dữ liệu thanh toán/audit/hồ sơ nhạy cảm cho student/parent/teacher ngoài phạm vi.
+5. Luồng đăng nhập, đăng xuất, đổi mật khẩu, tạo user, cấp email trường hoạt động đúng theo cấu hình môi trường.
+6. Luồng course publish, enrollment, active learning, quiz submit, assignment grading và certificate chạy end-to-end.
+7. Luồng học phí thể hiện đúng trạng thái unpaid/partial/paid, không cần kế toán nội bộ duyệt, và sẵn sàng nhận trạng thái từ bên xử lý thanh toán.
+8. Backup, rollback và smoke test deploy được chuẩn bị trước khi đưa production.
+
+---
+
+Tài liệu này là BRD hiện hành cho repo E16 LMS/SIS sau khi tách nghiệp vụ kế toán nội bộ ra khỏi ứng dụng.

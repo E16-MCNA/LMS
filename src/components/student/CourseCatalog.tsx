@@ -261,7 +261,7 @@ export default function CourseCatalog(props: ComponentProps) {
                         ) : isPendingPayment ? (
                           <div className="space-y-2">
                             <span className="block text-center text-xs font-mono font-bold text-amber-400 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                              ⏰ Chờ duyệt học phí
+                              Chờ xác nhận thanh toán
                             </span>
                             <button
                               onClick={() => {
@@ -371,7 +371,7 @@ export default function CourseCatalog(props: ComponentProps) {
 
               <div className="pt-3 border-t border-white/10 space-y-2">
                 <p className="text-[10px] text-amber-300/80 text-center leading-relaxed">
-                  ✅ Sau khi chuyển khoản, hãy chờ bộ phận kế toán xác nhận (thường trong 1–2 ngày làm việc).
+                  Sau khi chuyển khoản, hãy chờ bên xử lý thanh toán xác nhận trạng thái (thường trong 1–2 ngày làm việc).
                 </p>
                 <button
                   type="button"
