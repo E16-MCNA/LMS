@@ -600,7 +600,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
               
               <div className="border-b border-white/5 pb-3">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">Hóa đơn học phí & Lịch sử đóng</h3>
-                <p className="text-[10px] text-white/40 mt-0.5">Tra cứu học bổng, phiếu thu tài chính cơ sở được cấp phép bởi Kế toán trưởng.</p>
+                <p className="text-[10px] text-white/40 mt-0.5">Tra cứu học bổng, học phí phải đóng và trạng thái thanh toán được hệ thống ghi nhận.</p>
               </div>
 
               <div className="space-y-4">
@@ -620,7 +620,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
                       <div className="grid grid-cols-2 text-xs text-white/70 gap-y-1.5">
                         <span>Hồ sơ định额 học kì:</span><span className="text-right text-white font-mono font-bold">{fee.amount.toLocaleString("vi-VN")} đ</span>
                         <span>Đã thu nhận:</span><span className="text-right text-emerald-400 font-mono">{fee.paidAmount.toLocaleString("vi-VN")} đ</span>
-                        <span>Số nợ học phí đối soát:</span><span className="text-right text-red-400 font-mono font-bold">{(fee.amount - fee.paidAmount).toLocaleString("vi-VN")} đ</span>
+                        <span>Số học phí còn phải đóng:</span><span className="text-right text-red-400 font-mono font-bold">{(fee.amount - fee.paidAmount).toLocaleString("vi-VN")} đ</span>
                         <span>Đáo hạn nộp:</span><span className="text-right text-white/50 font-mono">{new Date(fee.dueDate).toLocaleDateString("vi-VN")}</span>
                       </div>
                     </div>

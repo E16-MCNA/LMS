@@ -53,7 +53,7 @@ async function main() {
   const admin = await login("admin@mcna.local", "admine16");
   const teacher = await login("teacher@mcna.local", "teachere16");
   const student = await login("student@mcna.local", "studente16");
-  const finance = await login("finance@mcna.local", "finance16");
+  const paymentOps = await login("finance@mcna.local", "finance16");
   const academic = await login("academic@mcna.local", "academice16");
 
   const stamp = Date.now();
@@ -165,12 +165,12 @@ async function main() {
   });
   assert(grade.score === 95, "teacher assignment grading failed");
 
-  const financeDashboard = await request<any>("/api/dashboard/finance", { session: finance });
-  const fee = financeDashboard.tuitionFees?.find((item: any) => item.status !== "paid");
+  const paymentDashboard = await request<any>("/api/dashboard/finance", { session: paymentOps });
+  const fee = paymentDashboard.tuitionFees?.find((item: any) => item.status !== "paid");
   if (fee) {
     const payment = await request<any>("/api/tuition/pay", {
       method: "POST",
-      session: finance,
+      session: paymentOps,
       body: JSON.stringify({ feeId: fee.id, paidAmount: 1 })
     });
     assert(["partial", "paid"].includes(payment.status), "tuition payment failed");

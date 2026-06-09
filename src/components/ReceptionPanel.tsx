@@ -18,10 +18,7 @@ import {
   Award,
   X
 } from "lucide-react";
-import { User as UserType, Course } from "../types";
-import { AppStore } from "../store";
-import { generateId } from "../utils";
-import { hashPassword } from "../authHash";
+import { User as UserType } from "../types";
 import { api } from "../api";
 import { useApiStore } from "../hooks/apiHooks";
 import ModalPortal from "./ModalPortal";
@@ -31,6 +28,17 @@ interface ReceptionPanelProps {
   currentUser: UserType;
   onLogout: () => void;
   onRefreshData: () => void;
+}
+
+function generateClientTemporaryPassword() {
+  const bytes = new Uint8Array(8);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    bytes.set(Array.from({ length: 8 }, (_, index) => (Date.now() >> (index % 8)) & 255));
+  }
+  const token = Array.from(bytes, byte => byte.toString(36).padStart(2, "0")).join("").slice(0, 12);
+  return `Lms-${token}-1`;
 }
 
 export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }: ReceptionPanelProps) {
@@ -47,7 +55,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPhone, setRegPhone] = useState("");
-  const [regPassword, setRegPassword] = useState("studente16"); // default password per BRD or auto-generated
+  const [regPassword, setRegPassword] = useState(() => generateClientTemporaryPassword());
   const [regProgramId, setRegProgramId] = useState("");
   const [regDepartmentId, setRegDepartmentId] = useState("");
 
@@ -123,7 +131,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
       setRegName("");
       setRegEmail("");
       setRegPhone("");
-      setRegPassword("studente16");
+      setRegPassword(generateClientTemporaryPassword());
       setRegProgramId("");
       setRegDepartmentId("");
       onRefreshData();
@@ -134,12 +142,12 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   };
 
   const handleResetPassword = async (studentId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn đặt lại mật khẩu cho học viên này về mặc định (studente16) không?")) {
+    if (!window.confirm("Bạn có chắc chắn muốn tạo mật khẩu tạm thời mới cho học viên này không?")) {
       return;
     }
     try {
-      const res = await api.resetPassword(studentId) as { message?: string };
-      showToast(res.message || "Mật khẩu đã được đặt lại thành công về mặc định: studente16!");
+      const res = await api.resetPassword(studentId) as { message?: string; temporaryPassword?: string };
+      showToast(res.message || `Mật khẩu tạm thời đã được tạo: ${res.temporaryPassword || ""}`);
       onRefreshData();
     } catch (err: any) {
       showToast(err.message || "Lỗi khi đặt lại mật khẩu học viên!");
@@ -421,7 +429,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-white/70 block">Mật khẩu ban đầu (Mặc định)</label>
+                <label className="text-xs font-semibold text-white/70 block">Mật khẩu tạm thời ban đầu</label>
                 <input
                   type="text"
                   value={regPassword}

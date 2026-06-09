@@ -27,6 +27,18 @@ export const schemas = {
     programId: z.string().trim().optional(),
     departmentId: z.string().trim().optional()
   }),
+  bulkCreateUsers: z.object({
+    users: z.array(z.object({
+      email: z.email().trim().toLowerCase(),
+      name: z.string().trim().min(1),
+      role: z.enum(["manager", "teacher", "student", "admin", "parent"]),
+      phone: z.string().trim().optional(),
+      linkedStudentId: z.string().trim().optional(),
+      programId: z.string().trim().optional(),
+      departmentId: z.string().trim().optional()
+    })).min(1).max(5000),
+    defaultPassword: z.string().min(8).optional()
+  }),
   setUserActive: z.object({
     isActive: z.boolean()
   }),

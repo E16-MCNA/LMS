@@ -31,10 +31,7 @@ import {
   HelpCircle,
   Bell
 } from "lucide-react";
-import { LMSDataStore, User, Course, Lesson, Quiz, Question, Assignment, Submission, QuizAttempt } from "../types";
-import { AppStore } from "../store";
-import { generateId } from "../utils";
-import { hashPassword } from "../authHash";
+import { User } from "../types";
 import { useApiStore } from "../hooks/apiHooks";
 import { api } from "../api";
 
@@ -57,6 +54,17 @@ interface AdminPanelProps {
   onRefreshData: () => void;
   activeSystem?: "SIS" | "LMS";
   updateStore?: (updater: (draft: any) => void) => void;
+}
+
+function generateClientTemporaryPassword() {
+  const bytes = new Uint8Array(8);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    bytes.set(Array.from({ length: 8 }, (_, index) => (Date.now() >> (index % 8)) & 255));
+  }
+  const token = Array.from(bytes, byte => byte.toString(36).padStart(2, "0")).join("").slice(0, 12);
+  return `Lms-${token}-1`;
 }
 
 export default function AdminPanel({ currentUser, onLogout, onRefreshData, activeSystem = "SIS", updateStore }: AdminPanelProps) {
@@ -205,93 +213,109 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
   };
 
   // CSV Users Bulk Import Entry
-  const handleImportCSVSubmit = (e: React.FormEvent) => {
+  const handleImportCSVSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!csvText.trim()) {
       triggerToast("Chưa nhập nội dung tệp CSV.");
       return;
     }
 
-    const rows = csvText.split("\n").map(r => r.trim()).filter(Boolean);
-    let successCount = 0;
-    let errorCount = 0;
-    const storeData = structuredClone(store);
+    const parseCsvLine = (row: string) => {
+      const columns: string[] = [];
+      let value = "";
+      let quoted = false;
+      for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+        const next = row[i + 1];
+        if (char === '"' && quoted && next === '"') {
+          value += '"';
+          i++;
+          continue;
+        }
+        if (char === '"') {
+          quoted = !quoted;
+          continue;
+        }
+        if (char === "," && !quoted) {
+          columns.push(value.trim());
+          value = "";
+          continue;
+        }
+        value += char;
+      }
+      columns.push(value.trim());
+      return columns;
+    };
+
+    const rows = csvText.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+    const usersToImport: Array<{
+      name: string;
+      email: string;
+      role: "student" | "teacher" | "manager" | "admin" | "parent";
+    }> = [];
+    const seenEmails = new Set<string>();
+    let localErrorCount = 0;
 
     rows.forEach((row, index) => {
       if (index === 0 && (row.toLowerCase().includes("name") || row.toLowerCase().includes("email"))) {
-        return; // skip headers
+        return;
       }
 
-      const columns = row.split(",").map(c => c.trim().replace(/"/g, ""));
+      const columns = parseCsvLine(row);
       if (columns.length < 3) {
-        errorCount++;
+        localErrorCount++;
         return;
       }
 
       const [name, email, role] = columns;
-      const cleanRole = role.toLowerCase() as any;
+      const cleanEmail = email.toLowerCase().trim();
+      const cleanRole = role.toLowerCase().trim();
       if (currentUser.role === "admin" && cleanRole !== "student") {
-        errorCount++;
+        localErrorCount++;
         return;
       }
       const roleValidated = ["student", "teacher", "manager", "admin", "parent"].includes(cleanRole);
-      const emailUnique = !storeData.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const emailUnique = !seenEmails.has(cleanEmail) && !store.users.some(u => u.email.toLowerCase() === cleanEmail);
 
-      if (name && email.includes("@") && roleValidated && emailUnique) {
-        const credential = hashPassword("password123");
-        const importedUser: User = {
-          id: generateId("user"),
-          name,
-          email: email.toLowerCase(),
-          passwordHash: credential.hash,
-          passwordSalt: credential.salt,
-          role: cleanRole,
-          isActive: true,
-          createdAt: new Date().toISOString()
-        };
-
-        storeData.users.push(importedUser);
-
-        // Auto profile for student imports
-        if (cleanRole === "student") {
-          if (!storeData.studentProfiles) storeData.studentProfiles = [];
-          const studentCode = `SV${new Date().getFullYear()}${String(storeData.studentProfiles.length + 1).padStart(4, "0")}`;
-          storeData.studentProfiles.push({
-            id: generateId("profile"),
-            userId: importedUser.id,
-            studentCode,
-            programId: "prog_se",
-            departmentId: "dept_cs",
-            academicYear: 1,
-            enrollmentDate: new Date().toISOString().slice(0, 10),
-            expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
-            status: "active",
-            gpa: 0.0,
-            totalCreditsEarned: 0
-          });
-        }
-
-        AppStore.notify(importedUser.id, "info", `Tài khoản của bạn đã được khởi tạo thông qua tệp nhập liệu CSV của Quản trị viên.`);
-        successCount++;
-      } else {
-        errorCount++;
+      if (!name.trim() || !cleanEmail.includes("@") || !roleValidated || !emailUnique) {
+        localErrorCount++;
+        return;
       }
+
+      seenEmails.add(cleanEmail);
+      usersToImport.push({
+        name: name.trim(),
+        email: cleanEmail,
+        role: cleanRole as "student" | "teacher" | "manager" | "admin" | "parent"
+      });
     });
 
-    if (successCount > 0) {
-      AppStore.log(currentUser.id, "bulk_csv_import", "users", `Nhập dữ liệu CSV đồng loạt thành công: ${successCount} dòng.`);
-      AppStore.save(storeData);
-      onRefreshData();
-      setImportMessage({ 
-        type: "success", 
-        text: `Đã nhập đồng loạt. Thành công: ${successCount} tài khoản. Thất bại hoặc trùng lặp: ${errorCount}.` 
+    if (usersToImport.length === 0) {
+      setImportMessage({
+        type: "error",
+        text: `Nhập dữ liệu đồng loạt thất bại. Toàn bộ ${localErrorCount} dòng có lỗi định dạng, quyền hạn hoặc email trùng lặp.`
       });
-      setCsvText("");
-      setTimeout(() => setShowImportModal(false), 3000);
-    } else {
-      setImportMessage({ 
-        type: "error", 
-        text: `Nhập dữ liệu đồng loạt thất bại. Toàn bộ ${errorCount} dòng có lỗi schema cấu trúc cấu trúc hoặc đã bị trùng email.` 
+      return;
+    }
+
+    try {
+      const batchTemporaryPassword = generateClientTemporaryPassword();
+      const result = await api.bulkCreateUsers({ users: usersToImport, defaultPassword: batchTemporaryPassword });
+      onRefreshData();
+      const totalFailed = localErrorCount + result.errorCount;
+      setImportMessage({
+        type: result.createdCount > 0 ? "success" : "error",
+        text: result.createdCount > 0
+          ? `Đã xử lý CSV. Thành công: ${result.createdCount} tài khoản. Bỏ qua/thất bại: ${totalFailed}. Mật khẩu tạm thời: ${batchTemporaryPassword}`
+          : `Đã xử lý CSV. Thành công: 0 tài khoản. Bỏ qua/thất bại: ${totalFailed}.`
+      });
+      if (result.createdCount > 0) {
+        setCsvText("");
+      }
+    } catch (err: any) {
+      setImportMessage({
+        type: "error",
+        text: err.message || "Không thể nhập CSV vào cơ sở dữ liệu."
       });
     }
   };
@@ -307,25 +331,6 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
         triggerToast("Đã cập nhật trạng thái hoạt động người dùng.");
       })
       .catch((err: Error) => triggerToast(err.message || "Không thể cập nhật trạng thái."));
-  };
-
-  const ensureStudentProfile = (storeData: LMSDataStore, userId: string) => {
-    if (!storeData.studentProfiles) storeData.studentProfiles = [];
-    if (storeData.studentProfiles.some(profile => profile.userId === userId)) return;
-    const nextIndex = storeData.studentProfiles.length + 1;
-    storeData.studentProfiles.push({
-      id: generateId("profile"),
-      userId,
-      studentCode: `SV${new Date().getFullYear()}${String(nextIndex).padStart(4, "0")}`,
-      programId: "prog_se",
-      departmentId: "dept_cs",
-      academicYear: 1,
-      enrollmentDate: new Date().toISOString().slice(0, 10),
-      expectedGraduation: new Date(new Date().setFullYear(new Date().getFullYear() + 4)).toISOString().slice(0, 10),
-      status: "active",
-      gpa: 0,
-      totalCreditsEarned: 0
-    });
   };
 
   const handleUpdateUserRole = (userId: string, newRole: User["role"]) => {
@@ -465,7 +470,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
             CỔNG THÔNG TIN QUẢN TRỊ VIÊN & PHÒNG ĐÀO TẠO (SIS-LMS)
           </span>
           <h2 className="text-xl font-display font-bold text-white mt-2">Cổng Điều hành & Hồ sơ Học vụ</h2>
-          <p className="text-xs text-white/50">Phân quyền giám sát cấu trúc học kỳ niên khóa, chuyên cần học sinh, tổng vụ tài chính kế toán.</p>
+          <p className="text-xs text-white/50">Phân quyền giám sát cấu trúc học kỳ niên khóa, chuyên cần học sinh và trạng thái thanh toán học phí.</p>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
@@ -598,7 +603,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                     activeSubTab === "tuition" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
                   }`}
                 >
-                  <span className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Kế toán Học Phí</span>
+                  <span className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Thanh toán Học phí</span>
                 </button>
               )}
               {currentUser.role !== "manager" && (
@@ -1001,10 +1006,8 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                                 <option value="student" className="bg-slate-900">Sinh viên</option>
                                 <option value="teacher" className="bg-slate-900">Giảng viên</option>
                                 <option value="manager" className="bg-slate-900">Manager</option>
-                                <option value="finance" className="bg-slate-900">Tài chính</option>
-                                <option value="admin" className="bg-slate-900">Admin học tập</option>
-                                <option value="sale" className="bg-slate-900">Sale</option>
-                                <option value="advisor" className="bg-slate-900">Cố vấn</option>
+                                <option value="admin" className="bg-slate-900">Admin học vụ</option>
+                                <option value="parent" className="bg-slate-900">Phụ huynh</option>
                               </select>
                             </td>
                             <td className="py-3 px-3">
@@ -1223,6 +1226,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   <option value="teacher" className="bg-slate-900">Giảng Viên (Teacher)</option>
                   <option value="manager" className="bg-slate-900">Manager (Manager)</option>
                   <option value="admin" className="bg-slate-900">Admin học vụ (admin)</option>
+                  <option value="parent" className="bg-slate-900">Phụ huynh (Parent)</option>
                 </select>
               </div>
 
@@ -1357,7 +1361,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
             <form onSubmit={handleImportCSVSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
                 <p className="text-[10.5px] text-white/45 leading-relaxed">
-                  Nhập dòng giá trị ngăn cách bởi dấu phẩy. Cột định dạng: <code className="text-indigo-400 font-bold">name, email, role</code>. Mật khẩu mặc định sinh tự động là <code className="text-cyan-400 font-bold">password123</code>.
+                  Nhập dòng giá trị ngăn cách bởi dấu phẩy. Cột định dạng: <code className="text-indigo-400 font-bold">name, email, role</code>. Hệ thống sẽ sinh mật khẩu tạm thời cho từng lô nhập.
                 </p>
                 <textarea
                   required

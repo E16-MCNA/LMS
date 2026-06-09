@@ -77,6 +77,7 @@ export const api = {
   submitAssignment: (payload: { assignmentId: string; content: string; attachmentUrl?: string }) => apiFetch<LMSDataStore["submissions"][number]>("/api/assignments/submit", { method: "POST", body: JSON.stringify(payload) }),
   gradeAssignment: (payload: { submissionId: string; score: number; feedback: string }) => apiFetch("/api/assignments/grade", { method: "POST", body: JSON.stringify(payload) }),
   createUser: (payload: unknown) => apiFetch("/api/admin/users", { method: "POST", body: JSON.stringify(payload) }),
+  bulkCreateUsers: (payload: unknown) => apiFetch<{ createdCount: number; skippedCount: number; errorCount: number; errors: Array<{ row: number; email?: string; reason: string }>; created: LMSDataStore["users"] }>("/api/admin/users/bulk", { method: "POST", body: JSON.stringify(payload) }),
   setUserStatus: (userId: string, isActive: boolean) => apiFetch(`/api/admin/users/${userId}/status`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
   setUserRole: (userId: string, role: string) => apiFetch(`/api/admin/users/${userId}/role`, { method: "PATCH", body: JSON.stringify({ role }) }),
   getWarnings: () => apiFetch("/api/academics/warnings"),

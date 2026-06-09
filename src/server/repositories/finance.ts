@@ -61,7 +61,7 @@ export const financeRepository = {
     const processedAt = new Date().toISOString();
     const isTuitionPayment = typeof tx.notes === "string" && tx.notes.startsWith("tuition_fee_pay:");
     const tuitionFeeId = isTuitionPayment ? tx.notes.split("|")[0].replace("tuition_fee_pay:", "").trim() : null;
-    const reviewNote = notes || (status === "approved" ? "Payment matched and enrollment activated." : "Payment rejected by finance.");
+    const reviewNote = notes || (status === "approved" ? "Payment confirmed and learning flow updated." : "Payment rejected by payment operator.");
     const finalNotes = isTuitionPayment ? `${tx.notes} | ${reviewNote}` : reviewNote;
     const row = (await db.query(
       `UPDATE transactions

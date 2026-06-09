@@ -101,7 +101,7 @@ export function getInitialStore(): LMSDataStore {
         email: "finance@mcna.local",
         passwordHash: FINANCE_CREDENTIAL.hash,
         passwordSalt: FINANCE_CREDENTIAL.salt,
-        name: "Nguyễn Văn Kế Toán",
+        name: "Nguyễn Văn Thanh Toán",
         role: "admin",
         isActive: true,
         createdAt: new Date("2026-01-04T11:00:00Z").toISOString()
@@ -391,7 +391,7 @@ export function getInitialStore(): LMSDataStore {
         id: "note_welcome_finance",
         userId: financeId,
         type: "success",
-        message: "Chào mừng nhân viên quản trị tài vụ. Sổ thu học phí, biểu phí học phần và đối soát giao dịch trực tuyến của sinh viên đã sẵn sàng.",
+        message: "Chào mừng nhân viên vận hành thanh toán. Hồ sơ học phí, biểu phí học phần và trạng thái giao dịch trực tuyến của sinh viên đã sẵn sàng.",
         isRead: false,
         createdAt: new Date("2026-05-25T08:20:00Z").toISOString()
       },
@@ -460,7 +460,7 @@ export function getInitialStore(): LMSDataStore {
         createdAt: new Date("2026-05-10T11:00:00Z").toISOString(),
         processedAt: new Date("2026-05-10T14:00:00Z").toISOString(),
         processedBy: financeId,
-        notes: "Giao dịch chuyển khoản hợp lệ, đã khớp sao kê"
+        notes: "Giao dịch chuyển khoản hợp lệ, đã được xác nhận"
       },
       {
         id: "tx_second_pending",

@@ -189,7 +189,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                           enroll.status === "pending" ? "bg-violet-500/10 text-violet-300 border-violet-500/20 font-bold" :
                           enroll.status === "pending_payment" ? "bg-amber-500/10 text-amber-300 border-amber-500/20 font-bold" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
                         }`}>
-                          {enroll.status === "pending" ? "Chờ xếp lớp" : enroll.status === "pending_payment" ? "Chờ duyệt phí" : enroll.status === "active" ? "Đang học" : "Đã hoàn thành"}
+                          {enroll.status === "pending" ? "Chờ xếp lớp" : enroll.status === "pending_payment" ? "Chờ xác nhận thanh toán" : enroll.status === "active" ? "Đang học" : "Đã hoàn thành"}
                         </span>
                       </div>
 
@@ -213,7 +213,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
 
                       {enroll.status === "pending_payment" && (
                         <div className="bg-amber-500/5 border border-amber-500/10 p-3.5 rounded-xl text-[11px] text-amber-300/80 leading-relaxed font-sans shadow-inner">
-                          ℹ️ Giao dịch chuyển khoản học phí đang chờ đối soát sao kê. Bạn sẽ nhận được thông báo ngay khi Kế toán duyệt giao dịch.
+                          Giao dịch học phí đang chờ bên xử lý thanh toán xác nhận. Bạn sẽ nhận được thông báo ngay khi trạng thái được cập nhật.
                         </div>
                       )}
                       {enroll.status === "pending" && (
@@ -226,7 +226,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                     <div className="pt-4 border-t border-white/5 mt-5 flex justify-between items-center text-xs">
                       {enroll.status === "pending_payment" ? (
                         <>
-                          <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-amber-400/80">Chờ kế toán</span>
+                          <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-amber-400/80">Chờ xác nhận thanh toán</span>
                           <button
                             onClick={() => {
                               const foundTx = store.transactions.find(t => t.studentId === currentUser.id && t.courseId === course.id);
