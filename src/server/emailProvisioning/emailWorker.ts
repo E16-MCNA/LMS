@@ -351,3 +351,61 @@ export async function sendLmsNotification(
     throw err;
   }
 }
+
+/**
+ * Send password reset email containing new temporary password
+ */
+export async function sendPasswordResetEmail(
+  pool: Pool,
+  userId: string,
+  params: {
+    to: string;
+    name: string;
+    temporaryPassword: string;
+  }
+): Promise<void> {
+  const subject = `[LMS E16] Cấp lại mật khẩu tài khoản`;
+  const htmlContent = wrapHtmlBody(
+    "Cấp lại mật khẩu thành công",
+    `
+      <p class="greeting">Chào bạn ${params.name},</p>
+      <p>Yêu cầu đặt lại mật khẩu cho tài khoản LMS của bạn đã được thực hiện bởi Quản lý giáo vụ. Mật khẩu đăng nhập mới tạm thời của bạn là:</p>
+      <div class="message-box" style="font-size: 16px; text-align: center; letter-spacing: 1px;">
+        <strong>Mật khẩu tạm thời:</strong> <code style="font-size: 18px; color: #4f46e5; background: #e0e7ff; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${params.temporaryPassword}</code>
+      </div>
+      <p style="color: #ef4444; font-weight: 600;">Lưu ý bảo mật: Vui lòng đăng nhập cổng thông tin LMS bằng mật khẩu tạm thời trên và đổi ngay mật khẩu mới trong phần cấu hình cá nhân để bảo mật thông tin.</p>
+    `
+  );
+
+  const action = async () => {
+    if (hasSmtpOauth2Config()) {
+      const transporter = getTransporter();
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: params.to,
+        subject,
+        html: htmlContent,
+        text: `Chào bạn ${params.name},\n\nMật khẩu tạm thời mới của bạn là: ${params.temporaryPassword}\n\nVui lòng đăng nhập LMS và đổi mật khẩu ngay lập tức.`,
+      });
+      console.log(`[EmailWorker] Password reset email dispatched successfully to: ${params.to}`);
+    } else {
+      logEmailMock(params.to, params.name, subject, htmlContent);
+    }
+  };
+
+  try {
+    await retryWithBackoff(action);
+    await auditRepository.log(pool, userId, "password_reset_email_sent", "email", `Gửi email cấp lại mật khẩu tới ${params.to}`);
+  } catch (err: any) {
+    console.error(`[EmailWorker] Failed to send password reset email to: ${params.to}`, err);
+    await auditRepository.log(
+      pool,
+      userId,
+      "password_reset_email_failed",
+      "email",
+      `Lỗi gửi email cấp lại mật khẩu: ${String(err.message || err)}`
+    );
+    throw err;
+  }
+}
+

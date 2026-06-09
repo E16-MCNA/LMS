@@ -53,6 +53,16 @@ const allowedUploadMimeTypes = new Set([
 const uploadFileFilter = (_req: express.Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile?: boolean) => void) => {
   const ext = path.extname(file.originalname).toLowerCase();
   const mime = String(file.mimetype || "").toLowerCase();
+  
+  const blockedExtensions = new Set([".svg", ".html", ".htm", ".js", ".svgz"]);
+  const blockedMimeTypes = new Set(["image/svg+xml", "text/html", "application/javascript", "text/javascript"]);
+  if (blockedExtensions.has(ext) || blockedMimeTypes.has(mime)) {
+    const err = new Error("Unsupported file type. Security restrictions explicitly block SVG, HTML, and Javascript files.");
+    (err as any).status = 400;
+    cb(err, false);
+    return;
+  }
+
   if (allowedUploadExtensions.has(ext) && allowedUploadMimeTypes.has(mime)) {
     cb(null, true);
     return;
@@ -102,6 +112,7 @@ import { toGradePoint, toLetterGrade } from "./src/server/gpaCalculator";
 import { startScheduler } from "./src/server/scheduler";
 import { provisioningService } from "./src/server/emailProvisioning/provisioningService";
 import { deleteSchoolEmail } from "./src/server/emailProvisioning/googleWorkspaceClient";
+import { sendPasswordResetEmail } from "./src/server/emailProvisioning/emailWorker";
 
 dotenv.config();
 
@@ -214,8 +225,8 @@ async function resolveStudentProgramDefaults(db: Queryable, programId?: string, 
 async function generateStudentCode(db: Queryable) {
   const prefix = `SV${new Date().getFullYear()}`;
   const latest = (await db.query(
-    "SELECT student_code FROM student_profiles WHERE student_code LIKE $1 ORDER BY student_code DESC LIMIT 1",
-    [`${prefix}%`]
+    "SELECT student_code FROM student_profiles WHERE student_code LIKE $1 AND student_code ~ $2 ORDER BY student_code DESC LIMIT 1",
+    [`${prefix}%`, `^${prefix}[0-9]+$`]
   )).rows[0]?.student_code as string | undefined;
   const suffix = latest?.startsWith(prefix) && /^\d+$/.test(latest.slice(prefix.length))
     ? Number(latest.slice(prefix.length))
@@ -315,13 +326,15 @@ async function verifyToken(token: string): Promise<{ sub: string } | null> {
 }
 
 function setAuthCookie(res: express.Response, token: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", `e16_lms_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}`);
+  const secure = (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging") ? "; Secure" : "";
+  const domain = process.env.COOKIE_DOMAIN ? `; Domain=${process.env.COOKIE_DOMAIN}` : "";
+  res.setHeader("Set-Cookie", `e16_lms_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}${domain}`);
 }
 
 function setCsrfCookie(res: express.Response, token: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.append("Set-Cookie", `e16_lms_csrf=${token}; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}`);
+  const secure = (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging") ? "; Secure" : "";
+  const domain = process.env.COOKIE_DOMAIN ? `; Domain=${process.env.COOKIE_DOMAIN}` : "";
+  res.append("Set-Cookie", `e16_lms_csrf=${token}; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}${domain}`);
 }
 
 function clearAuthCookie(res: express.Response) {
@@ -367,9 +380,56 @@ async function rateLimitLogin(req: express.Request, res: express.Response, next:
   }
 }
 
+async function rateLimitResetPassword(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    if (process.env.DISABLE_RATE_LIMIT === "true") return next();
+    const key = `ratelimit:resetpwd:${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const max = 5;
+    const windowSec = 15 * 60;
+    const current = await safeRedis(async () => {
+      const count = await redis.incr(key);
+      if (count === 1) await redis.expire(key, windowSec);
+      return count;
+    }, 1);
+
+    if (current > max) {
+      const ttl = await safeRedis(() => redis.ttl(key), windowSec);
+      res.setHeader("Retry-After", String(ttl));
+      return res.status(429).json({ error: "Too many password reset attempts. Please try again later." });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function rateLimitBulkImport(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    if (process.env.DISABLE_RATE_LIMIT === "true") return next();
+    const key = `ratelimit:bulkimport:${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const max = 3;
+    const windowSec = 15 * 60;
+    const current = await safeRedis(async () => {
+      const count = await redis.incr(key);
+      if (count === 1) await redis.expire(key, windowSec);
+      return count;
+    }, 1);
+
+    if (current > max) {
+      const ttl = await safeRedis(() => redis.ttl(key), windowSec);
+      res.setHeader("Retry-After", String(ttl));
+      return res.status(429).json({ error: "Too many bulk import attempts. Please try again later." });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 function requireCsrf(req: AuthRequest, res: express.Response, next: express.NextFunction) {
   if (csrfSafeMethods.has(req.method)) return next();
   if (req.path === "/auth/login" || req.path === "/api/auth/login") return next();
+  if (req.path === "/payments/webhook" || req.path === "/webhooks/payment" || req.path === "/api/payments/webhook" || req.path === "/api/webhooks/payment") return next();
   const cookieToken = extractCookie(req, "e16_lms_csrf");
   const headerToken = req.header("X-CSRF-Token");
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
@@ -2078,7 +2138,7 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin"]
   res.status(201).json(created);
 }));
 
-app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_admin", "admin"]), validateBody(schemas.bulkCreateUsers), asyncHandler(async (req, res) => {
+app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_admin", "admin"]), rateLimitBulkImport, validateBody(schemas.bulkCreateUsers), asyncHandler(async (req, res) => {
   const errors: Array<{ row: number; email?: string; reason: string }> = [];
   const created: User[] = [];
   const seenEmails = new Set<string>();
@@ -2141,7 +2201,7 @@ app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_ad
   });
 }));
 
-app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin"]), rateLimitResetPassword, asyncHandler(async (req, res) => {
   const user = await usersRepository.findById(pool, req.params.id);
   if (!user) return res.status(404).json({ error: "User not found." });
   const temporaryPassword = generateTemporaryPassword();
@@ -2150,11 +2210,22 @@ app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manag
     "UPDATE users SET password_hash = $1, password_salt = $2 WHERE id = $3",
     [credential.hash, credential.salt, req.params.id]
   );
+
+  // Securely email the temporary password to the user's email
+  try {
+    await sendPasswordResetEmail(pool, user.id, {
+      to: user.email,
+      name: user.name,
+      temporaryPassword
+    });
+  } catch (err) {
+    console.error("Failed to email temporary password:", err);
+  }
+
   await audit(req, "reset_user_password", req.params.id, `Temporary password issued for: ${user.email}`);
   res.json({
     ok: true,
-    temporaryPassword,
-    message: `Mật khẩu tạm thời đã được tạo: ${temporaryPassword}`
+    message: `Mật khẩu tạm thời đã được đặt lại thành công và gửi tới email của người dùng: ${user.email}`
   });
 }));
 
@@ -2502,7 +2573,7 @@ app.post("/api/tuition/confirm-transfer", requireAuth, requireRole(["student"]),
   res.json({ ok: true, transactionId: txId });
 }));
 
-app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
+const reviewTransactionHandler = asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let result: any;
   try {
@@ -2525,9 +2596,12 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["man
   }
   await audit(req, `finance_transaction_${req.body.status}`, req.params.id, req.body.notes || "");
   res.json(result);
-}));
+});
 
-app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
+app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), reviewTransactionHandler);
+app.patch("/api/payments/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), reviewTransactionHandler);
+
+const bulkIssueTuitionHandler = asyncHandler(async (req, res) => {
   const { semesterId, amount, dueDate } = req.body;
   const dueDateValue = dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const client = await pool.connect();
@@ -2568,13 +2642,80 @@ app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager",
   } finally {
     client.release();
   }
-}));
+});
 
-app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), bulkIssueTuitionHandler);
+app.post("/api/payments/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), bulkIssueTuitionHandler);
+
+const scanOverdueHandler = asyncHandler(async (req, res) => {
   const overdue = await financeRepository.checkOverdueFees(pool);
   await audit(req, "scan_overdue_tuition", "tuition_fees", `Found ${overdue.length} overdue fees.`);
   res.json({ overdueCount: overdue.length, fees: overdue });
-}));
+});
+
+app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), scanOverdueHandler);
+app.post("/api/payments/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), scanOverdueHandler);
+
+const paymentWebhookHandler = asyncHandler(async (req, res) => {
+  const signature = req.header("X-Payment-Signature");
+  const secret = process.env.PAYMENT_WEBHOOK_SECRET || "default_webhook_secret";
+  
+  if (!signature) {
+    return res.status(400).json({ error: "Missing webhook signature header." });
+  }
+  
+  const payload = JSON.stringify(req.body);
+  const expectedSignature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
+  
+  const sigBuffer = Buffer.from(signature, "utf8");
+  const expBuffer = Buffer.from(expectedSignature, "utf8");
+  
+  if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {
+    return res.status(401).json({ error: "Invalid webhook signature." });
+  }
+  
+  const { transactionId, status, notes } = req.body;
+  if (!transactionId || !status) {
+    return res.status(400).json({ error: "Missing required webhook payload fields." });
+  }
+  
+  if (status !== "approved" && status !== "rejected") {
+    return res.status(400).json({ error: "Invalid transaction status in webhook payload." });
+  }
+  
+  const client = await pool.connect();
+  let result: any;
+  try {
+    await client.query("BEGIN");
+    result = await financeRepository.reviewTransaction(
+      client,
+      transactionId,
+      status,
+      "user_admin", // system admin
+      notes || "Processed via payment gateway webhook callback."
+    );
+    if (!result) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Transaction not found." });
+    }
+    if ("error" in result) {
+      await client.query("ROLLBACK");
+      return res.status(result.status || 400).json({ error: result.error });
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  
+  await auditRepository.log(pool, "user_admin", `finance_transaction_${status}`, transactionId, notes || "Processed via payment gateway webhook callback.");
+  res.json({ ok: true, message: "Webhook processed successfully", transaction: result });
+});
+
+app.post("/api/payments/webhook", paymentWebhookHandler);
+app.post("/api/webhooks/payment", paymentWebhookHandler);
 
 async function validateAttendanceSectionAccess(courseId: string, sectionId: string | undefined, user: User): Promise<{ section?: any; status?: number; error?: string }> {
   if (!sectionId) return {};
