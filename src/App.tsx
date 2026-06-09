@@ -49,6 +49,11 @@ function AppShell() {
   const [loginPassword, setLoginPassword] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [sessionConflict, setSessionConflict] = useState(false);
+  const [resetToken, setResetToken] = useState(() => new URLSearchParams(window.location.search).get("resetToken") || "");
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetPasswordMessage, setResetPasswordMessage] = useState<string | null>(null);
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
 
   // Mobile sidebar navigation visibility
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -226,6 +231,39 @@ function AppShell() {
     }).catch(() => undefined);
     setAuthError(null);
     setSessionConflict(false);
+  };
+
+  const handleCompletePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetPasswordError(null);
+    setResetPasswordMessage(null);
+    if (resetNewPassword.length < 8) {
+      setResetPasswordError("Mật khẩu mới phải dài tối thiểu 8 ký tự.");
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetPasswordError("Mật khẩu xác nhận chưa khớp.");
+      return;
+    }
+    try {
+      const response = await fetch("/api/auth/reset-password/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, newPassword: resetNewPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setResetPasswordError(data.error || "Không thể đặt lại mật khẩu.");
+        return;
+      }
+      setResetPasswordMessage(data.message || "Mật khẩu đã được đặt lại thành công.");
+      setResetToken("");
+      setResetNewPassword("");
+      setResetConfirmPassword("");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch {
+      setResetPasswordError("Dịch vụ đặt lại mật khẩu chưa sẵn sàng.");
+    }
   };
 
   const handleInstantDemoLogin = (email: string, pass: string) => {
@@ -646,11 +684,17 @@ function AppShell() {
             {/* RIGHT FORM COLUMN */}
             <div className="lg:col-span-7 p-8 md:p-10 flex flex-col justify-center space-y-6">
               <div className="space-y-1">
-                <h3 className="text-lg font-display font-bold text-white tracking-tight">Đăng nhập tài khoản của bạn</h3>
-                <p className="text-xs text-white/55">Xác thực để truy cập phân hệ học vụ hoặc lớp học tương ứng.</p>
+                <h3 className="text-lg font-display font-bold text-white tracking-tight">
+                  {resetToken ? "Đặt lại mật khẩu" : "Đăng nhập tài khoản của bạn"}
+                </h3>
+                <p className="text-xs text-white/55">
+                  {resetToken
+                    ? "Thiết lập mật khẩu mới bằng liên kết một lần được gửi qua email."
+                    : "Xác thực để truy cập phân hệ học vụ hoặc lớp học tương ứng."}
+                </p>
               </div>
 
-              {authError && (
+              {!resetToken && authError && (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-xl text-xs space-y-2">
                   <div className="flex items-center gap-2">
                     <Lock className="h-4 w-4 stroke-[2.5] shrink-0" />
@@ -669,47 +713,112 @@ function AppShell() {
                 </div>
               )}
 
-              {/* Login submit form */}
-              <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs font-sans">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-white/70 block">Địa chỉ Email đăng nhập</label>
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="Ví dụ: admin@e16.local"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/25 h-10"
-                  />
+              {resetPasswordError && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-300 p-3 rounded-xl text-xs">
+                  {resetPasswordError}
                 </div>
+              )}
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-white/70 block">Mật khẩu tài khoản</label>
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    placeholder="Mật khẩu của bạn"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/20 h-10"
-                  />
+              {resetPasswordMessage && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 p-3 rounded-xl text-xs">
+                  {resetPasswordMessage}
                 </div>
+              )}
 
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-white text-indigo-950 hover:bg-white/95 text-xs font-bold rounded-xl transition cursor-pointer shadow-lg tracking-wider uppercase font-display"
-                >
-                  Xác nhận Đăng nhập
-                </button>
-              </form>
+              {resetToken ? (
+                <form onSubmit={handleCompletePasswordReset} className="space-y-4 text-xs font-sans">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-white/70 block">Mật khẩu mới</label>
+                    <input
+                      name="newPassword"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="Tối thiểu 8 ký tự"
+                      value={resetNewPassword}
+                      onChange={(e) => setResetNewPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/20 h-10"
+                    />
+                  </div>
 
-              {/* Seed Switchboard buttons section */}
-              <div className="border-t border-white/10 pt-5 space-y-4">
-                <span className="text-[10px] font-mono font-bold tracking-wider text-white/40 block uppercase">
-                  Bảng chuyển đổi nhanh Tài khoản Demo:
-                </span>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-white/70 block">Xác nhận mật khẩu mới</label>
+                    <input
+                      name="confirmNewPassword"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="Nhập lại mật khẩu mới"
+                      value={resetConfirmPassword}
+                      onChange={(e) => setResetConfirmPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/20 h-10"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-white text-indigo-950 hover:bg-white/95 text-xs font-bold rounded-xl transition cursor-pointer shadow-lg tracking-wider uppercase font-display"
+                  >
+                    Đặt lại mật khẩu
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetToken("");
+                      setResetNewPassword("");
+                      setResetConfirmPassword("");
+                      setResetPasswordError(null);
+                      window.history.replaceState({}, document.title, window.location.pathname);
+                    }}
+                    className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white/80 border border-white/10 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Quay lại đăng nhập
+                  </button>
+                </form>
+              ) : (
+                <>
+                  {/* Login submit form */}
+                  <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs font-sans">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-white/70 block">Địa chỉ Email đăng nhập</label>
+                      <input
+                        name="email"
+                        type="email"
+                        required
+                        placeholder="Ví dụ: admin@e16.local"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/25 h-10"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-white/70 block">Mật khẩu tài khoản</label>
+                      <input
+                        name="password"
+                        type="password"
+                        required
+                        placeholder="Mật khẩu của bạn"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/20 h-10"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-white text-indigo-950 hover:bg-white/95 text-xs font-bold rounded-xl transition cursor-pointer shadow-lg tracking-wider uppercase font-display"
+                    >
+                      Xác nhận Đăng nhập
+                    </button>
+                  </form>
+
+                  {/* Seed Switchboard buttons section */}
+                  <div className="border-t border-white/10 pt-5 space-y-4">
+                    <span className="text-[10px] font-mono font-bold tracking-wider text-white/40 block uppercase">
+                      Bảng chuyển đổi nhanh Tài khoản Demo:
+                    </span>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                   <button
@@ -839,7 +948,9 @@ function AppShell() {
                     </button>
                   </div>
                 </div>
-              </div>
+                  </div>
+                </>
+              )}
 
             </div>
 

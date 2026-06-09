@@ -9,6 +9,18 @@ type Session = {
 
 const baseUrl = process.env.E2E_BASE_URL || "http://localhost:3100";
 
+const cleanup = {
+  webhookEventIds: [] as string[],
+  transactionIds: [] as string[],
+  tuitionFeeIds: [] as string[],
+  semesterIds: [] as string[],
+  academicYearIds: [] as string[],
+  enrollmentIds: [] as string[],
+  quizIds: [] as string[],
+  courseIds: [] as string[],
+  userIds: [] as string[]
+};
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -54,12 +66,40 @@ async function login(email: string, password: string): Promise<Session> {
   return { cookie: cookieHeader(response.headers), csrfToken: payload.csrfToken, user: payload.user };
 }
 
+async function deleteByIds(table: string, column: string, ids: string[]) {
+  if (ids.length === 0) return;
+  await pool.query(`DELETE FROM ${table} WHERE ${column} = ANY($1::text[])`, [ids]);
+}
+
+async function cleanupCreatedData() {
+  await deleteByIds("payment_webhook_events", "event_id", cleanup.webhookEventIds);
+  await deleteByIds("transactions", "id", cleanup.transactionIds);
+  await deleteByIds("notifications", "related_entity_id", cleanup.tuitionFeeIds);
+  await deleteByIds("tuition_fees", "id", cleanup.tuitionFeeIds);
+  await deleteByIds("semesters", "id", cleanup.semesterIds);
+  await deleteByIds("academic_years", "id", cleanup.academicYearIds);
+  await deleteByIds("quiz_attempts", "quiz_id", cleanup.quizIds);
+  await deleteByIds("questions", "quiz_id", cleanup.quizIds);
+  await deleteByIds("quizzes", "id", cleanup.quizIds);
+  await deleteByIds("lesson_progress", "enrollment_id", cleanup.enrollmentIds);
+  await deleteByIds("enrollments", "id", cleanup.enrollmentIds);
+  await deleteByIds("grades", "course_id", cleanup.courseIds);
+  await deleteByIds("lessons", "course_id", cleanup.courseIds);
+  await deleteByIds("course_sections", "course_id", cleanup.courseIds);
+  await deleteByIds("courses", "id", cleanup.courseIds);
+  await deleteByIds("notifications", "user_id", cleanup.userIds);
+  await deleteByIds("student_profiles", "user_id", cleanup.userIds);
+  await deleteByIds("password_reset_tokens", "user_id", cleanup.userIds);
+  await deleteByIds("audit_logs", "user_id", cleanup.userIds);
+  await deleteByIds("users", "id", cleanup.userIds);
+}
+
 async function main() {
   console.log("=== Starting E2E Regression and Hardening Tests ===");
-
-  // Direct database cleanup to ensure bulk issue succeeds for sem_spring25
-  console.log("Cleaning up tuition fees for sem_spring25 in database...");
-  await pool.query("DELETE FROM tuition_fees WHERE student_id = 'user_student' AND semester_id = 'sem_spring25'");
+  const timestamp = Date.now();
+  const regressionFeeId = `tf_regression_${timestamp}`;
+  const regressionSemesterId = `sem_regression_${timestamp}`;
+  const regressionAcademicYearId = `ay_regression_${timestamp}`;
 
   // 1. Health check
   const health = await request<{ ok: boolean }>("/health");
@@ -75,7 +115,7 @@ async function main() {
 
   // 2. Test Store Scoping by Role
   console.log("Testing Store Scoping...");
-  
+
   // Student Store Scoping
   const studentStore = await request<any>("/api/store", { session: student });
   assert(studentStore.questions, "Student store missing questions list");
@@ -103,11 +143,11 @@ async function main() {
 
   // 3. Test File Upload Filter Restrictions
   console.log("Testing File Upload Filters...");
-  
+
   // Allowed upload
   const allowedForm = new FormData();
   allowedForm.append("file", new Blob(["mock raster image data"], { type: "image/png" }), "test_image.png");
-  
+
   const uploadRes = await fetch(`${baseUrl}/api/upload`, {
     method: "POST",
     headers: {
@@ -165,7 +205,6 @@ async function main() {
 
   // 4. Test User Bulk Creation
   console.log("Testing Bulk User Creation...");
-  const timestamp = Date.now();
   const bulkPayload = {
     users: [
       {
@@ -182,34 +221,48 @@ async function main() {
   });
   console.log("Bulk creation response:", JSON.stringify(bulkRes, null, 2));
   assert(bulkRes.createdCount === 1, "Bulk create user failed to create user");
+  cleanup.userIds.push(...(bulkRes.created || []).map((user: any) => user.id).filter(Boolean));
   console.log("✓ Bulk user creation verified");
 
   // 5. Test Tuition Confirm Transfer
   console.log("Testing Tuition Confirm Transfer...");
 
-  // Issue a tuition fee first to ensure there's at least one unpaid fee for Ada Lovelace
-  console.log("Issuing tuition fee via admin...");
-  try {
-    await request<any>("/api/payments/tuition/bulk-issue", {
-      method: "POST",
-      session: admin,
-      body: JSON.stringify({
-        semesterId: "sem_spring25",
-        amount: 25000000,
-        dueDate: "2026-12-31"
-      })
-    });
-    console.log("✓ Bulk tuition fee issued successfully");
-  } catch (err) {
-    console.log("Bulk issue note/warning:", err);
+  // Create one isolated tuition fee for Ada Lovelace.
+  console.log("Creating isolated regression tuition fee...");
+  let academicYearId = (await pool.query(
+    "SELECT id FROM academic_years ORDER BY is_current DESC, start_date DESC LIMIT 1"
+  )).rows[0]?.id;
+  if (!academicYearId) {
+    await pool.query(
+      `INSERT INTO academic_years (id, name, start_date, end_date, is_current)
+       VALUES ($1, 'Regression Academic Year', '2026-01-01', '2026-12-31', false)`,
+      [regressionAcademicYearId]
+    );
+    academicYearId = regressionAcademicYearId;
+    cleanup.academicYearIds.push(regressionAcademicYearId);
   }
+  await pool.query(
+    `INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close, is_current)
+     VALUES ($1, $2, $3, 'spring', '2026-01-01', '2026-12-31', '2026-01-01', '2026-12-31', false)
+     ON CONFLICT (id) DO NOTHING`,
+    [regressionSemesterId, academicYearId, "Regression Semester"]
+  );
+  cleanup.semesterIds.push(regressionSemesterId);
+  const insertedFee = await pool.query(
+    `INSERT INTO tuition_fees (id, student_id, semester_id, amount, due_date, status, paid_amount)
+     VALUES ($1, $2, $3, $4, $5, 'unpaid', 0)
+     RETURNING id`,
+    [regressionFeeId, "user_student", regressionSemesterId, 25000000, "2026-12-31"]
+  );
+  const unpaidFeeId = insertedFee.rows[0].id;
+  cleanup.tuitionFeeIds.push(unpaidFeeId);
 
-  // Find a tuition fee for Ada Lovelace (student) after bulk issue
+  // Find the dedicated regression tuition fee for Ada Lovelace after setup
   const studentStoreAfterIssue = await request<any>("/api/store", { session: student });
   const studentFees = studentStoreAfterIssue.tuitionFees || [];
-  const unpaidFee = studentFees.find((f: any) => f.status === "unpaid" && f.studentId === "user_student");
+  const unpaidFee = studentFees.find((f: any) => f.id === unpaidFeeId && f.status === "unpaid" && f.studentId === "user_student");
   assert(unpaidFee, "No unpaid tuition fee found for Ada Lovelace to test confirm transfer");
-  
+
   const transferAmount = 50000;
   const transferRes = await request<any>("/api/tuition/confirm-transfer", {
     method: "POST",
@@ -218,20 +271,25 @@ async function main() {
   });
   assert(transferRes.ok === true && transferRes.transactionId, "Tuition confirm transfer failed");
   const txId = transferRes.transactionId;
+  cleanup.transactionIds.push(txId);
   console.log(`✓ Tuition confirm transfer created transaction: ${txId}`);
 
   // 6. Test Transaction Webhook Callback with Signature Verification
   console.log("Testing Payments Webhook Callback...");
-  const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || "default_webhook_secret";
+  const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET || "dev-only-payment-webhook-secret-do-not-use-in-prod";
+  const webhookEventId = `evt_regression_${timestamp}`;
+  cleanup.webhookEventIds.push(webhookEventId);
   const webhookPayload = {
+    eventId: webhookEventId,
+    timestamp: new Date().toISOString(),
     transactionId: txId,
     status: "approved",
     notes: "Auto-approved via payment webhook E2E test"
   };
-  
+
   const serializedPayload = JSON.stringify(webhookPayload);
   const signature = crypto.createHmac("sha256", webhookSecret).update(serializedPayload).digest("hex");
-  
+
   const webhookFetch = await fetch(`${baseUrl}/api/payments/webhook`, {
     method: "POST",
     headers: {
@@ -240,12 +298,44 @@ async function main() {
     },
     body: serializedPayload
   });
-  
+
   assert(webhookFetch.ok, `Payment webhook call failed: ${webhookFetch.status}`);
   const webhookResult = await webhookFetch.json();
   assert(webhookResult.ok === true, "Payment webhook response failed");
   console.log("✓ Payment webhook executed successfully");
-  
+
+  const duplicateWebhookFetch = await fetch(`${baseUrl}/api/payments/webhook`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Payment-Signature": signature
+    },
+    body: serializedPayload
+  });
+  assert(duplicateWebhookFetch.ok, `Duplicate payment webhook call failed: ${duplicateWebhookFetch.status}`);
+  const duplicateWebhookResult = await duplicateWebhookFetch.json();
+  assert(duplicateWebhookResult.duplicate === true, "Duplicate webhook did not return idempotent duplicate response");
+
+  const staleWebhookPayload = {
+    eventId: `${webhookEventId}_stale`,
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    transactionId: txId,
+    status: "approved",
+    notes: "Stale replay attempt"
+  };
+  const serializedStalePayload = JSON.stringify(staleWebhookPayload);
+  const staleSignature = crypto.createHmac("sha256", webhookSecret).update(serializedStalePayload).digest("hex");
+  const staleWebhookFetch = await fetch(`${baseUrl}/api/payments/webhook`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Payment-Signature": staleSignature
+    },
+    body: serializedStalePayload
+  });
+  assert(staleWebhookFetch.status === 400, `Stale payment webhook should be rejected, got ${staleWebhookFetch.status}`);
+  console.log("✓ Payment webhook idempotency and replay tolerance verified");
+
   // Verify transaction status updated in store
   const updatedStudentStore = await request<any>("/api/store", { session: student });
   const updatedTx = updatedStudentStore.transactions?.find((t: any) => t.id === txId);
@@ -266,7 +356,8 @@ async function main() {
       tags: ["regression"]
     })
   });
-  
+  cleanup.courseIds.push(course.id);
+
   const lesson = await request<any>("/api/lessons", {
     method: "POST",
     session: teacher,
@@ -278,7 +369,7 @@ async function main() {
       duration: "5 mins"
     })
   });
-  
+
   const quiz = await request<any>("/api/quizzes", {
     method: "POST",
     session: teacher,
@@ -291,7 +382,8 @@ async function main() {
       maxAttempts: 3
     })
   });
-  
+  cleanup.quizIds.push(quiz.id);
+
   const question = await request<any>(`/api/quizzes/${quiz.id}/questions`, {
     method: "POST",
     session: teacher,
@@ -302,24 +394,25 @@ async function main() {
       correctAnswer: "0" // "Yes" is correct
     })
   });
-  
+
   // Submit the course for publishing and publish it
   await request<any>(`/api/courses/${course.id}/submit`, { method: "POST", session: teacher });
   await request<any>(`/api/courses/${course.id}/publish`, { method: "POST", session: admin });
-  
+
   // Student registers
   const enroll = await request<any>("/api/enrollments/register", {
     method: "POST",
     session: student,
     body: JSON.stringify({ courseId: course.id })
   });
-  
+  cleanup.enrollmentIds.push(enroll.id);
+
   // Activate the enrollment
   await request<any>(`/api/enrollments/${enroll.id}/activate`, {
     method: "POST",
     session: admin
   });
-  
+
   // Submit correct answer
   const attempt = await request<any>("/api/quizzes/submit", {
     method: "POST",
@@ -332,7 +425,7 @@ async function main() {
     })
   });
   assert(attempt.score === 100 && attempt.passed === true, "Quiz grading correctness isolation failed: correct answer graded wrong");
-  
+
   // Submit wrong answer
   const attemptWrong = await request<any>("/api/quizzes/submit", {
     method: "POST",
@@ -347,6 +440,8 @@ async function main() {
   assert(attemptWrong.score === 0 && attemptWrong.passed === false, "Quiz grading correctness isolation failed: incorrect answer graded right");
   console.log("✓ Quiz submit correctness isolation and grading verified");
 
+  await cleanupCreatedData();
+
   console.log("=== All E2E Regression and Hardening Tests Passed Successfully! ===");
   await pool.end();
 }
@@ -354,6 +449,7 @@ async function main() {
 main().catch(async error => {
   console.error("❌ E2E Regression Test Failed:", error);
   try {
+    await cleanupCreatedData();
     await pool.end();
   } catch {}
   process.exit(1);

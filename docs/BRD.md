@@ -252,7 +252,8 @@ Quy tắc scope mới:
 - **AUTH-003 [Must]**: Tài khoản inactive không thể đăng nhập.
 - **AUTH-004 [Must]**: Force logout chỉ xóa session hiện tại, không thay đổi dữ liệu người dùng.
 - **AUTH-005 [Must]**: Đổi mật khẩu yêu cầu mật khẩu hiện tại và xác nhận mật khẩu mới.
-- **AUTH-006 [Must]**: API ghi dữ liệu phải kiểm tra `requireAuth`, `requireRole` và Zod validation khi có schema.
+- **AUTH-006 [Must]**: Reset mật khẩu dùng token/link một lần, lưu token dạng hash, có thời hạn và ghi nhận `used_at`; hệ thống không gửi mật khẩu tạm thời qua email reset.
+- **AUTH-007 [Must]**: API ghi dữ liệu phải kiểm tra `requireAuth`, `requireRole` và Zod validation khi có schema.
 
 ### 7.2. Role và điều hướng
 
@@ -318,8 +319,9 @@ Quy tắc scope mới:
 - **PAY-004 [Must]**: Bên xử lý thanh toán/đối soát bên ngoài là nguồn xác nhận trạng thái thanh toán.
 - **PAY-005 [Must]**: Khi học phí chuyển `paid`, hệ thống gỡ `feeHold`, resolve cảnh báo học phí quá hạn và sinh `receiptCode`.
 - **PAY-006 [Must]**: Ghi nhận thanh toán phải chặn thanh toán âm, vượt số còn nợ và ghi trùng.
-- **PAY-007 [Should]**: Các nhãn UI cũ như “Kế toán”, “đợi kế toán duyệt” phải được đổi thành “chờ xác nhận thanh toán” hoặc “bên xử lý thanh toán”.
-- **PAY-008 [Should]**: Endpoint legacy `/api/finance/transactions/:id/review` cần được thay bằng callback/status API từ provider khi có thông tin tích hợp chính thức.
+- **PAY-007 [Must]**: Webhook thanh toán phải xác thực HMAC bằng raw body, có `eventId`, `timestamp`, tolerance chống replay, và lưu từng sự kiện vào `payment_webhook_events`.
+- **PAY-008 [Should]**: Các nhãn UI cũ như “Kế toán”, “đợi kế toán duyệt” phải được đổi thành “chờ xác nhận thanh toán” hoặc “bên xử lý thanh toán”.
+- **PAY-009 [Should]**: Endpoint legacy `/api/finance/transactions/:id/review` cần được thay bằng callback/status API từ provider khi có thông tin tích hợp chính thức.
 
 ### 7.10. Parent và notification
 
@@ -333,7 +335,7 @@ Quy tắc scope mới:
 - **PROV-001 [Must]**: Khi tạo student, hệ thống phát event `user.created`.
 - **PROV-002 [Must]**: Nếu Google Workspace được cấu hình, hệ thống tạo school email theo domain `SCHOOL_EMAIL_DOMAIN`.
 - **PROV-003 [Must]**: Username email trường được chuẩn hóa từ tên, bỏ dấu, lower-case và chống trùng.
-- **PROV-004 [Must]**: Mật khẩu tạm thời chỉ gửi qua email onboarding, không lưu plaintext trong DB.
+- **PROV-004 [Must]**: Mật khẩu khởi tạo onboarding chỉ dùng cho tạo tài khoản ban đầu và không lưu plaintext trong DB; reset mật khẩu dùng link/token một lần.
 - **PROV-005 [Must]**: Admin/super_admin có API reprovision email cho student khi provisioning lỗi.
 
 ---
@@ -384,7 +386,7 @@ Quy tắc scope mới:
 
 Các phần sau tồn tại trong code hoặc tài liệu cũ nhưng không còn là nghiệp vụ sản phẩm chính:
 
-1. `src/components/FinancePanel.tsx`: màn hình finance/kế toán cũ, không phải panel được mount trực tiếp trong `App.tsx`.
+1. `src/components/FinancePanel.tsx`: màn hình finance/kế toán cũ đã được loại bỏ khỏi codebase; không khôi phục trừ khi có yêu cầu sản phẩm mới.
 2. `/api/finance/transactions/:id/review`: endpoint duyệt giao dịch legacy, hiện chỉ nên xem là công cụ vận hành tạm thời cho `manager/admin/super_admin` cho tới khi có callback/status API từ provider.
 3. Các copy UI đang mounted đã được đổi sang ngôn ngữ thanh toán mới; nếu phục hồi component legacy thì phải kiểm tra lại nhãn “Kế toán”, “chờ kế toán duyệt”, “đối soát sao kê”.
 4. README và E2E đã được cập nhật theo scope thanh toán mới; các script kiểm thử tương lai không được đưa lại persona kế toán nội bộ.
