@@ -128,10 +128,15 @@ if (!JWT_SECRET) {
 const JWT_SECRET_VALUE = JWT_SECRET || "dev-only-e16-lms-secret-do-not-use-in-prod";
 const csrfSafeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 const PAYMENT_WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET;
-if (!PAYMENT_WEBHOOK_SECRET && (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging")) {
-  throw new Error("FATAL: PAYMENT_WEBHOOK_SECRET environment variable is required for payment webhooks.");
+let PAYMENT_WEBHOOK_SECRET_VALUE = PAYMENT_WEBHOOK_SECRET;
+if (!PAYMENT_WEBHOOK_SECRET) {
+  if (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging") {
+    PAYMENT_WEBHOOK_SECRET_VALUE = crypto.randomBytes(32).toString("hex");
+    console.warn("WARNING: PAYMENT_WEBHOOK_SECRET environment variable is not set. Using a secure random value generated at runtime; payment webhooks will be rejected.");
+  } else {
+    PAYMENT_WEBHOOK_SECRET_VALUE = "dev-only-payment-webhook-secret-do-not-use-in-prod";
+  }
 }
-const PAYMENT_WEBHOOK_SECRET_VALUE = PAYMENT_WEBHOOK_SECRET || "dev-only-payment-webhook-secret-do-not-use-in-prod";
 const configuredWebhookToleranceSeconds = Number(process.env.PAYMENT_WEBHOOK_TOLERANCE_SECONDS || 300);
 const PAYMENT_WEBHOOK_TOLERANCE_SECONDS = Number.isFinite(configuredWebhookToleranceSeconds) && configuredWebhookToleranceSeconds > 0
   ? configuredWebhookToleranceSeconds
