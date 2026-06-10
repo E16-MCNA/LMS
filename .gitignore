@@ -9,4 +9,5 @@ coverage/
 !.env.example
 .understand-anything/
 .cursor/
-
+scratch/
+public/uploads/
