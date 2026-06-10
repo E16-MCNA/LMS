@@ -306,7 +306,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
       setImportMessage({
         type: result.createdCount > 0 ? "success" : "error",
         text: result.createdCount > 0
-          ? `Đã xử lý CSV. Thành công: ${result.createdCount} tài khoản. Bỏ qua/thất bại: ${totalFailed}. Mật khẩu tạm thời: ${batchTemporaryPassword}`
+          ? `Đã xử lý CSV. Thành công: ${result.createdCount} tài khoản. Bỏ qua/thất bại: ${totalFailed}. Mật khẩu khởi tạo theo lô: ${batchTemporaryPassword}`
           : `Đã xử lý CSV. Thành công: 0 tài khoản. Bỏ qua/thất bại: ${totalFailed}.`
       });
       if (result.createdCount > 0) {

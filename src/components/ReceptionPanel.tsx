@@ -142,12 +142,12 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   };
 
   const handleResetPassword = async (studentId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn tạo mật khẩu tạm thời mới cho học viên này không?")) {
+    if (!window.confirm("Bạn có chắc chắn muốn tạo liên kết đặt lại mật khẩu một lần cho học viên này không?")) {
       return;
     }
     try {
-      const res = await api.resetPassword(studentId) as { message?: string; temporaryPassword?: string };
-      showToast(res.message || `Mật khẩu tạm thời đã được tạo: ${res.temporaryPassword || ""}`);
+      const res = await api.resetPassword(studentId) as { message?: string; resetUrl?: string; emailSent?: boolean };
+      showToast(res.message || (res.resetUrl ? "Đã tạo liên kết đặt lại mật khẩu một lần." : "Đã gửi liên kết đặt lại mật khẩu."));
       onRefreshData();
     } catch (err: any) {
       showToast(err.message || "Lỗi khi đặt lại mật khẩu học viên!");
@@ -429,7 +429,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-white/70 block">Mật khẩu tạm thời ban đầu</label>
+                <label className="text-xs font-semibold text-white/70 block">Mật khẩu khởi tạo ban đầu</label>
                 <input
                   type="text"
                   value={regPassword}

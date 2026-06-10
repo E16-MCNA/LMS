@@ -11,6 +11,7 @@
     "db:drift": "tsx scripts/dbDriftCheck.ts",
     "db:seed": "tsx scripts/dbSeed.ts",
     "test:e2e": "tsx scripts/e2eAcademicFlow.ts",
+    "test:regression": "tsx scripts/e2eRegressionFlow.ts",
     "smoke:deploy": "tsx scripts/smokeDeploy.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

@@ -17,6 +17,10 @@ export const schemas = {
     email: z.email().trim().toLowerCase(),
     password: z.string().min(1)
   }),
+  completePasswordReset: z.object({
+    token: z.string().trim().min(32),
+    newPassword: z.string().min(8)
+  }),
   createUser: z.object({
     email: z.email().trim().toLowerCase(),
     password: z.string().min(8),

@@ -75,6 +75,9 @@ Tạo tệp tin `.env` ở thư mục gốc của dự án dựa trên file `.en
 PORT=3000
 DATABASE_URL=postgresql://username:password@localhost:5432/e16_lms_db
 JWT_SECRET=thiet_lap_chuoi_bao_mat_jwt_cuc_ky_dai_va_kho_giai_ma
+PAYMENT_WEBHOOK_SECRET=thiet_lap_chuoi_bao_mat_webhook_thanh_toan
+PAYMENT_WEBHOOK_TOLERANCE_SECONDS=300
+PASSWORD_RESET_TOKEN_TTL_MINUTES=30
 DISABLE_RATE_LIMIT=true
 ```
 *Lưu ý: `DATABASE_URL` là bắt buộc để thực hiện các thao tác di chuyển dữ liệu cấu trúc bảng.*
@@ -152,6 +155,9 @@ npm start
 * `NODE_ENV=production`
 * `DATABASE_URL` (Đường dẫn kết nối CSDL PostgreSQL production an toàn)
 * `JWT_SECRET` (Khóa bảo mật mạnh để mã hóa các session cookie phiên làm việc)
+* `PAYMENT_WEBHOOK_SECRET` (Khóa HMAC để xác thực callback từ bên xử lý thanh toán)
+* `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` (Cửa sổ chấp nhận timestamp webhook, mặc định 300 giây)
+* `PASSWORD_RESET_TOKEN_TTL_MINUTES` (Thời hạn token đặt lại mật khẩu một lần, mặc định 30 phút)
 * `PORT` (Cổng dịch vụ do đám mây phân phối, mặc định: 3000)
 
 **Cấu hình Google Workspace & Provisioning:**

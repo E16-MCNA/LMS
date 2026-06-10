@@ -53,6 +53,16 @@ const allowedUploadMimeTypes = new Set([
 const uploadFileFilter = (_req: express.Request, file: Express.Multer.File, cb: (error: Error | null, acceptFile?: boolean) => void) => {
   const ext = path.extname(file.originalname).toLowerCase();
   const mime = String(file.mimetype || "").toLowerCase();
+
+  const blockedExtensions = new Set([".svg", ".html", ".htm", ".js", ".svgz"]);
+  const blockedMimeTypes = new Set(["image/svg+xml", "text/html", "application/javascript", "text/javascript"]);
+  if (blockedExtensions.has(ext) || blockedMimeTypes.has(mime)) {
+    const err = new Error("Unsupported file type. Security restrictions explicitly block SVG, HTML, and Javascript files.");
+    (err as any).status = 400;
+    cb(err, false);
+    return;
+  }
+
   if (allowedUploadExtensions.has(ext) && allowedUploadMimeTypes.has(mime)) {
     cb(null, true);
     return;
@@ -102,6 +112,7 @@ import { toGradePoint, toLetterGrade } from "./src/server/gpaCalculator";
 import { startScheduler } from "./src/server/scheduler";
 import { provisioningService } from "./src/server/emailProvisioning/provisioningService";
 import { deleteSchoolEmail } from "./src/server/emailProvisioning/googleWorkspaceClient";
+import { sendPasswordResetLinkEmail } from "./src/server/emailProvisioning/emailWorker";
 
 dotenv.config();
 
@@ -116,8 +127,26 @@ if (!JWT_SECRET) {
 }
 const JWT_SECRET_VALUE = JWT_SECRET || "dev-only-e16-lms-secret-do-not-use-in-prod";
 const csrfSafeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
+const PAYMENT_WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET;
+if (!PAYMENT_WEBHOOK_SECRET && (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging")) {
+  throw new Error("FATAL: PAYMENT_WEBHOOK_SECRET environment variable is required for payment webhooks.");
+}
+const PAYMENT_WEBHOOK_SECRET_VALUE = PAYMENT_WEBHOOK_SECRET || "dev-only-payment-webhook-secret-do-not-use-in-prod";
+const configuredWebhookToleranceSeconds = Number(process.env.PAYMENT_WEBHOOK_TOLERANCE_SECONDS || 300);
+const PAYMENT_WEBHOOK_TOLERANCE_SECONDS = Number.isFinite(configuredWebhookToleranceSeconds) && configuredWebhookToleranceSeconds > 0
+  ? configuredWebhookToleranceSeconds
+  : 300;
+const configuredPasswordResetTokenTtlMinutes = Number(process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30);
+const PASSWORD_RESET_TOKEN_TTL_MINUTES = Number.isFinite(configuredPasswordResetTokenTtlMinutes) && configuredPasswordResetTokenTtlMinutes > 0
+  ? configuredPasswordResetTokenTtlMinutes
+  : 30;
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({
+  limit: "10mb",
+  verify: (req, _res, buf) => {
+    (req as any).rawBody = buf.toString("utf8");
+  }
+}));
 
 app.use("/uploads", express.static(uploadDir, {
   setHeaders: (res) => {
@@ -214,8 +243,8 @@ async function resolveStudentProgramDefaults(db: Queryable, programId?: string, 
 async function generateStudentCode(db: Queryable) {
   const prefix = `SV${new Date().getFullYear()}`;
   const latest = (await db.query(
-    "SELECT student_code FROM student_profiles WHERE student_code LIKE $1 ORDER BY student_code DESC LIMIT 1",
-    [`${prefix}%`]
+    "SELECT student_code FROM student_profiles WHERE student_code LIKE $1 AND student_code ~ $2 ORDER BY student_code DESC LIMIT 1",
+    [`${prefix}%`, `^${prefix}[0-9]+$`]
   )).rows[0]?.student_code as string | undefined;
   const suffix = latest?.startsWith(prefix) && /^\d+$/.test(latest.slice(prefix.length))
     ? Number(latest.slice(prefix.length))
@@ -284,6 +313,46 @@ function generateTemporaryPassword() {
   return `Lms-${crypto.randomBytes(8).toString("base64url")}-1`;
 }
 
+function sha256Hex(input: string) {
+  return crypto.createHash("sha256").update(input).digest("hex");
+}
+
+function generatePasswordResetToken() {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+function passwordResetUrl(req: express.Request, token: string) {
+  const baseUrl = (process.env.LMS_LOGIN_URL || `${req.protocol}://${req.get("host") || "localhost:3000"}`).replace(/\/$/, "");
+  return `${baseUrl}/?resetToken=${encodeURIComponent(token)}`;
+}
+
+function parseWebhookTimestamp(value: unknown): Date | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const millis = value > 10_000_000_000 ? value : value * 1000;
+    const date = new Date(millis);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) return parseWebhookTimestamp(asNumber);
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  return null;
+}
+
+function isWebhookTimestampFresh(timestamp: Date) {
+  return Math.abs(Date.now() - timestamp.getTime()) <= PAYMENT_WEBHOOK_TOLERANCE_SECONDS * 1000;
+}
+
+async function logSystemAudit(action: string, target: string, detail: string) {
+  const user = (await pool.query(
+    "SELECT id FROM users WHERE id = 'user_admin' OR lower(email) = 'admin@mcna.local' ORDER BY CASE WHEN id = 'user_admin' THEN 0 ELSE 1 END LIMIT 1"
+  )).rows[0];
+  if (!user?.id) return;
+  await auditRepository.log(pool, user.id, action, target, detail);
+}
+
 function base64Url(input: string | Buffer) {
   return Buffer.from(input).toString("base64url");
 }
@@ -315,13 +384,15 @@ async function verifyToken(token: string): Promise<{ sub: string } | null> {
 }
 
 function setAuthCookie(res: express.Response, token: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader("Set-Cookie", `e16_lms_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}`);
+  const secure = (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging") ? "; Secure" : "";
+  const domain = process.env.COOKIE_DOMAIN ? `; Domain=${process.env.COOKIE_DOMAIN}` : "";
+  res.setHeader("Set-Cookie", `e16_lms_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}${domain}`);
 }
 
 function setCsrfCookie(res: express.Response, token: string) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.append("Set-Cookie", `e16_lms_csrf=${token}; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}`);
+  const secure = (process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging") ? "; Secure" : "";
+  const domain = process.env.COOKIE_DOMAIN ? `; Domain=${process.env.COOKIE_DOMAIN}` : "";
+  res.append("Set-Cookie", `e16_lms_csrf=${token}; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 8}${secure}${domain}`);
 }
 
 function clearAuthCookie(res: express.Response) {
@@ -367,9 +438,57 @@ async function rateLimitLogin(req: express.Request, res: express.Response, next:
   }
 }
 
+async function rateLimitResetPassword(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    if (process.env.DISABLE_RATE_LIMIT === "true") return next();
+    const key = `ratelimit:resetpwd:${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const max = 5;
+    const windowSec = 15 * 60;
+    const current = await safeRedis(async () => {
+      const count = await redis.incr(key);
+      if (count === 1) await redis.expire(key, windowSec);
+      return count;
+    }, 1);
+
+    if (current > max) {
+      const ttl = await safeRedis(() => redis.ttl(key), windowSec);
+      res.setHeader("Retry-After", String(ttl));
+      return res.status(429).json({ error: "Too many password reset attempts. Please try again later." });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function rateLimitBulkImport(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    if (process.env.DISABLE_RATE_LIMIT === "true") return next();
+    const key = `ratelimit:bulkimport:${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const max = 3;
+    const windowSec = 15 * 60;
+    const current = await safeRedis(async () => {
+      const count = await redis.incr(key);
+      if (count === 1) await redis.expire(key, windowSec);
+      return count;
+    }, 1);
+
+    if (current > max) {
+      const ttl = await safeRedis(() => redis.ttl(key), windowSec);
+      res.setHeader("Retry-After", String(ttl));
+      return res.status(429).json({ error: "Too many bulk import attempts. Please try again later." });
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 function requireCsrf(req: AuthRequest, res: express.Response, next: express.NextFunction) {
   if (csrfSafeMethods.has(req.method)) return next();
   if (req.path === "/auth/login" || req.path === "/api/auth/login") return next();
+  if (req.path === "/auth/reset-password/complete" || req.path === "/api/auth/reset-password/complete") return next();
+  if (req.path === "/payments/webhook" || req.path === "/webhooks/payment" || req.path === "/api/payments/webhook" || req.path === "/api/webhooks/payment") return next();
   const cookieToken = extractCookie(req, "e16_lms_csrf");
   const headerToken = req.header("X-CSRF-Token");
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
@@ -560,7 +679,7 @@ async function maybePostGradeEntry(
     let courseId = "";
     if (sourceType === "quiz") {
       const res = await db.query(
-        `SELECT q.course_id 
+        `SELECT q.course_id
          FROM quizzes q
          JOIN quiz_attempts qa ON qa.quiz_id = q.id
          WHERE qa.id = $1`,
@@ -569,7 +688,7 @@ async function maybePostGradeEntry(
       courseId = res.rows[0]?.course_id;
     } else if (sourceType === "assignment") {
       const res = await db.query(
-        `SELECT a.course_id 
+        `SELECT a.course_id
          FROM assignments a
          JOIN submissions s ON s.assignment_id = a.id
          WHERE s.id = $1`,
@@ -771,7 +890,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     if (store.academicYears !== undefined) {
       const dbRes = await client.query("SELECT id, name, start_date, end_date, is_current FROM academic_years");
       const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
-      
+
       const clientYears = store.academicYears || [];
       for (const year of clientYears) {
         const dbVal = dbMap.get(year.id);
@@ -1180,7 +1299,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     if (store.certificates !== undefined) {
       const clientCerts = store.certificates || [];
       const clientCertIds = clientCerts.map(c => c.id);
-      
+
       const dbRes = await client.query("SELECT id, enrollment_id, student_id, course_id, issued_at, certificate_code FROM certificates");
       const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
 
@@ -1192,7 +1311,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
       } else {
         await client.query(`DELETE FROM certificates`);
       }
-      
+
       for (const cert of clientCerts) {
         const dbVal = dbMap.get(cert.id);
         const isDirty = !dbVal ||
@@ -1370,6 +1489,47 @@ app.post("/api/auth/login", rateLimitLogin, validateBody(schemas.login), asyncHa
   res.json({ user, csrfToken });
 }));
 
+app.post("/api/auth/reset-password/complete", rateLimitResetPassword, validateBody(schemas.completePasswordReset), asyncHandler(async (req, res) => {
+  const tokenHash = sha256Hex(req.body.token);
+  const credential = hashPassword(req.body.newPassword);
+  const client = await pool.connect();
+  let userId = "";
+  try {
+    await client.query("BEGIN");
+    const resetToken = (await client.query(
+      `SELECT id, user_id, expires_at, used_at
+       FROM password_reset_tokens
+       WHERE token_hash = $1
+       FOR UPDATE`,
+      [tokenHash]
+    )).rows[0];
+
+    if (!resetToken || resetToken.used_at || new Date(resetToken.expires_at).getTime() <= Date.now()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn." });
+    }
+
+    userId = resetToken.user_id;
+    await client.query(
+      "UPDATE users SET password_hash = $1, password_salt = $2 WHERE id = $3",
+      [credential.hash, credential.salt, userId]
+    );
+    await client.query(
+      "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [resetToken.id]
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  await auditRepository.log(pool, userId, "password_reset_token_used", "security", "User completed one-time password reset.");
+  res.json({ ok: true, message: "Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập bằng mật khẩu mới." });
+}));
+
 app.post("/api/auth/logout", requireAuth, asyncHandler(async (req, res) => {
   const token = extractBearerToken(req);
   if (token) await safeRedis(() => redis.set(`revoked:${token}`, "1", "EX", 60 * 60 * 8), "OK");
@@ -1511,10 +1671,10 @@ app.delete("/api/courses/:id", requireAuth, requireRole(["manager", "admin", "su
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    
+
     // Xóa phản hồi diễn đàn liên quan
     await client.query(
-      `DELETE FROM forum_replies 
+      `DELETE FROM forum_replies
        WHERE post_id IN (SELECT id FROM forum_posts WHERE course_id = $1)`,
       [courseId]
     );
@@ -1523,7 +1683,7 @@ app.delete("/api/courses/:id", requireAuth, requireRole(["manager", "admin", "su
 
     // Xóa tiến độ bài học liên quan
     await client.query(
-      `DELETE FROM lesson_progress 
+      `DELETE FROM lesson_progress
        WHERE lesson_id IN (SELECT id FROM lessons WHERE course_id = $1)`,
       [courseId]
     );
@@ -1532,13 +1692,13 @@ app.delete("/api/courses/:id", requireAuth, requireRole(["manager", "admin", "su
 
     // Xóa các lượt thử làm bài quiz liên quan
     await client.query(
-      `DELETE FROM quiz_attempts 
+      `DELETE FROM quiz_attempts
        WHERE quiz_id IN (SELECT id FROM quizzes WHERE course_id = $1)`,
       [courseId]
     );
     // Xóa các câu hỏi trắc nghiệm liên quan
     await client.query(
-      `DELETE FROM questions 
+      `DELETE FROM questions
        WHERE quiz_id IN (SELECT id FROM quizzes WHERE course_id = $1)`,
       [courseId]
     );
@@ -1547,7 +1707,7 @@ app.delete("/api/courses/:id", requireAuth, requireRole(["manager", "admin", "su
 
     // Xóa bài nộp tự luận liên quan
     await client.query(
-      `DELETE FROM submissions 
+      `DELETE FROM submissions
        WHERE assignment_id IN (SELECT id FROM assignments WHERE course_id = $1)`,
       [courseId]
     );
@@ -1876,10 +2036,10 @@ app.post("/api/courses/:courseId/forum", requireAuth, requireRole(["student", "t
   if (courseId !== req.params.courseId) {
     return res.status(400).json({ error: "Course ID mismatch." });
   }
-  
+
   const role = req.user!.role;
   const userId = req.user!.id;
-  
+
   if (role === "student") {
     if (sectionId) {
       const isReg = (await pool.query(
@@ -2078,7 +2238,7 @@ app.post("/api/admin/users", requireAuth, requireRole(["manager", "super_admin"]
   res.status(201).json(created);
 }));
 
-app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_admin", "admin"]), validateBody(schemas.bulkCreateUsers), asyncHandler(async (req, res) => {
+app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_admin", "admin"]), rateLimitBulkImport, validateBody(schemas.bulkCreateUsers), asyncHandler(async (req, res) => {
   const errors: Array<{ row: number; email?: string; reason: string }> = [];
   const created: User[] = [];
   const seenEmails = new Set<string>();
@@ -2141,20 +2301,56 @@ app.post("/api/admin/users/bulk", requireAuth, requireRole(["manager", "super_ad
   });
 }));
 
-app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/admin/users/:id/reset-password", requireAuth, requireRole(["manager", "super_admin"]), rateLimitResetPassword, asyncHandler(async (req, res) => {
   const user = await usersRepository.findById(pool, req.params.id);
   if (!user) return res.status(404).json({ error: "User not found." });
-  const temporaryPassword = generateTemporaryPassword();
-  const credential = hashPassword(temporaryPassword);
-  await pool.query(
-    "UPDATE users SET password_hash = $1, password_salt = $2 WHERE id = $3",
-    [credential.hash, credential.salt, req.params.id]
-  );
-  await audit(req, "reset_user_password", req.params.id, `Temporary password issued for: ${user.email}`);
+  const resetToken = generatePasswordResetToken();
+  const resetTokenHash = sha256Hex(resetToken);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
+  const resetUrl = passwordResetUrl(req, resetToken);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND used_at IS NULL",
+      [user.id]
+    );
+    await client.query(
+      `INSERT INTO password_reset_tokens (id, user_id, token_hash, created_by, expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [generateId("pwd_reset"), user.id, resetTokenHash, req.user!.id, expiresAt]
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  let emailSent = false;
+  try {
+    await sendPasswordResetLinkEmail(pool, user.id, {
+      to: user.email,
+      name: user.name,
+      resetUrl,
+      expiresAt
+    });
+    emailSent = true;
+  } catch (err) {
+    console.error("Failed to email password reset link:", err);
+  }
+
+  await audit(req, "create_password_reset_link", req.params.id, `Password reset link created for: ${user.email}`);
+  const canExposeResetUrl = !emailSent || (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "staging");
   res.json({
     ok: true,
-    temporaryPassword,
-    message: `Mật khẩu tạm thời đã được tạo: ${temporaryPassword}`
+    emailSent,
+    expiresAt,
+    ...(canExposeResetUrl ? { resetUrl } : {}),
+    message: emailSent
+      ? `Liên kết đặt lại mật khẩu đã được gửi tới email của người dùng: ${user.email}`
+      : `Liên kết đặt lại mật khẩu đã được tạo, nhưng email gửi liên kết chưa thành công. Vui lòng chuyển liên kết qua kênh nội bộ.`
   });
 }));
 
@@ -2502,7 +2698,7 @@ app.post("/api/tuition/confirm-transfer", requireAuth, requireRole(["student"]),
   res.json({ ok: true, transactionId: txId });
 }));
 
-app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), asyncHandler(async (req, res) => {
+const reviewTransactionHandler = asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let result: any;
   try {
@@ -2525,9 +2721,12 @@ app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["man
   }
   await audit(req, `finance_transaction_${req.body.status}`, req.params.id, req.body.notes || "");
   res.json(result);
-}));
+});
 
-app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), asyncHandler(async (req, res) => {
+app.patch("/api/finance/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), reviewTransactionHandler);
+app.patch("/api/payments/transactions/:id/review", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.reviewTransaction), reviewTransactionHandler);
+
+const bulkIssueTuitionHandler = asyncHandler(async (req, res) => {
   const { semesterId, amount, dueDate } = req.body;
   const dueDateValue = dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const client = await pool.connect();
@@ -2568,13 +2767,129 @@ app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager",
   } finally {
     client.release();
   }
-}));
+});
 
-app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/finance/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), bulkIssueTuitionHandler);
+app.post("/api/payments/tuition/bulk-issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.bulkIssueTuition), bulkIssueTuitionHandler);
+
+const scanOverdueHandler = asyncHandler(async (req, res) => {
   const overdue = await financeRepository.checkOverdueFees(pool);
   await audit(req, "scan_overdue_tuition", "tuition_fees", `Found ${overdue.length} overdue fees.`);
   res.json({ overdueCount: overdue.length, fees: overdue });
-}));
+});
+
+app.post("/api/finance/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), scanOverdueHandler);
+app.post("/api/payments/tuition/scan-overdue", requireAuth, requireRole(["manager", "admin", "super_admin"]), scanOverdueHandler);
+
+const paymentWebhookHandler = asyncHandler(async (req, res) => {
+  const signature = req.header("X-Payment-Signature");
+
+  if (!signature) {
+    return res.status(400).json({ error: "Missing webhook signature header." });
+  }
+
+  const payload = (req as any).rawBody || JSON.stringify(req.body);
+  const expectedSignature = crypto.createHmac("sha256", PAYMENT_WEBHOOK_SECRET_VALUE).update(payload).digest("hex");
+  const receivedSignature = signature.startsWith("sha256=") ? signature.slice("sha256=".length) : signature;
+
+  const sigBuffer = Buffer.from(receivedSignature, "utf8");
+  const expBuffer = Buffer.from(expectedSignature, "utf8");
+
+  if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {
+    return res.status(401).json({ error: "Invalid webhook signature." });
+  }
+
+  const { eventId, timestamp, transactionId, status, notes } = req.body;
+  if (!eventId || !timestamp || !transactionId || !status) {
+    return res.status(400).json({ error: "Missing required webhook payload fields." });
+  }
+
+  if (status !== "approved" && status !== "rejected") {
+    return res.status(400).json({ error: "Invalid transaction status in webhook payload." });
+  }
+
+  const eventTimestamp = parseWebhookTimestamp(timestamp);
+  if (!eventTimestamp) {
+    return res.status(400).json({ error: "Invalid webhook timestamp." });
+  }
+  if (!isWebhookTimestampFresh(eventTimestamp)) {
+    return res.status(400).json({ error: "Webhook timestamp is outside the allowed tolerance window." });
+  }
+
+  const payloadSha256 = sha256Hex(payload);
+  const client = await pool.connect();
+  let result: any;
+  try {
+    await client.query("BEGIN");
+    const inserted = await client.query(
+      `INSERT INTO payment_webhook_events (
+         event_id, transaction_id, status, event_timestamp, payload_sha256, processing_status
+       ) VALUES ($1, $2, $3, $4, $5, 'processing')
+       ON CONFLICT (event_id) DO NOTHING
+       RETURNING event_id`,
+      [eventId, transactionId, status, eventTimestamp.toISOString(), payloadSha256]
+    );
+
+    if (inserted.rowCount === 0) {
+      const existing = (await client.query(
+        "SELECT event_id, transaction_id, processing_status, payload_sha256, error FROM payment_webhook_events WHERE event_id = $1",
+        [eventId]
+      )).rows[0];
+      await client.query("ROLLBACK");
+      if (existing?.payload_sha256 && existing.payload_sha256 !== payloadSha256) {
+        return res.status(409).json({ error: "Webhook event id was already used with a different payload." });
+      }
+      return res.json({
+        ok: true,
+        duplicate: true,
+        eventId,
+        transactionId: existing?.transaction_id || transactionId,
+        status: existing?.processing_status || "unknown",
+        error: existing?.error || undefined
+      });
+    }
+
+    result = await financeRepository.reviewTransaction(
+      client,
+      transactionId,
+      status,
+      null,
+      notes || "Processed via payment gateway webhook callback."
+    );
+    if (!result) {
+      await client.query(
+        "UPDATE payment_webhook_events SET processing_status = 'failed', error = $2 WHERE event_id = $1",
+        [eventId, "Transaction not found."]
+      );
+      await client.query("COMMIT");
+      return res.status(404).json({ error: "Transaction not found." });
+    }
+    if ("error" in result) {
+      await client.query(
+        "UPDATE payment_webhook_events SET processing_status = 'failed', error = $2 WHERE event_id = $1",
+        [eventId, result.error]
+      );
+      await client.query("COMMIT");
+      return res.status(result.status || 400).json({ error: result.error });
+    }
+    await client.query(
+      "UPDATE payment_webhook_events SET processing_status = 'processed', processed_at = CURRENT_TIMESTAMP WHERE event_id = $1",
+      [eventId]
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  await logSystemAudit(`finance_transaction_${status}`, transactionId, notes || "Processed via payment gateway webhook callback.");
+  res.json({ ok: true, eventId, message: "Webhook processed successfully", transaction: result });
+});
+
+app.post("/api/payments/webhook", paymentWebhookHandler);
+app.post("/api/webhooks/payment", paymentWebhookHandler);
 
 async function validateAttendanceSectionAccess(courseId: string, sectionId: string | undefined, user: User): Promise<{ section?: any; status?: number; error?: string }> {
   if (!sectionId) return {};
@@ -2667,7 +2982,7 @@ app.post("/api/attendance/sessions/generate-link", requireAuth, requireRole(["te
     "SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_sessions' AND column_name IN ('date', 'session_date', 'section_id')"
   )).rows.map(row => row.column_name);
   const sessionDateOnly = session.date.slice(0, 10);
-  
+
   if (columns.includes("session_date") && columns.includes("date")) {
     await pool.query(
       `INSERT INTO attendance_sessions (id, course_id, semester_id, teacher_id, session_date, date, topic, code, expires_at)
@@ -2699,7 +3014,7 @@ app.post("/api/attendance/sessions/generate-link", requireAuth, requireRole(["te
 
   // Send check-in notifications to all active students in class
   const message = `[Điểm danh trực tuyến] Môn học "${course.title}" đang tiến hành điểm danh trực tuyến. Hãy click vào đây để xác nhận có mặt (Thời hạn 5 phút).`;
-  
+
   for (const studentId of studentIds) {
     await notificationsRepository.create(pool, {
       userId: studentId,
@@ -2720,19 +3035,19 @@ const getVietnamTimeInfo = () => {
   const now = new Date();
   const tzOffset = 7 * 60; // Vietnam is UTC+7
   const localTime = new Date(now.getTime() + (tzOffset + now.getTimezoneOffset()) * 60 * 1000);
-  
+
   const yyyy = localTime.getFullYear();
   const mm = String(localTime.getMonth() + 1).padStart(2, "0");
   const dd = String(localTime.getDate()).padStart(2, "0");
   const dateStr = `${yyyy}-${mm}-${dd}`;
-  
+
   const day = localTime.getDay();
   const dayStr = day === 0 ? "Chủ Nhật" : `Thứ ${day === 1 ? "Hai" : day === 2 ? "Ba" : day === 3 ? "Tư" : day === 4 ? "Năm" : day === 5 ? "Sáu" : "Bảy"}`;
-  
+
   const hh = String(localTime.getHours()).padStart(2, "0");
   const min = String(localTime.getMinutes()).padStart(2, "0");
   const timeStr = `${hh}:${min}`;
-  
+
   return { dateStr, dayStr, timeStr };
 };
 

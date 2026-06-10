@@ -53,7 +53,7 @@ export const financeRepository = {
     return { id: feeId, paidAmount: totalPaid, status, paidAt, receiptCode };
   },
 
-  async reviewTransaction(db: Queryable, txId: string, status: "approved" | "rejected", reviewerId: string, notes?: string) {
+  async reviewTransaction(db: Queryable, txId: string, status: "approved" | "rejected", reviewerId: string | null, notes?: string) {
     const tx = (await db.query("SELECT * FROM transactions WHERE id = $1 FOR UPDATE", [txId])).rows[0];
     if (!tx) return null;
     if (tx.status !== "pending") return { error: "Transaction already reviewed.", status: 409 };

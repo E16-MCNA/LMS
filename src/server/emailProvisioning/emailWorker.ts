@@ -30,7 +30,7 @@ function getTransporter(): nodemailer.Transporter {
   if (hasSmtpOauth2Config()) {
     const creds = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON!);
     console.log(`[EmailWorker] Initializing OAuth2 SMTP transport for user: ${SMTP_USER}`);
-    
+
     activeTransporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
@@ -69,6 +69,15 @@ ${htmlContent}
 \n`;
   fs.appendFileSync(logFile, logEntry, "utf8");
   console.log(`[Email Mock] Sent to ${to}. Logged in scratch/emails.log`);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -347,6 +356,69 @@ export async function sendLmsNotification(
       "notification_email_failed",
       "email",
       `Lỗi gửi thông báo [${params.type}]: ${String(err.message || err)}`
+    );
+    throw err;
+  }
+}
+
+/**
+ * Send one-time password reset link.
+ */
+export async function sendPasswordResetLinkEmail(
+  pool: Pool,
+  userId: string,
+  params: {
+    to: string;
+    name: string;
+    resetUrl: string;
+    expiresAt: string;
+  }
+): Promise<void> {
+  const subject = `[LMS E16] Liên kết đặt lại mật khẩu`;
+  const safeName = escapeHtml(params.name);
+  const safeResetUrl = escapeHtml(params.resetUrl);
+  const expiresAt = new Date(params.expiresAt).toLocaleString("vi-VN");
+  const htmlContent = wrapHtmlBody(
+    "Đặt lại mật khẩu tài khoản",
+    `
+      <p class="greeting">Chào bạn ${safeName},</p>
+      <p>Yêu cầu đặt lại mật khẩu cho tài khoản LMS của bạn đã được tạo bởi Quản lý giáo vụ. Vui lòng dùng liên kết một lần dưới đây để thiết lập mật khẩu mới:</p>
+      <div class="message-box" style="font-size: 16px; text-align: center;">
+        <a href="${safeResetUrl}" style="display: inline-block; color: #ffffff; background: #4f46e5; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-weight: 700;">Đặt lại mật khẩu</a>
+      </div>
+      <p>Nếu nút không hoạt động, hãy sao chép liên kết này vào trình duyệt:</p>
+      <p style="word-break: break-all; font-family: monospace; font-size: 12px;">${safeResetUrl}</p>
+      <p style="color: #ef4444; font-weight: 600;">Lưu ý bảo mật: Liên kết hết hạn lúc ${expiresAt} và chỉ dùng được một lần.</p>
+    `
+  );
+
+  const action = async () => {
+    if (hasSmtpOauth2Config()) {
+      const transporter = getTransporter();
+      await transporter.sendMail({
+        from: SMTP_FROM,
+        to: params.to,
+        subject,
+        html: htmlContent,
+        text: `Chào bạn ${params.name},\n\nDùng liên kết sau để đặt lại mật khẩu LMS. Liên kết hết hạn lúc ${expiresAt} và chỉ dùng được một lần:\n${params.resetUrl}`,
+      });
+      console.log(`[EmailWorker] Password reset link email dispatched successfully to: ${params.to}`);
+    } else {
+      logEmailMock(params.to, params.name, subject, htmlContent);
+    }
+  };
+
+  try {
+    await retryWithBackoff(action);
+    await auditRepository.log(pool, userId, "password_reset_link_email_sent", "email", `Gửi email liên kết đặt lại mật khẩu tới ${params.to}`);
+  } catch (err: any) {
+    console.error(`[EmailWorker] Failed to send password reset link email to: ${params.to}`, err);
+    await auditRepository.log(
+      pool,
+      userId,
+      "password_reset_link_email_failed",
+      "email",
+      `Lỗi gửi email liên kết đặt lại mật khẩu: ${String(err.message || err)}`
     );
     throw err;
   }
