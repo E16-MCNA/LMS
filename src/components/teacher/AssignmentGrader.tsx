@@ -9,6 +9,7 @@ interface ComponentProps {
 export default function AssignmentGrader(props: ComponentProps) {
   const [submissionSearch, setSubmissionSearch] = React.useState("");
   const [courseDetailId, setCourseDetailId] = React.useState<string | null>(null);
+  const [previewAttachmentUrl, setPreviewAttachmentUrl] = React.useState<string | null>(null);
 
   // Sorting state for student submissions grading table
   const [subSortField, setSubSortField] = React.useState<string>("studentName");
@@ -232,11 +233,11 @@ export default function AssignmentGrader(props: ComponentProps) {
                                 <td className="p-3.5 text-white/50">{new Date(sub.submittedAt).toLocaleDateString()}</td>
                                 <td className="p-3.5">
                                   {sub.score !== undefined ? (
-                                    <span className="text-emerald-400 font-bold font-mono">
+                                    <span className="inline-flex rounded-full bg-emerald-600 px-2 py-0.5 text-white font-bold font-mono border border-emerald-300/40">
                                       {sub.score}/{challenge?.maxScore || 100}
                                     </span>
                                   ) : (
-                                    <span className="text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                    <span className="inline-flex rounded-full bg-amber-400 px-2 py-0.5 text-slate-950 font-bold border border-amber-200">
                                       Chưa chấm điểm
                                     </span>
                                   )}
@@ -426,15 +427,14 @@ export default function AssignmentGrader(props: ComponentProps) {
                       return (
                         <div className="mt-3 pt-3 border-t border-slate-300 flex items-center justify-between">
                           <span className="text-[10px] text-slate-500 font-bold uppercase">Tệp đính kèm:</span>
-                          <a 
-                            href={extractedUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition text-[10px] font-bold cursor-pointer font-sans decoration-none"
+                          <button
+                            type="button"
+                            onClick={() => setPreviewAttachmentUrl(extractedUrl)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition text-[10px] font-bold cursor-pointer font-sans"
                           >
-                            <Download className="h-3.5 w-3.5" />
-                            Tải / Xem file bài làm
-                          </a>
+                            <Eye className="h-3.5 w-3.5" />
+                            Xem file bài làm
+                          </button>
                         </div>
                       );
                     })()}
@@ -484,6 +484,70 @@ export default function AssignmentGrader(props: ComponentProps) {
             })()}
           </div>
         </div>
+        </ModalPortal>
+      )}
+
+      {previewAttachmentUrl && (
+        <ModalPortal>
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-white/20 rounded-3xl w-full max-w-5xl h-[86vh] shadow-2xl relative overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+                <h3 className="text-sm font-bold text-white">Xem file bài làm</h3>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewAttachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white text-[10px] font-bold rounded-lg border border-white/10"
+                  >
+                    Mở tab mới
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewAttachmentUrl(null)}
+                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/60"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 bg-slate-950">
+                {/\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(previewAttachmentUrl) ? (
+                  <div className="h-full w-full overflow-auto flex items-center justify-center p-4">
+                    <img src={previewAttachmentUrl} alt="File bài làm" className="max-h-full max-w-full object-contain" />
+                  </div>
+                ) : /\.(pdf|txt|html|htm)(\?|#|$)/i.test(previewAttachmentUrl) ? (
+                  <iframe
+                    title="File bài làm"
+                    src={previewAttachmentUrl}
+                    className="h-full w-full border-0 bg-white"
+                  />
+                ) : (() => {
+                  const filename = previewAttachmentUrl.split("/").pop() || "assignment_file";
+                  return (
+                    <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center text-white space-y-6">
+                      <div className="p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400">
+                        <FileText className="h-16 w-16" />
+                      </div>
+                      <div className="space-y-2 max-w-md">
+                        <h4 className="text-base font-bold truncate px-4" title={filename}>{filename}</h4>
+                        <p className="text-xs text-white/50 leading-relaxed font-sans">
+                          Định dạng file này không hỗ trợ xem trực tiếp trực tuyến. Vui lòng tải file bài làm về thiết bị để xem chi tiết.
+                        </p>
+                      </div>
+                      <a
+                        href={previewAttachmentUrl}
+                        download
+                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-lg shadow-indigo-500/20 cursor-pointer font-sans decoration-none"
+                      >
+                        <Download className="h-4 w-4" /> Tải file bài làm xuống
+                      </a>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
         </ModalPortal>
       )}
 
