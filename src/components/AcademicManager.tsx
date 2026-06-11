@@ -18,6 +18,7 @@ import { generateId } from "../utils";
 interface AcademicManagerProps {
   store: LMSDataStore;
   currentUser: User;
+
   onRefreshData: () => void;
   triggerToast: (msg: string) => void;
   initialTab?: "years" | "semesters" | "departments" | "programs";
@@ -26,10 +27,24 @@ interface AcademicManagerProps {
 
 const toDateOnlyValue = (value?: string | null) => {
   if (!value) return "";
-  const text = String(value);
-  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (match) return `${match[1]}-${match[2]}-${match[3]}`;
-  return text.replace(/\s*00:00:00(?:\.0+)?$/, "");
+  const text = String(value).trim();
+  
+  // Try regex for YYYY-MM-DD or YYYY/MM/DD
+  const match = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (match) {
+    return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+  }
+
+  // Try JS Date parsing
+  const d = new Date(text);
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  return text;
 };
 
 const formatDateOnly = (value?: string | null) => {
@@ -57,7 +72,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
         triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
         // Rollback to server state
         onRefreshData();
-        throw err;
+        return false;
       }
     } else {
       // Fallback if updateStore is not provided
@@ -71,7 +86,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
         console.error("Lỗi đồng bộ dữ liệu SIS:", err);
         triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
         onRefreshData();
-        throw err;
+        return false;
       }
     }
   };
@@ -189,6 +204,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       isCurrent: years.length === 0
     };
     const saved = await persistFromSnapshot((storeData) => {
+      if (!storeData.academicYears) storeData.academicYears = [];
       storeData.academicYears.push(newYear);
       AppStore.log(currentUser.id, "add_academic_year", newYear.name, "Khởi tạo năm học mới.");
     });
@@ -201,19 +217,20 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
 
   const handleSetCurrentYear = async (id: string) => {
     const saved = await persistFromSnapshot((storeData) => {
-      storeData.academicYears = storeData.academicYears.map(y => ({
+      storeData.academicYears = (storeData.academicYears || []).map(y => ({
         ...y,
         isCurrent: y.id === id
       }));
-      const yearSemesters = storeData.semesters.filter(s => s.academicYearId === id);
+      const yearSemesters = (storeData.semesters || []).filter(s => s.academicYearId === id);
       const currentInYear = yearSemesters.find(s => s.isCurrent) || yearSemesters[0];
-      storeData.semesters = storeData.semesters.map(s => ({
+      storeData.semesters = (storeData.semesters || []).map(s => ({
         ...s,
         isCurrent: currentInYear ? s.id === currentInYear.id : false
       }));
-      const chosen = storeData.academicYears.find(y => y.id === id);
+      const chosen = (storeData.academicYears || []).find(y => y.id === id);
       AppStore.log(currentUser.id, "set_current_academic_year", chosen?.name || id, "Thay đổi năm học hiện đại của SIS.");
     });
+    if (!saved) return;
     triggerToast("Đã chuyển đổi năm học hiện tại.");
   };
 
@@ -223,9 +240,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       triggerToast("Không thể xóa năm học vì có các học kỳ đang ràng buộc.");
       return;
     }
-    await persistFromSnapshot((storeData) => {
-      storeData.academicYears = storeData.academicYears.filter(y => y.id !== id);
+    const saved = await persistFromSnapshot((storeData) => {
+      storeData.academicYears = (storeData.academicYears || []).filter(y => y.id !== id);
     });
+    if (!saved) return;
     triggerToast("Đã xóa năm học thành công.");
   };
 
@@ -247,10 +265,12 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       registrationClose: semRegClose,
       isCurrent: !semesters.some(s => s.isCurrent)
     };
-    await persistFromSnapshot((storeData) => {
+    const saved = await persistFromSnapshot((storeData) => {
+      if (!storeData.semesters) storeData.semesters = [];
       storeData.semesters.push(newSem);
       AppStore.log(currentUser.id, "add_semester", newSem.name, "Liên kết học kỳ mới vào hệ thống.");
     });
+    if (!saved) return;
     triggerToast(`Đã lưu học kỳ: ${newSem.name}`);
     setSemName("");
     setSemStart("");
@@ -279,9 +299,30 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       return;
     }
     if (!window.confirm("Bạn có chắc chắn muốn xóa học kỳ này?")) return;
-    await persistFromSnapshot((storeData) => {
-      const removed = storeData.semesters.find(s => s.id === id);
-      const remaining = storeData.semesters.filter(s => s.id !== id);
+    const linkedRegistrationPeriods = (store.registrationPeriods || []).filter((p: any) => p.semesterId === id);
+    if (linkedRegistrationPeriods.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có đợt đăng ký môn đang ràng buộc.");
+      return;
+    }
+    const linkedScholarships = (store.scholarships || []).filter((s: any) => s.semesterId === id);
+    const linkedScholarshipApplications = (store.scholarshipApplications || []).filter((s: any) => s.semesterId === id);
+    if (linkedScholarships.length > 0 || linkedScholarshipApplications.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có dữ liệu học bổng đang ràng buộc.");
+      return;
+    }
+    const linkedAdvisorAssignments = (store.advisorAssignments || []).filter((a: any) => a.semesterId === id);
+    if (linkedAdvisorAssignments.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có phân công cố vấn đang ràng buộc.");
+      return;
+    }
+    const linkedLeaveRequests = (store.leaveRequests || []).filter((r: any) => r.semesterId === id || r.resumeSemesterId === id);
+    if (linkedLeaveRequests.length > 0) {
+      triggerToast("Không thể xóa học kỳ vì có đơn bảo lưu/nghỉ học đang ràng buộc.");
+      return;
+    }
+    const saved = await persistFromSnapshot((storeData) => {
+      const removed = (storeData.semesters || []).find(s => s.id === id);
+      const remaining = (storeData.semesters || []).filter(s => s.id !== id);
       const replacement = removed?.isCurrent
         ? remaining.find(s => s.academicYearId === removed.academicYearId) || remaining[0]
         : undefined;
@@ -290,24 +331,26 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
         isCurrent: replacement ? s.id === replacement.id : Boolean(s.isCurrent)
       }));
     });
+    if (!saved) return;
     triggerToast("Đã loại bỏ học kỳ khỏi danh sách.");
   };
 
   const handleSetCurrentSemester = async (id: string) => {
-    await persistFromSnapshot((storeData) => {
-      const chosen = storeData.semesters.find(s => s.id === id);
-      storeData.semesters = storeData.semesters.map(s => ({
+    const saved = await persistFromSnapshot((storeData) => {
+      const chosen = (storeData.semesters || []).find(s => s.id === id);
+      storeData.semesters = (storeData.semesters || []).map(s => ({
         ...s,
         isCurrent: s.id === id
       }));
       if (chosen?.academicYearId) {
-        storeData.academicYears = storeData.academicYears.map(y => ({
+        storeData.academicYears = (storeData.academicYears || []).map(y => ({
           ...y,
           isCurrent: y.id === chosen.academicYearId
         }));
       }
       AppStore.log(currentUser.id, "set_current_semester", chosen?.name || id, "Thay đổi học kỳ đang hoạt động.");
     });
+    if (!saved) return;
     triggerToast("Đã chọn học kỳ đang hoạt động.");
   };
 
@@ -325,9 +368,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       return;
     }
     if (!window.confirm("Bạn có chắc chắn muốn xóa khoa này?")) return;
-    await persistFromSnapshot((storeData) => {
-      storeData.departments = storeData.departments.filter(d => d.id !== id);
+    const saved = await persistFromSnapshot((storeData) => {
+      storeData.departments = (storeData.departments || []).filter(d => d.id !== id);
     });
+    if (!saved) return;
     triggerToast("Đã xóa khoa thành công.");
   };
 
@@ -345,9 +389,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       return;
     }
     if (!window.confirm("Bạn có chắc chắn muốn xóa ngành học này?")) return;
-    await persistFromSnapshot((storeData) => {
-      storeData.programs = storeData.programs.filter(p => p.id !== id);
+    const saved = await persistFromSnapshot((storeData) => {
+      storeData.programs = (storeData.programs || []).filter(p => p.id !== id);
     });
+    if (!saved) return;
     triggerToast("Đã xóa ngành học thành công.");
     if (selectedProgramId === id) setSelectedProgramId(null);
   };
@@ -366,10 +411,12 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       headTeacherId: deptHeadId,
       description: deptDesc.trim()
     };
-    await persistFromSnapshot((storeData) => {
+    const saved = await persistFromSnapshot((storeData) => {
+      if (!storeData.departments) storeData.departments = [];
       storeData.departments.push(newDept);
       AppStore.log(currentUser.id, "add_department", newDept.name, `Đăng ký thành lập khoa chuyên môn code: ${newDept.code}`);
     });
+    if (!saved) return;
     triggerToast(`Đã lập khoa: ${newDept.name}`);
     setDeptName("");
     setDeptCode("");
@@ -393,10 +440,12 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       totalCredits: Number(progCredits),
       description: progDesc.trim()
     };
-    await persistFromSnapshot((storeData) => {
+    const saved = await persistFromSnapshot((storeData) => {
+      if (!storeData.programs) storeData.programs = [];
       storeData.programs.push(newProg);
       AppStore.log(currentUser.id, "add_program", newProg.name, `Tạo hệ đào tạo ${newProg.type} ngành ${newProg.code}`);
     });
+    if (!saved) return;
     triggerToast(`Đã tạo ngành đào tạo: ${newProg.name}`);
     setProgName("");
     setProgCode("");
@@ -424,18 +473,21 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       isRequired: currRequired,
       semester: Number(currSemester)
     };
-    await persistFromSnapshot((storeData) => {
+    const saved = await persistFromSnapshot((storeData) => {
+      if (!storeData.programCourses) storeData.programCourses = [];
       storeData.programCourses.push(newProgCourse);
       AppStore.log(currentUser.id, "add_program_course", `Curriculum ${selectedProgramId}`, `Liên kết học phần ${currCourseId} vào khung đào tạo.`);
     });
+    if (!saved) return;
     triggerToast("Học phần đã được ghim vào khung đào tạo thành công.");
     setCurrCourseId("");
   };
 
   const handleRemoveCourseFromCurriculum = async (id: string) => {
-    await persistFromSnapshot((storeData) => {
-      storeData.programCourses = storeData.programCourses.filter(pc => pc.id !== id);
+    const saved = await persistFromSnapshot((storeData) => {
+      storeData.programCourses = (storeData.programCourses || []).filter(pc => pc.id !== id);
     });
+    if (!saved) return;
     triggerToast("Đã rút học phần ra khỏi khung giảng dạy.");
   };
 
@@ -737,31 +789,31 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                     const todayStr = new Date().toISOString().split('T')[0];
                     const start = toDateOnlyValue(s.startDate);
                     const end = toDateOnlyValue(s.endDate);
-                    const isSemActive = Boolean(s.isCurrent) || Boolean(isYearCurrent && start && end && todayStr >= start && todayStr <= end);
+                    const isSemCurrent = Boolean(s.isCurrent);
+                    const isSemActiveByDate = Boolean(isYearCurrent && start && end && todayStr >= start && todayStr <= end);
+                    const isSemActive = isSemCurrent || isSemActiveByDate;
                     return (
                       <tr key={s.id} className="hover:bg-white/5 transition">
                         <td className="py-3 px-3 font-semibold text-white">
                           {s.name}
                           {isSemActive && (
                             <span className="ml-2 px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[9px] font-bold inline-block align-middle uppercase">
-                              Hiện tại
+                              {isSemCurrent ? "Hiện tại" : "Theo ngày"}
                             </span>
                           )}
                         </td>
                         <td className="py-3 px-3 text-white/60">{linkedY ? linkedY.name : "Không xác định"}</td>
                         <td className="py-3 px-3 uppercase text-cyan-400 font-mono text-[10px]">{s.type}</td>
-                        <td className="py-3 px-3 text-transparent text-[0]">
-                          <span className="text-xs text-white/70">{formatDateOnly(s.startDate)} đến {formatDateOnly(s.endDate)}</span>
-                          {s.startDate} đến {s.endDate}
+                        <td className="py-3 px-3 text-white/70">
+                          <span className="text-xs">{formatDateOnly(s.startDate)} đến {formatDateOnly(s.endDate)}</span>
                         </td>
-                        <td className="py-3 px-3 text-[0] text-transparent">
-                          <span className="text-[11px] text-white/50">Mở: {formatDateOnly(s.registrationOpen)}<br />Đóng: {formatDateOnly(s.registrationClose)}</span>
-                          Mở: {s.registrationOpen} <br /> Đóng: {s.registrationClose}
+                        <td className="py-3 px-3 text-white/50">
+                          <span className="text-[11px]">Mở: {formatDateOnly(s.registrationOpen)}<br />Đóng: {formatDateOnly(s.registrationClose)}</span>
                         </td>
                         {currentUser.role !== "admin" && (
                           <td className="py-3 px-3">
                             <div className="flex items-center justify-end gap-2">
-                              {!isSemActive && (
+                              {!isSemCurrent && (
                                 <button
                                   onClick={() => handleSetCurrentSemester(s.id)}
                                   className="px-2 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded text-[10px] font-bold hover:bg-emerald-500/20 transition cursor-pointer"
