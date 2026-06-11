@@ -114,6 +114,30 @@ export default function GradebookTable(props: ComponentProps) {
     studentSubmissionsRaw
   } = props;
 
+  const getEnrollmentSection = (enroll: any) => {
+    const registration = (store.courseRegistrations || []).find((r: any) => {
+      if (r.studentId !== enroll.studentId || r.status !== "registered") return false;
+      return (store.courseSections || []).some((s: any) => s.id === r.sectionId && s.courseId === enroll.courseId);
+    });
+    return registration
+      ? (store.courseSections || []).find((s: any) => s.id === registration.sectionId && s.courseId === enroll.courseId)
+      : null;
+  };
+
+  const matchesGradebookSearch = (course: any, enroll: any) => {
+    if (!searchTerm) return true;
+    const query = searchTerm.toLowerCase();
+    const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
+    const section = getEnrollmentSection(enroll);
+    return [
+      studentUser?.name,
+      studentUser?.email,
+      course?.title,
+      course?.category,
+      section?.sectionCode
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  };
+
   return (
     <>
         {/* Tab 4: Student gradebook matrix table & CSV Export */}
@@ -148,19 +172,7 @@ export default function GradebookTable(props: ComponentProps) {
               {myCourses.map((course: any) => {
                 const courseEnrollments = store.enrollments.filter((e: any) => e.courseId === course.id);
                 
-                const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => {
-                  const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
-                  if (!studentUser) return false;
-
-                  const reg = (store.courseRegistrations || []).find((r: any) => r.studentId === enroll.studentId && r.status === "registered");
-                  const sec = reg ? (store.courseSections || []).find((s: any) => s.id === reg.sectionId && s.courseId === enroll.courseId) : null;
-                  const secCode = sec?.sectionCode || "";
-
-                  return !searchTerm ||
-                    studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    studentUser.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    secCode.toLowerCase().includes(searchTerm.toLowerCase());
-                });
+                const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => matchesGradebookSearch(course, enroll));
 
                 if (courseEnrollments.length === 0) return null;
                 if (filteredCourseEnrollments.length === 0 && searchTerm) return null;
@@ -237,11 +249,10 @@ export default function GradebookTable(props: ComponentProps) {
                                     <div className="flex items-center gap-2 mt-0.5">
                                       <span className="text-[10px] text-white/40 font-mono">{studentUser?.email || "Không xác định"}</span>
                                       {(() => {
-                                        const reg = (store.courseRegistrations || []).find((r: any) => r.studentId === enroll.studentId && r.status === "registered");
-                                        const sec = reg ? (store.courseSections || []).find((s: any) => s.id === reg.sectionId && s.courseId === enroll.courseId) : null;
+                                        const sec = getEnrollmentSection(enroll);
                                         if (!sec) return null;
                                         return (
-                                          <span className="px-1.5 py-0.2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded font-mono text-[9px] font-bold uppercase">
+                                          <span className="px-1.5 py-0.2 bg-indigo-600 text-white border border-indigo-400/40 rounded font-mono text-[9px] font-bold uppercase">
                                             Lớp: {sec.sectionCode}
                                           </span>
                                         );
@@ -266,13 +277,7 @@ export default function GradebookTable(props: ComponentProps) {
 
               {myCourses.filter((course: any) => {
                 const courseEnrollments = store.enrollments.filter((e: any) => e.courseId === course.id);
-                const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => {
-                  const studentUser = store.users.find((u: any) => u.id === enroll.studentId);
-                  if (!studentUser) return false;
-                  return !searchTerm ||
-                    studentUser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    studentUser.email.toLowerCase().includes(searchTerm.toLowerCase());
-                });
+                const filteredCourseEnrollments = courseEnrollments.filter((enroll: any) => matchesGradebookSearch(course, enroll));
                 return courseEnrollments.length > 0 && (filteredCourseEnrollments.length > 0 || !searchTerm);
               }).length === 0 && (
                 <div className="text-center py-12 text-white/40 bg-white/5 border border-white/10 rounded-2xl italic">

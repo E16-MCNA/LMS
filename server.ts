@@ -1793,11 +1793,6 @@ app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["manager", "
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Enrollment not found." });
     }
-    if (enrollmentRow.status === "pending_payment") {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Enrollment is still waiting for payment approval." });
-    }
-
     const enrollment = (await client.query(
       "UPDATE enrollments SET status = 'active' WHERE id = $1 RETURNING *",
       [req.params.id]

@@ -404,7 +404,7 @@ export default function CertificateVerifier({ store, onRefreshData }: Certificat
                     {item.lessonsCompleted} / {item.lessonsTotal} bài
                   </td>
                   <td className="py-3.5 text-center">
-                    <span className="px-2.5 py-0.5 bg-emerald-200 text-emerald-950 border border-emerald-100 font-mono font-bold rounded text-[10px]">
+                    <span className="px-2.5 py-0.5 bg-emerald-600 text-white border border-emerald-300/50 font-mono font-bold rounded text-[10px] shadow-sm shadow-emerald-900/30">
                       {item.quizScore}% (Đậu)
                     </span>
                   </td>

@@ -24,9 +24,18 @@ interface ClassPlacementProps {
   onRefreshData: () => void;
 }
 
+const resolveCurrentSemesterId = (store: LMSDataStore) => {
+  const semesters = store.semesters || [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return semesters.find(s => s.isCurrent)?.id ||
+    semesters.find(s => s.startDate && s.endDate && todayStr >= String(s.startDate).slice(0, 10) && todayStr <= String(s.endDate).slice(0, 10))?.id ||
+    semesters[0]?.id ||
+    "";
+};
+
 export default function ClassPlacement({ store, currentUser, onRefreshData }: ClassPlacementProps) {
   const [activeTab, setActiveTab] = useState<"unplaced" | "waitlisted">("unplaced");
-  const [activeSemesterId, setActiveSemesterId] = useState<string>("sem_spring25");
+  const [activeSemesterId, setActiveSemesterId] = useState<string>(() => resolveCurrentSemesterId(store));
   const [searchQuery, setSearchQuery] = useState("");
   
   // Placement Modal states
@@ -51,8 +60,10 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     const regs = store.courseRegistrations || [];
     const sections = store.courseSections || [];
 
-    // Filter active enrollments
-    const activeEnrollments = enrollments.filter(e => e.status === "pending" || e.status === "active");
+    // Filter course-level enrollment requests that still need class placement.
+    const activeEnrollments = enrollments.filter(
+      e => e.status === "pending" || e.status === "active" || e.status === "pending_payment"
+    );
 
     return activeEnrollments.map(e => {
       const student = store.users.find(u => u.id === e.studentId);

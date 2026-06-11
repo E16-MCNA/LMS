@@ -8,6 +8,15 @@ import ForumDiscussion from "../ForumDiscussion";
 
 const DAYS_OF_WEEK = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
 
+const resolveCurrentSemesterId = (store: any) => {
+  const semesters = store?.semesters || [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  return semesters.find((s: any) => s.isCurrent)?.id ||
+    semesters.find((s: any) => s.startDate && s.endDate && todayStr >= String(s.startDate).slice(0, 10) && todayStr <= String(s.endDate).slice(0, 10))?.id ||
+    semesters[0]?.id ||
+    "";
+};
+
 
 interface ComponentProps {
   [key: string]: any;
@@ -126,10 +135,10 @@ export default function CourseBuilder(props: ComponentProps) {
   const [showAttendanceModal, setShowAttendanceModal] = React.useState(false);
 
   // Form states
-  const [formSemesterId, setFormSemesterId] = React.useState("sem_spring25");
+  const [formSemesterId, setFormSemesterId] = React.useState(() => resolveCurrentSemesterId(store));
   const [formSectionCode, setFormSectionCode] = React.useState("");
   const [formMaxStudents, setFormMaxStudents] = React.useState<number>(30);
-  const [formStatus, setFormStatus] = React.useState<"open" | "closed" | "cancelled">("open");
+  const [formStatus, setFormStatus] = React.useState<"pending" | "open" | "closed" | "cancelled">("open");
   const [formSlots, setFormSlots] = React.useState<Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string }>>([
     { dayOfWeek: "Thứ Hai", startTime: "08:00", endTime: "10:00", room: "Phòng A101" }
   ]);
@@ -201,7 +210,7 @@ export default function CourseBuilder(props: ComponentProps) {
   const handleOpenCreateSection = () => {
     setSectionModalMode("create");
     setEditingSectionId(null);
-    setFormSemesterId("sem_spring25");
+    setFormSemesterId(resolveCurrentSemesterId(store));
     setFormSectionCode("");
     setFormMaxStudents(30);
     setFormStatus("pending");
@@ -228,7 +237,7 @@ export default function CourseBuilder(props: ComponentProps) {
     try {
       await api.deleteCourseSection(id);
       props.onRefreshData();
-      if (props.triggerToast) props.triggerToast(`🗑️ Đã xóa lớp học phần ${code}!`);
+      if (props.triggerToast) props.triggerToast(`Đã xóa lớp học phần ${code}.`);
     } catch (err: any) {
       if (props.triggerToast) props.triggerToast(err.message || "Không thể xóa lớp học phần.");
     }
@@ -241,20 +250,20 @@ export default function CourseBuilder(props: ComponentProps) {
     AppStore.log(currentUser.id, "delete_section_from_builder", code, `Xóa lớp học phần ${code} trực tiếp từ trình quản lý khóa học.`);
     AppStore.save(storeData);
     props.onRefreshData();
-    if (props.triggerToast) props.triggerToast(`🗑️ Đã xóa lớp học phần ${code}!`);
+    if (props.triggerToast) props.triggerToast(`Đã xóa lớp học phần ${code}.`);
   };
 
   const handleSaveSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formSectionCode.trim()) {
-      if (props.triggerToast) props.triggerToast("⚠️ Vui lòng nhập Mã lớp học phần!");
+      if (props.triggerToast) props.triggerToast("Vui lòng nhập mã lớp học phần.");
       return;
     }
 
     const conflicts = checkConflicts(editingSectionId, currentUser.id, formSlots, formSemesterId);
     if (conflicts.length > 0) {
       setFormConflicts(conflicts);
-      if (props.triggerToast) props.triggerToast("❗ Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra kỹ chi tiết báo đỏ!");
+      if (props.triggerToast) props.triggerToast("Phát hiện xung đột trùng lịch biểu. Vui lòng kiểm tra chi tiết báo đỏ.");
       return;
     }
 
@@ -470,7 +479,7 @@ export default function CourseBuilder(props: ComponentProps) {
                   onClick={() => setActiveCourseTab("discussion")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${activeCourseTab === "discussion" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"}`}
                 >
-                  Diễn đàn trao đổi
+                  Diễn đàn lớp học
                 </button>
               </div>
             </div>
@@ -480,7 +489,7 @@ export default function CourseBuilder(props: ComponentProps) {
               {/* Left Column: Lesson sessions timeline creator */}
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white tracking-widest uppercase">Danh sách bài học giáo trình ({lessons.length})</span>
+                  <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học trong môn ({lessons.length})</span>
                   <button
                     onClick={() => setShowLessonModal(true)}
                     className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
@@ -492,13 +501,13 @@ export default function CourseBuilder(props: ComponentProps) {
                 <div className="space-y-3">
                   {lessons.map(lesson => (
                     <div key={lesson.id} className="bg-black/25 border border-white/10 rounded-2xl p-4 flex items-start gap-3.5 hover:bg-black/35 transition">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[11px] flex items-center justify-center flex-shrink-0">
-                        {lesson.order}
+                      <div className="w-14 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[10px] flex items-center justify-center flex-shrink-0">
+                        Buổi {lesson.order}
                       </div>
 
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <h6 className="text-xs font-display font-bold text-white">{lesson.title}</h6>
+                          <h6 className="text-xs font-display font-bold text-white">Buổi học {lesson.order}: {lesson.title}</h6>
                           <span className="text-[10px] font-mono text-white/40">{lesson.duration}</span>
                         </div>
                         <p className="text-xs text-white/60 line-clamp-3 leading-relaxed font-sans">{lesson.content}</p>
@@ -513,7 +522,7 @@ export default function CourseBuilder(props: ComponentProps) {
 
                   {lessons.length === 0 && (
                     <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
-                      <p className="text-xs text-white/50">Chương trình học hiện đang trống. Hãy bấm "Thêm Bài học" để bắt đầu thiết lập bài giảng.</p>
+                      <p className="text-xs text-white/50">Môn học hiện chưa có buổi học nào. Hãy bấm "Thêm Bài học" để bắt đầu thiết lập nội dung từng buổi.</p>
                     </div>
                   )}
                 </div>
@@ -576,7 +585,7 @@ export default function CourseBuilder(props: ComponentProps) {
                     }}
                     className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-sans"
                   >
-                    <span>Điểm danh lớp học ✍️</span>
+                    <span>Điểm danh lớp học</span>
                   </button>
                 </div>
 
@@ -647,6 +656,16 @@ export default function CourseBuilder(props: ComponentProps) {
                               {sec.sectionCode}
                             </span>
                             <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                onClick={() => {
+                                  setSelectedForumSectionId(sec.id);
+                                  setActiveCourseTab("discussion");
+                                }}
+                                className="p-0.5 hover:bg-white/10 text-cyan-300 rounded cursor-pointer"
+                                title="Mở diễn đàn lớp học"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                              </button>
                               <button
                                 onClick={() => handleOpenEditSection(sec)}
                                 className="p-0.5 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
@@ -1196,7 +1215,7 @@ export default function CourseBuilder(props: ComponentProps) {
             </button>
             
             <h3 className="text-base font-bold text-white mb-4 border-b border-white/10 pb-3 flex items-center gap-2 font-sans uppercase">
-              ✍️ Bảng Quản Lý Điểm Danh - {activeCourse.title}
+              Bảng Quản Lý Điểm Danh - {activeCourse.title}
             </h3>
             
             <AttendanceManager

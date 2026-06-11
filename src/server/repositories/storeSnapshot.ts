@@ -10,9 +10,43 @@ const CACHE_TTL = 15000; // 15 giây TTL dự phòng an toàn
 
 const normalizeDateOnly = (value: any) => {
   if (!value) return value;
-  const text = String(value);
-  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : text.replace(/\s*00:00:00(?:\.0+)?$/, "");
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return "2026-01-01";
+    let year = value.getFullYear();
+    if (year < 100) year = 2000 + year;
+    if (year < 1000 || year > 9999) year = 2026;
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  let text = String(value).trim();
+
+  // Try parsing with JS Date first
+  try {
+    const d = new Date(text);
+    if (!isNaN(d.getTime())) {
+      let year = d.getFullYear();
+      if (year < 100) year = 2000 + year;
+      if (year < 1000 || year > 9999) year = 2026;
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch (e) {}
+
+  // Regex matches YYYY-MM-DD or YY-MM-DD
+  const match = text.match(/^(\d+)-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    let year = Number(match[1]);
+    if (year < 100) year = 2000 + year;
+    if (year < 1000 || year > 9999) year = 2026;
+    const month = match[2].padStart(2, '0');
+    const day = match[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  return "2026-01-01";
 };
 
 export function invalidateStoreCache() {

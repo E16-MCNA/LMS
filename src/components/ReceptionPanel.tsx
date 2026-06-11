@@ -23,6 +23,7 @@ import { api } from "../api";
 import { useApiStore } from "../hooks/apiHooks";
 import ModalPortal from "./ModalPortal";
 import UserGuide from "./UserGuide";
+import NotificationInbox from "./NotificationInbox";
 
 interface ReceptionPanelProps {
   currentUser: UserType;
@@ -45,7 +46,7 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
   const { store, isLoading, isError } = useApiStore();
 
   // Tab states
-  const [activeTab, setActiveTab] = useState<"search" | "register" | "courses" | "reception_guide">("reception_guide");
+  const [activeTab, setActiveTab] = useState<"search" | "register" | "courses" | "notifications" | "reception_guide">("reception_guide");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -258,9 +259,28 @@ export default function ReceptionPanel({ currentUser, onLogout, onRefreshData }:
             <Compass className="h-4 w-4" /> Chương trình khóa học tư vấn
           </div>
         </button>
+        <button
+          onClick={() => setActiveTab("notifications")}
+          className={`flex-1 py-3 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+            activeTab === "notifications" ? "bg-white/10 text-white border border-white/15" : "text-white/60 hover:text-white"
+          }`}
+        >
+          <div className="flex justify-center items-center gap-2">
+            <Bell className="h-4 w-4" /> Hộp thư thông báo
+          </div>
+        </button>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+        {activeTab === "notifications" && (
+          <NotificationInbox
+            store={store}
+            currentUser={currentUser}
+            onRefreshData={onRefreshData}
+            title="Hộp thư thông báo tiếp tân"
+          />
+        )}
+
         {activeTab === "reception_guide" && (
           <UserGuide role="sale" activeSystem="SIS" onClose={() => setActiveTab("search")} />
         )}

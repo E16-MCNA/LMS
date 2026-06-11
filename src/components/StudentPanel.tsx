@@ -280,12 +280,12 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
     return;
     
     if (price > 0) {
-      // Create Enrollment with "pending_payment"
+      // Paid courses still wait for class placement; payment review is tracked by the transaction.
       const newEnroll: Enrollment = {
         id: generateId("enroll"),
         courseId,
         studentId: currentUser.id,
-        status: "pending_payment",
+        status: "pending",
         enrolledAt: new Date().toISOString()
       };
 

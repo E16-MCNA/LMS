@@ -12,7 +12,8 @@ import {
   FileSpreadsheet,
   BookOpen,
   Filter,
-  Trash
+  Trash,
+  Bell
 } from "lucide-react";
 import { User, Course, Enrollment, Lesson, LessonProgress } from "../types";
 import { AppStore } from "../store";
@@ -21,6 +22,7 @@ import AttendanceManager from "./AttendanceManager";
 import WarningAndReports from "./WarningAndReports";
 import { api } from "../api";
 import ModalPortal from "./ModalPortal";
+import NotificationInbox from "./NotificationInbox";
 
 interface AcademicPanelProps {
   currentUser: User;
@@ -33,7 +35,7 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData, ac
   const { store, isLoading, isError } = useApiStore();
 
   // Active sub tab navigation
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts" | "attendance" | "warnings" | "reports">(
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "students" | "compare" | "dropouts" | "attendance" | "warnings" | "reports" | "notifications">(
     activeSystem === "LMS" ? "overview" : "attendance"
   );
 
@@ -43,9 +45,9 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData, ac
 
   useEffect(() => {
     if (activeSystem === "LMS") {
-      if (!["overview", "students", "compare", "dropouts"].includes(activeSubTab)) setActiveSubTab("overview");
+      if (!["overview", "students", "compare", "dropouts", "notifications"].includes(activeSubTab)) setActiveSubTab("overview");
     } else {
-      if (!["attendance", "warnings", "reports"].includes(activeSubTab)) setActiveSubTab("attendance");
+      if (!["attendance", "warnings", "reports", "notifications"].includes(activeSubTab)) setActiveSubTab("attendance");
     }
   }, [activeSystem]);
 
@@ -490,9 +492,27 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData, ac
             </button>
           </>
         )}
+        <button
+          onClick={() => setActiveSubTab("notifications")}
+          className={`flex-1 min-w-[120px] py-2.5 text-xs font-semibold rounded-xl transition duration-150 cursor-pointer ${
+            activeSubTab === "notifications" ? "bg-indigo-600 text-white border border-indigo-500" : "text-white/60 hover:text-white"
+          }`}
+        >
+          <span className="inline-flex items-center justify-center gap-2">
+            <Bell className="h-4 w-4" /> Hộp thư
+          </span>
+        </button>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+        {activeSubTab === "notifications" && (
+          <NotificationInbox
+            store={store}
+            currentUser={currentUser}
+            onRefreshData={onRefreshData}
+            title="Hộp thư thông báo học vụ"
+          />
+        )}
         
         {/* Tab 1: Tổng quan */}
         {activeSubTab === "overview" && (() => {
