@@ -766,7 +766,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                           <span>GV: {teacherName}</span>
                         </div>
 
-                        <div className="text-[9px] text-white/30 font-mono mt-1">
+                        <div className="text-[9px] text-white/30 font-sans mt-1">
                           Sĩ số max: {sec.maxStudents}
                         </div>
                       </div>
@@ -787,7 +787,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
             <table className="w-full table-fixed min-w-[900px] border-collapse">
               <thead>
                 <tr className="border-b border-white/10 bg-white/3">
-                  <th className="py-4 px-2 w-[120px] text-center text-[10.5px] uppercase font-bold text-indigo-300 font-mono border-r border-white/5">Ca / Khung Giờ</th>
+                  <th className="py-4 px-2 w-[120px] text-center text-[10.5px] uppercase font-bold text-indigo-300 font-sans border-r border-white/5">Ca / Khung Giờ</th>
                   {DAYS_OF_WEEK.map(day => (
                     <th key={day} className="py-4 px-3 text-center text-xs font-bold text-white uppercase tracking-wider">
                       <div>{day}</div>
@@ -909,7 +909,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
 
                                 <div className="flex items-center gap-1 text-[10px] text-white/50">
                                   <MapPin className="h-3 w-3 text-indigo-400 shrink-0" />
-                                  <span className="font-mono">{item.room || "Trực tuyến"}</span>
+                                  <span className="font-sans">{item.room || "Trực tuyến"}</span>
                                 </div>
 
                                 {item.specificDate && (
@@ -986,7 +986,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                                   }
                                   
                                   return (
-                                    <div className="text-[10px] text-white/40 pt-1 border-t border-white/5 font-mono">
+                                    <div className="text-[10px] text-white/40 pt-1 border-t border-white/5 font-sans">
                                       Quy mô: {item.section.maxStudents} HS max
                                     </div>
                                   );
@@ -1018,7 +1018,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
               className="bg-white/3 border border-white/10 rounded-3xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition duration-150 hover:bg-white/5"
             >
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-2xl flex flex-col items-center justify-center font-mono w-14 shrink-0">
+                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-2xl flex flex-col items-center justify-center font-sans w-14 shrink-0">
                   <span className="text-[9px] font-bold uppercase tracking-wider block">THỨ</span>
                   <span className="text-[11px] font-black mt-0.5 text-white">{slot.dayOfWeek.split(" ")[1] || slot.dayOfWeek}</span>
                 </div>
@@ -1036,17 +1036,17 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                       <Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
                       Lớp học: {slot.startTime} - {slot.endTime}
                     </span>
-                    <span className="flex items-center gap-1 font-mono">
+                    <span className="flex items-center gap-1 font-sans">
                       <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
                       Phòng: {slot.room || "Trực tuyến"}
                     </span>
                     {slot.specificDate ? (
-                      <span className="flex items-center gap-1 font-mono text-cyan-400 font-bold">
+                      <span className="flex items-center gap-1 font-sans text-cyan-400 font-bold">
                         <span>📅</span>
                         Ngày: {slot.specificDate}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 font-mono text-cyan-400 font-semibold">
+                      <span className="flex items-center gap-1 font-sans text-cyan-400 font-semibold">
                         <span>📅</span>
                         Ngày (Tuần này): {(() => {
                           const now = new Date();
