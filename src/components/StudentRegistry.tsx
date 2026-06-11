@@ -670,22 +670,22 @@ export default function StudentRegistry({ store, currentUser, onRefreshData, tri
 
                   {/* Active Warnings alarms logs */}
                   {detailedWarnings.length > 0 && (
-                    <div className="bg-red-500/5 border border-red-500/15 rounded-2xl p-5 space-y-3">
+                    <div className="bg-red-950/40 border border-red-500/30 rounded-2xl p-5 space-y-3">
                       <h4 className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
                         <AlertCircle className="h-4 w-4" /> Cảnh cáo Học tập chủ động can thiệp
                       </h4>
                       <div className="space-y-2 text-xs">
                         {detailedWarnings.map(wf => (
-                          <div key={wf.id} className="p-3 bg-red-500/10 border border-red-500/15 rounded-xl text-red-300">
+                          <div key={wf.id} className="p-3 bg-red-900/35 border border-red-500/25 rounded-xl text-red-200">
                             <div className="flex justify-between">
                               <span className="font-bold uppercase tracking-wide text-[10px]">Cảnh báo: {wf.type}</span>
                               <span className="font-mono text-[9px] text-red-400/80">{wf.createdAt.slice(0,10)}</span>
                             </div>
                             <div className="mt-1 leading-relaxed text-[11px]">{wf.message}</div>
                             {wf.isResolved ? (
-                              <span className="mt-2 inline-block bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded text-[9px] font-bold">Nội dung đã khắc phục</span>
+                              <span className="mt-2 inline-block bg-emerald-600 text-white border border-emerald-400/40 px-2 py-0.5 rounded text-[9px] font-bold">Nội dung đã khắc phục</span>
                             ) : (
-                              <span className="mt-2 inline-block bg-red-500/20 text-red-300 px-2 py-0.5 rounded text-[9px] font-bold">Cảnh báo đang treo</span>
+                              <span className="mt-2 inline-block bg-red-600 text-white border border-red-400/40 px-2 py-0.5 rounded text-[9px] font-bold">Cảnh báo đang treo</span>
                             )}
                           </div>
                         ))}

@@ -572,7 +572,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
               <div className="space-y-3">
                 {store.academicWarnings.filter(w => w.studentId === childId).map(warning => (
                   <div key={warning.id} className={`p-4 rounded-xl border flex gap-3 ${
-                    warning.isResolved ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-400" : "bg-red-500/5 border-red-500/10 text-red-400"
+                    warning.isResolved ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300" : "bg-red-950/40 border-red-500/30 text-red-300"
                   }`}>
                     <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                     <div className="text-xs space-y-1 min-w-0 flex-1">

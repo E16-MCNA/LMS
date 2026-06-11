@@ -14,7 +14,8 @@ import {
   FileCheck,
   CheckCircle,
   HelpCircle,
-  Share2
+  Share2,
+  Bell
 } from "lucide-react";
 import { User, StudentProfile, AdvisorNote, AcademicWarning, Course, ProgramCourse, Semester, CourseSection } from "../types";
 import { AppStore } from "../store";
@@ -23,6 +24,7 @@ import { api } from "../api";
 import { warningTypeLabel, normalizeWarningType } from "../gradeUtils";
 import ModalPortal from "./ModalPortal";
 import UserGuide from "./UserGuide";
+import NotificationInbox from "./NotificationInbox";
 
 interface AdvisorPanelProps {
   currentUser: User;
@@ -35,7 +37,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
   
   // States
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(store.studentProfiles[0]?.userId || null);
-  const [activeTab, setActiveTab] = useState<"students" | "warnings" | "notes" | "advisor_guide">("advisor_guide");
+  const [activeTab, setActiveTab] = useState<"students" | "warnings" | "notes" | "notifications" | "advisor_guide">("advisor_guide");
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -235,6 +237,17 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
           >
             {activeTab === "advisor_guide" ? "✕ Đóng Hướng dẫn" : "📖 Hướng dẫn nghiệp vụ"}
           </button>
+          <button
+            onClick={() => setActiveTab("notifications")}
+            className={`text-[11px] font-bold py-1 px-3 rounded-full transition cursor-pointer border inline-flex items-center gap-1.5 ${
+              activeTab === "notifications"
+                ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
+                : "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <Bell className="h-3.5 w-3.5" />
+            Hộp thư
+          </button>
           <span className="text-[11px] font-mono bg-indigo-500/10 border border-indigo-400/20 text-indigo-400 py-1 px-3 rounded-full">
             Cố vấn: Lớp Kỹ thuật Phần mềm
           </span>
@@ -334,7 +347,13 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
 
         <div className="lg:col-span-8 space-y-6">
           
-          {activeTab === "advisor_guide" ? (
+          {activeTab === "notifications" ? (
+            <NotificationInbox
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={onRefreshData}
+            />
+          ) : activeTab === "advisor_guide" ? (
             <div className="bg-slate-900 border border-white/10 rounded-2xl p-6">
               <UserGuide role="advisor" activeSystem="SIS" onClose={() => setActiveTab("students")} />
             </div>
@@ -457,13 +476,13 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
                         let statusText = "Chưa học";
                         if (enrollment) {
                           if (enrollment.status === "completed") {
-                            statusColor = "text-emerald-400 border-emerald-500/20 bg-emerald-500/5";
+                            statusColor = "text-emerald-300 border-emerald-500/30 bg-emerald-950/40";
                             statusText = "Đã hoàn thành";
                           } else if (enrollment.status === "active") {
-                            statusColor = "text-yellow-400 border-yellow-500/20 bg-yellow-500/5";
+                            statusColor = "text-yellow-300 border-yellow-500/30 bg-yellow-950/40";
                             statusText = "Đang tiến hành";
                           } else {
-                            statusColor = "text-red-400 border-red-500/20 bg-red-500/5";
+                            statusColor = "text-red-300 border-red-500/30 bg-red-950/40";
                             statusText = "Đã hủy";
                           }
                         }

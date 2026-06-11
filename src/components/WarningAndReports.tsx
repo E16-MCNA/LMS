@@ -374,8 +374,8 @@ export default function WarningAndReports({
                 key={w.id} 
                 className={`p-4 border rounded-2xl relative overflow-hidden flex flex-col justify-between transition ${
                   w.isResolved 
-                    ? "bg-emerald-500/5 hover:border-emerald-500/20 border-emerald-500/10 text-white/70" 
-                    : "bg-red-500/5 hover:border-red-500/20 border-red-500/10 text-white"
+                    ? "bg-emerald-950/40 hover:border-emerald-500/50 border-emerald-500/30 text-white/70" 
+                    : "bg-red-950/40 hover:border-red-500/50 border-red-500/30 text-white"
                 }`}
               >
                 <div className="space-y-1">
