@@ -59,13 +59,15 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   const [activeTab, setActiveTab] = useState<"years" | "semesters" | "departments" | "programs">(initialTab ?? "years");
 
   const persistFromSnapshot = async (mutator: (data: LMSDataStore) => void) => {
+    const next = structuredClone(store);
+    mutator(next);
     if (updateStore) {
       try {
-        // Optimistically update React state in-memory
-        updateStore(mutator);
-        // Persist to Postgres database asynchronously
-        const next = AppStore.get();
         await AppStore.save(next);
+        updateStore((draft) => {
+          Object.assign(draft, next);
+        });
+        onRefreshData();
         return true;
       } catch (err: any) {
         console.error("Lỗi đồng bộ dữ liệu SIS:", err);
@@ -77,8 +79,6 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     } else {
       // Fallback if updateStore is not provided
       try {
-        const next = structuredClone(store);
-        mutator(next);
         await AppStore.save(next);
         onRefreshData();
         return true;
