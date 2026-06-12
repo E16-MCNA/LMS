@@ -3287,7 +3287,8 @@ async function setupServer() {
     if (res.headersSent) return;
     res.status(err.status || 500).json({ error: process.env.NODE_ENV === "production" ? "Internal server error." : err.message || "Internal server error." });
   });
-  app.listen(PORT, "127.0.0.1", () => console.log(`Server running on http://localhost:${PORT}`));
+  const HOST = process.env.HOST || "0.0.0.0";
+  app.listen(PORT, HOST, () => console.log(`Server running on http://${HOST}:${PORT}`));
 }
 
 setupServer().catch((err) => {
