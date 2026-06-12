@@ -12,12 +12,12 @@ export const enrollmentsRepository = {
     return result.rows.map(enrollmentFromRow);
   },
 
-  async register(db: Queryable, studentId: string, courseId: string, _isPaidCourse: boolean) {
+  async register(db: Queryable, studentId: string, courseId: string, isPaidCourse: boolean) {
     const enrollment: Enrollment = {
       id: generateId("enroll"),
       courseId,
       studentId,
-      status: "pending",
+      status: isPaidCourse ? "pending_payment" : "pending",
       enrolledAt: new Date().toISOString()
     };
     await db.query(

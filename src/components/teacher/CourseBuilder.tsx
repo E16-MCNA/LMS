@@ -24,8 +24,9 @@ interface ComponentProps {
 
 export default function CourseBuilder(props: ComponentProps) {
   const [courseSearch, setCourseSearch] = React.useState("");
-  const [activeCourseTab, setActiveCourseTab] = React.useState<"curriculum" | "discussion">("curriculum");
-  const [selectedForumSectionId, setSelectedForumSectionId] = React.useState("");
+  const [selectedClassSectionId, setSelectedClassSectionId] = React.useState<string | null>(null);
+  const [selectedClassLessonId, setSelectedClassLessonId] = React.useState("");
+  const [classDetailTab, setClassDetailTab] = React.useState<"lessons" | "forum">("lessons");
   const {
     activeSubTab,
     setActiveSubTab,
@@ -123,9 +124,10 @@ export default function CourseBuilder(props: ComponentProps) {
   const [preselectedSessionId, setPreselectedSessionId] = React.useState("");
 
   React.useEffect(() => {
-    setActiveCourseTab("curriculum");
-    setSelectedForumSectionId("");
+    setSelectedClassSectionId(null);
+    setSelectedClassLessonId("");
     setPreselectedSessionId("");
+    setClassDetailTab("lessons");
   }, [selectedCourseId]);
 
   // Local states for CourseSection management inside CourseBuilder
@@ -350,10 +352,32 @@ export default function CourseBuilder(props: ComponentProps) {
   const courseAttendanceSessions = (store.attendanceSessions || [])
     .filter((session: any) => session.courseId === activeCourse?.id)
     .sort((a: any, b: any) => String(b.date || "").localeCompare(String(a.date || "")));
-  const forumSections = courseSections.filter((s: any) => s.status !== "cancelled");
-  const activeForumSectionId = selectedForumSectionId && forumSections.some((s: any) => s.id === selectedForumSectionId)
-    ? selectedForumSectionId
-    : forumSections[0]?.id || "";
+
+  const selectedClassSection = selectedClassSectionId
+    ? courseSections.find((section: any) => section.id === selectedClassSectionId)
+    : null;
+  const selectedClassLesson = lessons.find((lesson: any) => lesson.id === selectedClassLessonId) || lessons[0] || null;
+  const selectedClassAttendanceSessions = selectedClassSection
+    ? courseAttendanceSessions.filter((session: any) => session.sectionId === selectedClassSection.id)
+    : [];
+
+  const renderSectionStatus = (status: string) => {
+    if (status === "pending") return "Chờ duyệt";
+    if (status === "open") return "Đang mở";
+    if (status === "closed") return "Đã đóng";
+    return "Đã hủy";
+  };
+
+  const getSectionRegisteredCount = (sectionId: string) => (store.courseRegistrations || []).filter(
+    (r: any) => r.sectionId === sectionId && r.status === "registered"
+  ).length;
+
+  const handleOpenClassDetail = (sectionId: string) => {
+    setSelectedClassSectionId(sectionId);
+    setSelectedClassLessonId(lessons[0]?.id || "");
+    setPreselectedSessionId("");
+    setClassDetailTab("lessons");
+  };
 
   const filteredCourses = myCourses.filter((course: any) => {
     return !courseSearch ||
@@ -468,353 +492,435 @@ export default function CourseBuilder(props: ComponentProps) {
                 }</strong></span>
               </div>
 
-              <div className="flex bg-black/30 border border-white/10 p-1 rounded-xl gap-1 shrink-0 self-start sm:self-center">
-                <button
-                  onClick={() => setActiveCourseTab("curriculum")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${activeCourseTab === "curriculum" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"}`}
-                >
-                  Giáo trình & Bài tập
-                </button>
-                <button
-                  onClick={() => setActiveCourseTab("discussion")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${activeCourseTab === "discussion" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"}`}
-                >
-                  Diễn đàn lớp học
-                </button>
-              </div>
             </div>
 
-            {activeCourseTab === "curriculum" ? (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column: Lesson sessions timeline creator */}
-              <div className="lg:col-span-2 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học trong môn ({lessons.length})</span>
+            {selectedClassSection ? (
+              <div className="space-y-6">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        setSelectedClassSectionId(null);
+                        setSelectedClassLessonId("");
+                        setPreselectedSessionId("");
+                      }}
+                      className="text-[11px] text-white/60 hover:text-white cursor-pointer font-sans"
+                    >
+                      ← Quay lại danh sách lớp
+                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h5 className="text-sm font-bold text-white">Lớp {selectedClassSection.sectionCode}</h5>
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-600 text-white text-[9px] font-bold uppercase">
+                        {renderSectionStatus(selectedClassSection.status)}
+                      </span>
+                      <span className="text-[10px] text-white/45 font-mono">
+                        Sĩ số {getSectionRegisteredCount(selectedClassSection.id)}/{selectedClassSection.maxStudents}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/50">{activeCourse.title}</p>
+                  </div>
+                  <div className="text-[10px] text-white/55 space-y-1 lg:text-right font-sans">
+                    {(selectedClassSection.schedule || []).map((slot: any, idx: number) => (
+                      <div key={idx} className="flex lg:justify-end items-center gap-1">
+                        <Clock className="h-3 w-3 text-indigo-300" />
+                        <span>{slot.dayOfWeek} ({slot.startTime} - {slot.endTime})</span>
+                        <MapPin className="h-3 w-3 text-indigo-300" />
+                        <span>{slot.room || "Trực tuyến"}</span>
+                      </div>
+                    ))}
+                    {(!selectedClassSection.schedule || selectedClassSection.schedule.length === 0) && (
+                      <span className="text-amber-300">Chờ Giáo vụ xếp ca & phòng học</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tabs selection: Bài học & Điểm danh / Diễn đàn lớp học */}
+                <div className="flex border-b border-white/10 gap-6 pb-1">
                   <button
-                    onClick={() => setShowLessonModal(true)}
-                    className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
+                    onClick={() => setClassDetailTab("lessons")}
+                    className={`pb-3 text-xs font-bold transition cursor-pointer relative ${
+                      classDetailTab === "lessons" ? "text-indigo-400 font-sans" : "text-white/60 hover:text-white font-sans"
+                    }`}
                   >
-                    <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm Bài học
+                    Bài học & Điểm danh
+                    {classDetailTab === "lessons" && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full animate-in fade-in slide-in-from-bottom-1 duration-150" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setClassDetailTab("forum")}
+                    className={`pb-3 text-xs font-bold transition cursor-pointer relative ${
+                      classDetailTab === "forum" ? "text-indigo-400 font-sans" : "text-white/60 hover:text-white font-sans"
+                    }`}
+                  >
+                    Diễn đàn lớp học
+                    {classDetailTab === "forum" && (
+                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full animate-in fade-in slide-in-from-bottom-1 duration-150" />
+                    )}
                   </button>
                 </div>
 
-                <div className="space-y-3">
-                  {lessons.map(lesson => (
-                    <div key={lesson.id} className="bg-black/25 border border-white/10 rounded-2xl p-4 flex items-start gap-3.5 hover:bg-black/35 transition">
-                      <div className="w-14 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[10px] flex items-center justify-center flex-shrink-0">
-                        Buổi {lesson.order}
+                {classDetailTab === "lessons" ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học ({lessons.length})</span>
+                        <button
+                          onClick={() => setShowLessonModal(true)}
+                          className="p-1.5 bg-white/10 hover:bg-white/15 text-[10px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
+                        >
+                          <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm
+                        </button>
                       </div>
-
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <h6 className="text-xs font-display font-bold text-white">Buổi học {lesson.order}: {lesson.title}</h6>
-                          <span className="text-[10px] font-mono text-white/40">{lesson.duration}</span>
-                        </div>
-                        <p className="text-xs text-white/60 line-clamp-3 leading-relaxed font-sans">{lesson.content}</p>
-                        {lesson.videoUrl && (
-                          <div className="text-[10px] text-indigo-200 font-mono flex items-center gap-1 pt-1">
-                            <Tv className="h-3 w-3" /> Bài giảng đính kèm: {lesson.videoUrl}
+                      <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
+                        {lessons.map((lesson: any) => (
+                          <button
+                            key={lesson.id}
+                            onClick={() => {
+                              setSelectedClassLessonId(lesson.id);
+                              setPreselectedSessionId("");
+                            }}
+                            className={`w-full text-left rounded-2xl border p-3 transition cursor-pointer ${
+                              selectedClassLesson?.id === lesson.id
+                                ? "bg-indigo-600/30 border-indigo-400/50"
+                                : "bg-black/25 border-white/5 hover:bg-white/5"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono text-indigo-200">Buổi {lesson.order}</span>
+                              <span className="text-[9px] text-white/45">{lesson.duration}</span>
+                            </div>
+                            <div className="mt-1 text-xs font-bold text-white line-clamp-2">{lesson.title}</div>
+                          </button>
+                        ))}
+                        {lessons.length === 0 && (
+                          <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-5 text-center text-[11px] text-white/45">
+                            Chưa có buổi học nào cho khóa học này.
                           </div>
                         )}
                       </div>
                     </div>
-                  ))}
 
-                  {lessons.length === 0 && (
-                    <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
-                      <p className="text-xs text-white/50">Môn học hiện chưa có buổi học nào. Hãy bấm "Thêm Bài học" để bắt đầu thiết lập nội dung từng buổi.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Column: Mini tools linked (Quizzes, Assignments, workflow status actions) */}
-              <div className="space-y-6">
-                {/* Actions Block */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5">Hành động tiến trình</span>
-                  
-                  {activeCourse.status === "draft" && (
-                    <button
-                      onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
-                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
-                    >
-                      Gửi duyệt khóa học
-                    </button>
-                  )}
-
-                  {activeCourse.status === "rejected" && (
-                    <div className="space-y-2">
-                      <div className="bg-red-500/15 border border-red-500/20 rounded-xl p-3 text-[11px] text-red-200/90 leading-relaxed">
-                        Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và gửi duyệt lại.
-                      </div>
-                      <button
-                        onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
-                        className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl cursor-pointer"
-                      >
-                        Gửi duyệt lại khóa học
-                      </button>
-                    </div>
-                  )}
-
-                  {activeCourse.status === "published" && (
-                    <div className="bg-emerald-500/15 border border-emerald-500/20 rounded-xl p-3 text-[11px] text-emerald-300 flex items-center gap-1.5 font-semibold">
-                      <Check className="h-4 w-4" /> Giáo trình đã xuất bản và đang hoạt động.
-                    </div>
-                  )}
-
-                  {activeCourse.status === "pending" && (
-                    <div className="bg-amber-500/15 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-normal">
-                      Khóa học đã gửi duyệt và đang chờ quản lý phê duyệt trước khi công khai.
-                    </div>
-                  )}
-                </div>
-
-                {/* Attendance management block in Course details */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                    <span className="text-xs font-semibold text-white">Quản lý chuyên cần & Điểm danh</span>
-                  </div>
-                  <p className="text-[11px] text-white/50 leading-relaxed font-sans">
-                    Giảng viên có thể khởi động ca điểm danh tự động gửi link 5 phút hoặc tích điểm danh thủ công trực tiếp cho lớp học phần này.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setPreselectedSessionId("");
-                      setShowAttendanceModal(true);
-                    }}
-                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer font-sans"
-                  >
-                    <span>Điểm danh lớp học</span>
-                  </button>
-                </div>
-
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                    <div className="space-y-0.5">
-                      <span className="text-xs font-semibold text-white block">Lịch sử buổi điểm danh đã tạo</span>
-                      <span className="text-[10px] text-white/40 block">{courseAttendanceSessions.length} buổi trong khóa học này</span>
-                    </div>
-                    <Calendar className="h-4 w-4 text-indigo-400" />
-                  </div>
-                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                    {courseAttendanceSessions.map((session: any) => {
-                      const sessionSection = courseSections.find((section: any) => section.id === session.sectionId);
-                      return (
-                        <button
-                          key={session.id}
-                          onClick={() => {
-                            setPreselectedSessionId(session.id);
-                            setShowAttendanceModal(true);
-                          }}
-                          className="w-full text-left text-xs bg-black/25 hover:bg-white/5 border border-white/5 hover:border-indigo-400/30 rounded-xl p-3 transition cursor-pointer"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-bold text-white truncate">{session.topic}</span>
-                            <span className="text-[9px] font-mono text-cyan-300 shrink-0">{session.date}</span>
-                          </div>
-                          <div className="mt-1 flex items-center gap-2 text-[10px] text-white/45 font-mono">
-                            <span>{sessionSection?.sectionCode || "Chưa gắn lớp"}</span>
-                            {session.code && <span className="text-indigo-300">Code: {session.code}</span>}
-                          </div>
-                        </button>
-                      );
-                    })}
-                    {courseAttendanceSessions.length === 0 && (
-                      <p className="text-[11px] text-white/40 italic">Chưa có buổi điểm danh nào được tạo cho khóa học này.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Class sections list for this course */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                    <div className="space-y-0.5">
-                      <span className="text-xs font-semibold text-white block">Các Lớp học phần đang mở</span>
-                      <span className="text-[10px] text-white/40 block">Phân bổ ca học & thời khóa biểu</span>
-                    </div>
-                    {activeCourse.status === "published" && (
-                      <button 
-                        onClick={handleOpenCreateSection}
-                        className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
-                      >
-                        + Lập lớp học
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {courseSections.map((sec: any) => {
-                      const currentCount = (store.courseRegistrations || []).filter(
-                        (r: any) => r.sectionId === sec.id && r.status === "registered"
-                      ).length;
-
-                      return (
-                        <div key={sec.id} className="text-xs space-y-1.5 bg-black/25 p-3 rounded-xl border border-white/5 relative group">
-                          <div className="flex justify-between items-center">
-                            <span className="px-2 py-0.5 bg-indigo-600 text-white font-bold rounded-lg text-[9px] font-mono tracking-wider">
-                              {sec.sectionCode}
-                            </span>
-                            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
-                              <button
-                                onClick={() => {
-                                  setSelectedForumSectionId(sec.id);
-                                  setActiveCourseTab("discussion");
-                                }}
-                                className="p-0.5 hover:bg-white/10 text-cyan-300 rounded cursor-pointer"
-                                title="Mở diễn đàn lớp học"
-                              >
-                                <MessageSquare className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => handleOpenEditSection(sec)}
-                                className="p-0.5 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
-                                title="Chỉnh sửa ca học"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSection(sec.id, sec.sectionCode)}
-                                className="p-0.5 hover:bg-red-500/20 text-red-400 rounded cursor-pointer"
-                                title="Xóa lớp học phần"
-                              >
-                                <Trash className="h-3 w-3" />
-                              </button>
+                    <div className="lg:col-span-2 space-y-6">
+                      {selectedClassLesson ? (
+                        <>
+                          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                              <span className="text-xs font-semibold text-white">Nội dung buổi học</span>
+                              <span className="text-[10px] text-white/45 font-mono">Buổi {selectedClassLesson.order}</span>
+                            </div>
+                            <div className="space-y-3">
+                              <h6 className="text-sm font-bold text-white">{selectedClassLesson.title}</h6>
+                              <p className="text-xs text-white/65 leading-relaxed whitespace-pre-line font-sans">{selectedClassLesson.content}</p>
+                              {selectedClassLesson.videoUrl && (
+                                <div className="text-[10px] text-indigo-200 font-mono flex items-center gap-1 pt-1">
+                                  <Tv className="h-3 w-3" /> Bài giảng đính kèm: {selectedClassLesson.videoUrl}
+                                </div>
+                              )}
                             </div>
                           </div>
-                          
-                          <div className="text-[10px] text-white/50 space-y-1 font-sans">
-                            {sec.schedule.map((slot: any, sIdx: number) => (
-                              <div key={sIdx} className="flex items-center gap-1">
-                                <Clock className="h-3 w-3 shrink-0 text-indigo-400" />
-                                <span>{slot.dayOfWeek} ({slot.startTime} - {slot.endTime})</span>
-                                <span className="font-mono text-white/30">|</span>
-                                <MapPin className="h-3 w-3 shrink-0 text-indigo-400" />
-                                <span className="truncate">{slot.room || "Trực tuyến"}</span>
+
+                          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                              <div>
+                                <span className="text-xs font-semibold text-white block">Quản lý điểm danh</span>
+                                <span className="text-[10px] text-white/40">{selectedClassAttendanceSessions.length} buổi điểm danh của lớp này</span>
                               </div>
-                            ))}
-                            {(!sec.schedule || sec.schedule.length === 0) && (
-                              <div className="text-[10px] text-amber-400/80 italic flex items-center gap-1">
-                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                                <span>Chờ Giáo vụ xếp ca & phòng học</span>
-                              </div>
-                            )}
+                              <Calendar className="h-4 w-4 text-indigo-300" />
+                            </div>
+                            {(() => {
+                              const expectedTopic = `Buổi ${selectedClassLesson.order}: ${selectedClassLesson.title}`;
+                              const matchingSession = (store.attendanceSessions || []).find(
+                                (s: any) =>
+                                  s.sectionId === selectedClassSection.id &&
+                                  (s.topic === expectedTopic || s.topic.startsWith(`Buổi ${selectedClassLesson.order}:`))
+                              );
+                              const defaultSessionId = matchingSession ? matchingSession.id : "";
+                              return (
+                                <AttendanceManager
+                                  store={store}
+                                  currentUser={currentUser}
+                                  onRefreshData={onRefreshData}
+                                  triggerToast={triggerToast}
+                                  defaultCourseId={activeCourse.id}
+                                  courseId={activeCourse.id}
+                                  sectionId={selectedClassSection.id}
+                                  defaultSessionId={defaultSessionId}
+                                  defaultSessionTopic={expectedTopic}
+                                  lockSelectors
+                                />
+                              );
+                            })()}
                           </div>
-                          
-                          <div className="flex justify-between items-center text-[9px] pt-1 border-t border-white/5 font-mono text-white/40">
-                            <span>Sĩ số: {currentCount}/{sec.maxStudents} HS</span>
-                            <span className={`uppercase font-bold ${
-                              sec.status === "pending" ? "text-amber-400" :
-                              sec.status === "open" ? "text-emerald-400" : "text-white/40"
-                            }`}>
-                              {sec.status === "pending" ? "Chờ duyệt" :
-                               sec.status === "open" ? "Đang mở" : 
-                               sec.status === "closed" ? "Đã đóng" : "Đã hủy"}
-                            </span>
-                          </div>
+                        </>
+                      ) : (
+                        <div className="py-24 text-center border border-dashed border-white/10 bg-white/5 rounded-3xl text-white/30 space-y-2">
+                          <BookOpen className="h-8 w-8 mx-auto text-white/20 animate-pulse" />
+                          <p className="text-xs text-white/50">Vui lòng chọn bài học ở danh sách bên trái để hiển thị chi tiết bài học và quản lý điểm danh.</p>
                         </div>
-                      );
-                    })}
-
-                    {courseSections.length === 0 && (
-                      <p className="text-[11px] text-white/40 italic">Chưa có lớp học phần nào được lập. Hãy xuất bản khóa học và nhấp "+ Lập lớp học" để bắt đầu xếp thời khóa biểu.</p>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-
-                {/* Quizzes overview in Course details */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                    <span className="text-xs font-semibold text-white">Bài thi trắc nghiệm tương tác</span>
-                    <button 
-                      onClick={() => setShowQuizModal(true)}
-                      className="text-[10px] text-indigo-300 font-bold hover:underline"
-                    >
-                      + Tạo Đề thi
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {courseQuizzes.map(q => (
-                      <div key={q.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5">
-                        <span className="truncate text-white max-w-[140px] font-medium">{q.title}</span>
-                        <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/80 font-mono">
-                          {q.passingScore}% đạt
-                        </span>
-                      </div>
-                    ))}
-
-                    {courseQuizzes.length === 0 && (
-                      <p className="text-[11px] text-white/40">Chưa có bài thi trắc nghiệm nào được tạo.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Assignments overview in Course details */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                    <span className="text-xs font-semibold text-white">Thử thách Bài tự luận</span>
-                    <button 
-                      onClick={() => setShowAssignModal(true)}
-                      className="text-[10px] text-indigo-300 font-bold hover:underline"
-                    >
-                      + Tạo Bài tập
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {courseAssignments.map(a => (
-                      <div key={a.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5">
-                        <span className="truncate text-white max-w-[140px] font-medium">{a.title}</span>
-                        <span className="text-[10px] font-mono text-indigo-200">
-                          Tối đa: {a.maxScore} đ
-                        </span>
-                      </div>
-                    ))}
-
-                    {courseAssignments.length === 0 && (
-                      <p className="text-[11px] text-white/40">Chưa có thử thách bài tập tự luận nào được tạo.</p>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-            ) : (
-              <div className="w-full space-y-4">
-                {forumSections.length > 0 ? (
-                  <>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-                      <div>
-                        <h5 className="text-xs font-bold text-white">Diễn đàn lớp học phần</h5>
-                        <p className="text-[11px] text-white/45">Chọn lớp trước khi xem và đăng thảo luận.</p>
-                      </div>
-                      <select
-                        value={activeForumSectionId}
-                        onChange={(e) => setSelectedForumSectionId(e.target.value)}
-                        className="min-w-56 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-indigo-400"
-                      >
-                        {forumSections.map((sec: any) => (
-                          <option key={sec.id} value={sec.id} className="bg-slate-900">
-                            {sec.sectionCode}
-                          </option>
-                        ))}
-                      </select>
+                ) : (
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                      <MessageSquare className="h-4 w-4 text-cyan-300" />
+                      <span className="text-xs font-semibold text-white">Diễn đàn lớp {selectedClassSection.sectionCode}</span>
                     </div>
                     <ForumDiscussion
                       courseId={selectedCourseId}
-                      sectionId={activeForumSectionId}
+                      sectionId={selectedClassSection.id}
                       store={store}
                       currentUser={currentUser}
                       onRefreshData={onRefreshData}
                       triggerToast={triggerToast}
                     />
-                  </>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-xs text-white/45">
-                    Chưa có lớp học phần để mở diễn đàn.
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Left Column: Sections list and Lessons list */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Card 1: Class Sections list */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-semibold text-white block">Các Lớp học phần đang mở</span>
+                        <span className="text-[10px] text-white/40 block">Phân bổ ca học & thời khóa biểu</span>
+                      </div>
+                      {activeCourse.status === "published" && (
+                        <button 
+                          onClick={handleOpenCreateSection}
+                          className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+                        >
+                          + Lập lớp học
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {courseSections.map((sec: any) => {
+                        const currentCount = getSectionRegisteredCount(sec.id);
+                        return (
+                          <div key={sec.id} className="text-xs space-y-2 bg-black/25 p-4 rounded-xl border border-white/5 relative group flex flex-col justify-between">
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="px-2 py-0.5 bg-indigo-600 text-white font-bold rounded-lg text-[9px] font-mono tracking-wider">
+                                  {sec.sectionCode}
+                                </span>
+                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                                  <button
+                                    onClick={() => handleOpenClassDetail(sec.id)}
+                                    className="p-0.5 hover:bg-white/10 text-cyan-300 rounded cursor-pointer"
+                                    title="Mở chi tiết buổi học & Diễn đàn"
+                                  >
+                                    <MessageSquare className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenEditSection(sec)}
+                                    className="p-0.5 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
+                                    title="Chỉnh sửa ca học"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteSection(sec.id, sec.sectionCode)}
+                                    className="p-0.5 hover:bg-red-500/20 text-red-400 rounded cursor-pointer"
+                                    title="Xóa lớp học phần"
+                                  >
+                                    <Trash className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              <div className="text-[10px] text-white/50 space-y-1 font-sans">
+                                {(sec.schedule || []).map((slot: any, sIdx: number) => (
+                                  <div key={sIdx} className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3 shrink-0 text-indigo-400" />
+                                    <span>{slot.dayOfWeek} ({slot.startTime} - {slot.endTime})</span>
+                                    <span className="font-mono text-white/30">|</span>
+                                    <MapPin className="h-3 w-3 shrink-0 text-indigo-400" />
+                                    <span className="truncate">{slot.room || "Trực tuyến"}</span>
+                                  </div>
+                                ))}
+                                {(!sec.schedule || sec.schedule.length === 0) && (
+                                  <div className="text-[10px] text-amber-400/80 italic flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                    <span>Chờ Giáo vụ xếp ca & phòng học</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="flex justify-between items-center text-[9px] pt-2 border-t border-white/5 font-mono text-white/40 mt-1">
+                              <span>Sĩ số: {currentCount}/{sec.maxStudents} HS</span>
+                              <div className="flex items-center gap-2">
+                                <span className={`uppercase font-bold ${
+                                  sec.status === "pending" ? "text-amber-400" :
+                                  sec.status === "open" ? "text-emerald-400" : "text-white/40"
+                                }`}>
+                                  {renderSectionStatus(sec.status)}
+                                </span>
+                                <button
+                                  onClick={() => handleOpenClassDetail(sec.id)}
+                                  className="px-2 py-0.5 bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white rounded text-[9px] font-bold transition flex items-center gap-0.5 cursor-pointer font-sans"
+                                >
+                                  Chi tiết
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {courseSections.length === 0 && (
+                        <p className="text-[11px] text-white/40 italic col-span-full">Chưa có lớp học phần nào được lập. Hãy xuất bản khóa học và nhấp "+ Lập lớp học" để bắt đầu xếp thời khóa biểu.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card 2: Lessons List */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                      <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học trong môn ({lessons.length})</span>
+                      <button
+                        onClick={() => setShowLessonModal(true)}
+                        className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm Bài học
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {lessons.map(lesson => (
+                        <div key={lesson.id} className="bg-black/25 border border-white/10 rounded-2xl p-4 flex items-start gap-3.5 hover:bg-black/35 transition">
+                          <div className="w-14 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[10px] flex items-center justify-center flex-shrink-0">
+                            Buổi {lesson.order}
+                          </div>
+
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h6 className="text-xs font-display font-bold text-white">Buổi học {lesson.order}: {lesson.title}</h6>
+                              <span className="text-[10px] font-mono text-white/40">{lesson.duration}</span>
+                            </div>
+                            <p className="text-xs text-white/65 leading-relaxed font-sans">{lesson.content}</p>
+                            {lesson.videoUrl && (
+                              <div className="text-[10px] text-indigo-200 font-mono flex items-center gap-1 pt-1">
+                                <Tv className="h-3 w-3" /> Bài giảng đính kèm: {lesson.videoUrl}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {lessons.length === 0 && (
+                        <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                          <p className="text-xs text-white/50">Môn học hiện chưa có buổi học nào. Hãy bấm "Thêm Bài học" để bắt đầu thiết lập nội dung từng buổi.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Status & actions block, quizzes, assignments */}
+                <div className="space-y-6">
+                  {/* Actions Block */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5">Hành động tiến trình</span>
+                    
+                    {activeCourse.status === "draft" && (
+                      <button
+                        onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
+                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
+                      >
+                        Gửi duyệt khóa học
+                      </button>
+                    )}
+
+                    {activeCourse.status === "rejected" && (
+                      <div className="space-y-2">
+                        <div className="bg-red-500/15 border border-red-500/20 rounded-xl p-3 text-[11px] text-red-200/90 leading-relaxed">
+                          Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và gửi duyệt lại.
+                        </div>
+                        <button
+                          onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
+                          className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl cursor-pointer"
+                        >
+                          Gửi duyệt lại khóa học
+                        </button>
+                      </div>
+                    )}
+
+                    {activeCourse.status === "published" && (
+                      <div className="bg-emerald-500/15 border border-emerald-500/20 rounded-xl p-3 text-[11px] text-emerald-300 flex items-center gap-1.5 font-semibold">
+                        <Check className="h-4 w-4" /> Giáo trình đã xuất bản và đang hoạt động.
+                      </div>
+                    )}
+
+                    {activeCourse.status === "pending" && (
+                      <div className="bg-amber-500/15 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-normal">
+                        Khóa học đã gửi duyệt và đang chờ quản lý phê duyệt trước khi công khai.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quizzes overview in Course details */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                      <span className="text-xs font-semibold text-white">Bài thi trắc nghiệm tương tác</span>
+                      <button 
+                        onClick={() => setShowQuizModal(true)}
+                        className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+                      >
+                        + Tạo Đề thi
+                      </button>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {courseQuizzes.map(q => (
+                        <div key={q.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5">
+                          <span className="truncate text-white max-w-[140px] font-medium">{q.title}</span>
+                          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/80 font-mono">
+                            {q.passingScore}% đạt
+                          </span>
+                        </div>
+                      ))}
+
+                      {courseQuizzes.length === 0 && (
+                        <p className="text-[11px] text-white/40">Chưa có bài thi trắc nghiệm nào được tạo.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Assignments overview in Course details */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                      <span className="text-xs font-semibold text-white">Thử thách Bài tự luận</span>
+                      <button 
+                        onClick={() => setShowAssignModal(true)}
+                        className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+                      >
+                        + Tạo Bài tập
+                      </button>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {courseAssignments.map(a => (
+                        <div key={a.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5">
+                          <span className="truncate text-white max-w-[140px] font-medium">{a.title}</span>
+                          <span className="text-[10px] font-mono text-indigo-200">
+                            Tối đa: {a.maxScore} đ
+                          </span>
+                        </div>
+                      ))}
+
+                      {courseAssignments.length === 0 && (
+                        <p className="text-[11px] text-white/40">Chưa có thử thách bài tập tự luận nào được tạo.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>

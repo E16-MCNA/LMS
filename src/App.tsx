@@ -860,7 +860,7 @@ function AppShell() {
                   <button
                     type="button"
                     onClick={() => handleInstantDemoLogin("academic@e16.local", "academice16")}
-                    className="p-2 bg-sky-500/10 hover:bg-sky-600/20 border border-sky-400/20 text-sky-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group col-span-2 sm:col-span-1"
+                    className="p-2 bg-sky-500/10 hover:bg-sky-600/20 border border-sky-400/20 text-sky-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
                   >
                     <div className="min-w-0 flex-1">
                       <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-sky-200">Admin Quản Lý Lớp</span>
@@ -871,8 +871,20 @@ function AppShell() {
 
                   <button
                     type="button"
+                    onClick={() => handleInstantDemoLogin("advisor@e16.local", "advisor16")}
+                    className="p-2 bg-indigo-500/10 hover:bg-indigo-600/20 border border-indigo-400/20 text-indigo-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-indigo-200">Cố vấn Học tập</span>
+                      <span className="font-mono text-[8px] font-normal text-white/30 truncate block">advisor@e16.local</span>
+                    </div>
+                    <ArrowRight className="h-3 w-3 flex-shrink-0 ml-1 transform group-hover:translate-x-0.5 transition text-indigo-300" />
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => handleInstantDemoLogin("parentsstudent@mcna.local", "parent16")}
-                    className="p-2 bg-rose-500/10 hover:bg-rose-600/20 border border-rose-400/20 text-rose-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group col-span-2 sm:col-span-1"
+                    className="p-2 bg-rose-500/10 hover:bg-rose-600/20 border border-rose-400/20 text-rose-300 font-bold rounded-xl flex items-center justify-between text-left cursor-pointer group"
                   >
                     <div className="min-w-0 flex-1">
                       <span className="block font-sans font-extrabold text-[10px] leading-tight group-hover:text-rose-200">Phụ Huynh</span>

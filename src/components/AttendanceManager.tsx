@@ -25,6 +25,7 @@ interface AttendanceManagerProps {
   triggerToast: (msg: string) => void;
   defaultCourseId?: string;
   defaultSessionId?: string;
+  defaultSessionTopic?: string;
   lockSelectors?: boolean;
   courseId?: string | null;
   sectionId?: string | null;
@@ -38,6 +39,7 @@ export default function AttendanceManager({
   triggerToast,
   defaultCourseId,
   defaultSessionId = "",
+  defaultSessionTopic = "",
   lockSelectors = false,
   courseId = null,
   sectionId = null,
@@ -58,13 +60,19 @@ export default function AttendanceManager({
   }, [lockSelectors, courseId, sectionId]);
 
   useEffect(() => {
-    if (!defaultSessionId) return;
-    const session = (store.attendanceSessions || []).find(s => s.id === defaultSessionId);
-    if (!session) return;
-    setActiveSessionId(session.id);
-    if (session.courseId) setSelectedCourseId(session.courseId);
-    if (session.sectionId) setSelectedSectionId(session.sectionId);
+    setActiveSessionId(defaultSessionId);
+    if (defaultSessionId) {
+      const session = (store.attendanceSessions || []).find(s => s.id === defaultSessionId);
+      if (session) {
+        if (session.courseId) setSelectedCourseId(session.courseId);
+        if (session.sectionId) setSelectedSectionId(session.sectionId);
+      }
+    }
   }, [defaultSessionId, store.attendanceSessions]);
+
+  useEffect(() => {
+    setNewSessionTopic(defaultSessionTopic);
+  }, [defaultSessionTopic]);
 
   // Auto-select latest session if locked and no session is active yet
   useEffect(() => {

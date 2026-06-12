@@ -62,7 +62,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
 
     // Filter course-level enrollment requests that still need class placement.
     const activeEnrollments = enrollments.filter(
-      e => e.status === "pending" || e.status === "active" || e.status === "pending_payment"
+      e => e.status === "pending" || e.status === "active"
     );
 
     return activeEnrollments.map(e => {

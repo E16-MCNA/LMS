@@ -251,7 +251,7 @@ export default function TuitionManager({ store, onRefreshData, triggerToast }: T
 
       {/* Phân nhóm học viên theo trạng thái thanh toán */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-        <div className="bg-emerald-950/25 border border-emerald-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+        <div className="bg-gradient-to-br from-emerald-500/15 to-emerald-950/20 border border-emerald-500/30 p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-500/5 backdrop-blur-md">
           <div className="space-y-1">
             <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-black flex items-center gap-1">
               <CheckCircle className="h-3.5 w-3.5" /> Học viên Đóng đủ (100%)
@@ -263,7 +263,7 @@ export default function TuitionManager({ store, onRefreshData, triggerToast }: T
           </div>
         </div>
 
-        <div className="bg-sky-950/25 border border-sky-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+        <div className="bg-gradient-to-br from-sky-500/15 to-sky-950/20 border border-sky-500/30 p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-sky-500/5 backdrop-blur-md">
           <div className="space-y-1">
             <span className="text-[10px] text-sky-400 uppercase tracking-widest font-black flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" /> Học viên Trả góp / Một phần
@@ -275,7 +275,7 @@ export default function TuitionManager({ store, onRefreshData, triggerToast }: T
           </div>
         </div>
 
-        <div className="bg-red-950/25 border border-red-500/25 p-4 rounded-2xl flex items-center justify-between backdrop-blur-md">
+        <div className="bg-gradient-to-br from-red-500/15 to-red-950/20 border border-red-500/30 p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-red-500/5 backdrop-blur-md">
           <div className="space-y-1">
             <span className="text-[10px] text-red-400 uppercase tracking-widest font-black flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5" /> Học viên Chưa thanh toán

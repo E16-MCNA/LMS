@@ -326,53 +326,53 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData, ac
           <span className="text-xs font-mono font-semibold tracking-widest text-[#38bdf8] bg-[#38bdf8]/10 px-3 py-1 rounded-full border border-[#38bdf8]/20 uppercase">
             Phân hệ Quản lý Học vụ & Giám sát đào tạo
           </span>
-          <h2 className="text-2xl font-display font-bold text-white mt-1.5">Xin chào, {currentUser.name} 📈</h2>
+          <h2 className="text-2xl font-display font-bold text-white mt-1.5">Xin chào, {currentUser.name}</h2>
           <p className="text-sm text-white/60">Giám sát chất lượng giảng dạy, tỷ lệ hoàn hành bài học, điểm số và biểu đồ phân tích hao hụt học viên.</p>
         </div>
       </div>
 
       {/* Stats Cards Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-gradient-to-br from-sky-500/15 to-sky-950/20 border border-sky-500/30 p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-sky-500/5">
           <div>
-            <span className="text-xs text-white/50 block font-medium">Khóa học đăng đóng/ở</span>
-            <span className="text-xl font-bold text-sky-400 mt-1 block">{activeCourses.length} Khóa học</span>
-            <span className="text-[10px] text-white/30 font-mono">Đang công chiếu Đã công bố</span>
+            <span className="text-xs text-sky-100 block font-semibold">Khóa học đang mở</span>
+            <span className="text-xl font-bold text-white mt-1 block">{activeCourses.length} Khóa học</span>
+            <span className="text-[10px] text-sky-100/75 font-mono">Đã công bố trên hệ thống</span>
           </div>
-          <div className="w-12 h-12 bg-sky-500/10 border border-sky-500/20 text-sky-400 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-sky-500 text-white rounded-xl flex items-center justify-center">
             <BookOpen className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-gradient-to-br from-emerald-500/15 to-emerald-950/20 border border-emerald-500/30 p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-emerald-500/5">
           <div>
-            <span className="text-xs text-white/50 block font-medium">Tổng sĩ số học viên</span>
-            <span className="text-xl font-bold text-emerald-400 mt-1 block">{totalStudents} Học viên</span>
-            <span className="text-[10px] text-white/30 font-mono">Đăng ký hệ thống thực tế</span>
+            <span className="text-xs text-emerald-100 block font-semibold">Tổng sĩ số học viên</span>
+            <span className="text-xl font-bold text-white mt-1 block">{totalStudents} Học viên</span>
+            <span className="text-[10px] text-emerald-100/75 font-mono">Đăng ký hệ thống thực tế</span>
           </div>
-          <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-emerald-500 text-white rounded-xl flex items-center justify-center">
             <Users className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-gradient-to-br from-indigo-500/15 to-indigo-950/20 border border-indigo-500/30 p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-indigo-500/5">
           <div>
-            <span className="text-xs text-white/50 block font-medium">Tỷ lệ hoàn thành trung bình</span>
-            <span className="text-xl font-bold text-indigo-400 mt-1 block">{avgCompletionRate}%</span>
-            <span className="text-[10px] text-white/30 font-mono">Tính trên các học viên đăng ký</span>
+            <span className="text-xs text-indigo-100 block font-semibold">Tỷ lệ hoàn thành trung bình</span>
+            <span className="text-xl font-bold text-white mt-1 block">{avgCompletionRate}%</span>
+            <span className="text-[10px] text-indigo-100/75 font-mono">Tính trên các học viên đăng ký</span>
           </div>
-          <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-400/20 text-indigo-400 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-indigo-500 text-white rounded-xl flex items-center justify-center">
             <TrendingUp className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between">
+        <div className="bg-gradient-to-br from-amber-500/15 to-amber-950/20 border border-amber-500/30 p-5 rounded-2xl flex items-center justify-between shadow-lg shadow-amber-500/5">
           <div>
-            <span className="text-xs text-white/50 block font-medium">Học viên trễ tiến độ</span>
-            <span className="text-xl font-bold text-amber-400 mt-1 block">{tregStudentsCount} Học viên</span>
-            <span className="text-[10px] text-white/30 font-mono">Có tiến độ học tập &lt; 50%</span>
+            <span className="text-xs text-amber-100 block font-semibold">Học viên trễ tiến độ</span>
+            <span className="text-xl font-bold text-white mt-1 block">{tregStudentsCount} Học viên</span>
+            <span className="text-[10px] text-amber-100/75 font-mono">Có tiến độ học tập &lt; 50%</span>
           </div>
-          <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-amber-500 text-slate-950 rounded-xl flex items-center justify-center">
             <Clock className="h-6 w-6" />
           </div>
         </div>
