@@ -291,8 +291,8 @@ export async function seedCoreLearningData(db: Queryable) {
   if (Number((await db.query("SELECT COUNT(*) AS count FROM assignments")).rows[0].count) === 0) {
     for (const a of store.assignments) {
       await db.query(
-        "INSERT INTO assignments (id, course_id, title, description, deadline, max_score) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING",
-        [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore]
+        "INSERT INTO assignments (id, course_id, title, description, deadline, max_score, lesson_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING",
+        [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore, a.lessonId || null, a.type || null]
       );
     }
     for (const s of store.submissions) {
@@ -305,8 +305,8 @@ export async function seedCoreLearningData(db: Queryable) {
   if (needsMegaBackfill) {
     for (const a of store.assignments) {
       await db.query(
-        "INSERT INTO assignments (id, course_id, title, description, deadline, max_score) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING",
-        [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore]
+        "INSERT INTO assignments (id, course_id, title, description, deadline, max_score, lesson_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING",
+        [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore, a.lessonId || null, a.type || null]
       );
     }
   }

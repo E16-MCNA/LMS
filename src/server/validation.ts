@@ -107,8 +107,11 @@ export const schemas = {
     description: z.string().trim().min(1),
     deadline: z.string().trim().min(1),
     maxScore: z.coerce.number().min(1),
-    attachmentUrl: z.string().trim().optional()
+    attachmentUrl: z.string().trim().optional(),
+    lessonId: z.string().trim().optional(),
+    type: z.enum(["lesson", "chapter", "midterm", "final"]).optional()
   }),
+
   submitAssignment: z.object({
     assignmentId: z.string().trim().min(1),
     content: z.string().trim().min(1),

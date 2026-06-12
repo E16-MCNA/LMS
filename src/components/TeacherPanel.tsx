@@ -33,6 +33,7 @@ import GradebookTable from "./teacher/GradebookTable";
 import TeacherAnalytics from "./teacher/TeacherAnalytics";
 import Timetable from "./Timetable";
 import UserGuide from "./UserGuide";
+import ModalPortal from "./ModalPortal";
 import AttendanceManager from "./AttendanceManager";
 import AdvisorPanel from "./AdvisorPanel";
 import NotificationInbox from "./NotificationInbox";
@@ -130,6 +131,8 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   const [assignDeadline, setAssignDeadline] = useState("");
   const [assignMaxScore, setAssignMaxScore] = useState(100);
   const [assignAttachmentUrl, setAssignAttachmentUrl] = useState("");
+  const [assignLessonId, setAssignLessonId] = useState("");
+  const [assignType, setAssignType] = useState<"lesson" | "chapter" | "midterm" | "final">("lesson");
 
   // Grading submission state
   const [activeSubmissionId, setActiveSubmissionId] = useState<string | null>(null);
@@ -415,7 +418,9 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
         title: assignTitle,
         description: assignDesc,
         deadline: assignDeadline,
-        maxScore: Number(assignMaxScore)
+        maxScore: Number(assignMaxScore),
+        lessonId: assignLessonId || undefined,
+        type: assignType
       }) as Assignment;
 
       if (updateStore) {
@@ -436,6 +441,8 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
       setAssignDeadline("");
       setAssignMaxScore(100);
       setAssignAttachmentUrl("");
+      setAssignLessonId("");
+      setAssignType("lesson");
       setShowAssignModal(false);
       triggerToast("Course Assignment challenge configured.");
     } catch (err: any) {
@@ -536,6 +543,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     showQuizModal, setShowQuizModal, quizTitle, setQuizTitle, quizPassing, setQuizPassing, quizLimit, setQuizLimit, quizAttempts, setQuizAttempts, quizDeadline, setQuizDeadline, quizAttachmentUrl, setQuizAttachmentUrl,
     showQuestionModal, setShowQuestionModal, qText, setQText, qType, setQType, qOptions, setQOptions, qCorrect, setQCorrect,
     showAssignModal, setShowAssignModal, assignTitle, setAssignTitle, assignDesc, setAssignDesc, assignDeadline, setAssignDeadline, assignMaxScore, setAssignMaxScore, assignAttachmentUrl, setAssignAttachmentUrl,
+    assignLessonId, setAssignLessonId, assignType, setAssignType,
     activeSubmissionId, setActiveSubmissionId, gradingScore, setGradingScore, gradingFeedback, setGradingFeedback,
     store, currentUser, myCourses, myCourseIds, handleOpenCreateCourse, handleOpenEditCourse, handleSaveCourse,
     handleSubmitCourseForApproval, handleAddLessonSubmit, handleAddQuizSubmit, handleAddQuestionSubmit, handleAddAssignmentSubmit,
@@ -832,6 +840,156 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           )}
         </div>
       </div>
+      
+      {/* MODAL 5: CREATE ASSIGNMENT FORM (Shared in Parent) */}
+      {showAssignModal && (
+        <ModalPortal>
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto font-sans">
+          <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-md shadow-2xl relative text-xs text-white">
+            <button 
+              onClick={() => setShowAssignModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h3 className="text-lg font-display font-medium text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3">
+              <FileText className="h-5 w-5 text-indigo-400" /> Tạo Thử thách Bài tự luận Khóa học
+            </h3>
+
+            <form onSubmit={handleAddAssignmentSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Chọn Khóa học tương ứng</label>
+                <select
+                  required
+                  value={selectedCourseId || ""}
+                  onChange={(e) => {
+                    setSelectedCourseId(e.target.value);
+                    setAssignLessonId("");
+                  }}
+                  className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 font-sans"
+                >
+                  <option value="" disabled>-- Chọn khóa học --</option>
+                  {myCourses.map((c: any) => (
+                    <option key={c.id} value={c.id} className="bg-slate-900">
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Tiêu đề Thử thách bài tập</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Thiết lập Express Routing Controller"
+                  value={assignTitle}
+                  onChange={(e) => setAssignTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Hạn chót Hoàn thành</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={assignDeadline}
+                    onChange={(e) => setAssignDeadline(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Điểm tối đa</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={100}
+                    value={assignMaxScore}
+                    onChange={(e) => setAssignMaxScore(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Loại bài tập</label>
+                  <select
+                    value={assignType}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setAssignType(val);
+                      if (val !== "lesson") {
+                        setAssignLessonId("");
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 font-sans"
+                  >
+                    <option value="lesson">Bài tập buổi học</option>
+                    <option value="chapter">Bài tập cuối chương</option>
+                    <option value="midterm">Bài tập giữa kỳ</option>
+                    <option value="final">Bài tập cuối kỳ</option>
+                  </select>
+                </div>
+
+                {assignType === "lesson" && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70">Buổi học áp dụng</label>
+                    <select
+                      value={assignLessonId}
+                      onChange={(e) => setAssignLessonId(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 font-sans"
+                    >
+                      <option value="">-- Chọn buổi học --</option>
+                      {(store.lessons || [])
+                        .filter(l => l.courseId === selectedCourseId)
+                        .sort((a, b) => a.order - b.order)
+                        .map(l => (
+                          <option key={l.id} value={l.id}>
+                            Buổi {l.order}: {l.title}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-white/70">Mô tả / Yêu cầu chi tiết</label>
+                <textarea
+                  required
+                  placeholder="Dán các định dạng file hoặc yêu cầu nộp sản phẩm..."
+                  value={assignDesc}
+                  onChange={(e) => setAssignDesc(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/20 text-white h-24 max-h-32 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2 bg-transparent text-white/60 hover:text-white transition cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-4.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
+                >
+                  Tạo Thử thách
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        </ModalPortal>
+      )}
     </div>
   );
 }

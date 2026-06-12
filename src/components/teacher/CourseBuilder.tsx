@@ -620,6 +620,55 @@ export default function CourseBuilder(props: ComponentProps) {
                             </div>
                           </div>
 
+                          {/* Card: Assignments of this lesson */}
+                          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                              <div>
+                                <span className="text-xs font-semibold text-white block">Bài tập của buổi học</span>
+                                <span className="text-[10px] text-white/40">Giao bài tập tự luận cho buổi học này</span>
+                              </div>
+                              {currentUser.role === "teacher" && (
+                                <button
+                                  onClick={() => {
+                                    if (props.setAssignType) props.setAssignType("lesson");
+                                    if (props.setAssignLessonId) props.setAssignLessonId(selectedClassLesson.id);
+                                    if (props.setSelectedCourseId) props.setSelectedCourseId(activeCourse.id);
+                                    setShowAssignModal(true);
+                                  }}
+                                  className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-[10px] text-indigo-300 font-bold rounded-lg border border-indigo-500/20 cursor-pointer"
+                                >
+                                  + Thêm bài tập
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="space-y-2.5">
+                              {(() => {
+                                const lessonAssignments = courseAssignments.filter(
+                                  (a: any) => a.lessonId === selectedClassLesson.id
+                                );
+
+                                if (lessonAssignments.length === 0) {
+                                  return (
+                                    <p className="text-[11px] text-white/40">Chưa có bài tập tự luận nào cho buổi học này.</p>
+                                  );
+                                }
+
+                                return lessonAssignments.map((a: any) => (
+                                  <div key={a.id} className="text-xs flex items-center justify-between bg-black/25 p-3 rounded-xl border border-white/5 font-sans">
+                                    <div className="space-y-1 min-w-0 flex-1 pr-2">
+                                      <span className="font-bold text-white block truncate">{a.title}</span>
+                                      <span className="text-[10px] text-white/50 block">Hạn nộp: {new Date(a.deadline).toLocaleDateString("vi-VN")}</span>
+                                    </div>
+                                    <span className="text-[10px] font-mono text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 shrink-0">
+                                      {a.maxScore} đ
+                                    </span>
+                                  </div>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+
                           <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
                             <div className="flex items-center justify-between border-b border-white/10 pb-3">
                               <div>
@@ -906,14 +955,30 @@ export default function CourseBuilder(props: ComponentProps) {
                     </div>
 
                     <div className="space-y-2.5">
-                      {courseAssignments.map(a => (
-                        <div key={a.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5">
-                          <span className="truncate text-white max-w-[140px] font-medium">{a.title}</span>
-                          <span className="text-[10px] font-mono text-indigo-200">
-                            Tối đa: {a.maxScore} đ
-                          </span>
-                        </div>
-                      ))}
+                      {courseAssignments.map(a => {
+                        let typeLabel = "";
+                        if (a.type === "lesson" && a.lessonId) {
+                          const lesson = lessons.find((l: any) => l.id === a.lessonId);
+                          typeLabel = `[Buổi ${lesson?.order || ""}]`;
+                        } else if (a.type === "chapter") {
+                          typeLabel = "[Cuối chương]";
+                        } else if (a.type === "midterm") {
+                          typeLabel = "[Giữa kỳ]";
+                        } else if (a.type === "final") {
+                          typeLabel = "[Cuối kỳ]";
+                        }
+                        return (
+                          <div key={a.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5 font-sans">
+                            <div className="flex flex-col min-w-0 pr-2 flex-1">
+                              <span className="truncate text-white font-medium">{a.title}</span>
+                              {typeLabel && <span className="text-[9px] text-white/45 mt-0.5">{typeLabel}</span>}
+                            </div>
+                            <span className="text-[10px] font-mono text-indigo-200 shrink-0">
+                              Tối đa: {a.maxScore} đ
+                            </span>
+                          </div>
+                        );
+                      })}
 
                       {courseAssignments.length === 0 && (
                         <p className="text-[11px] text-white/40">Chưa có thử thách bài tập tự luận nào được tạo.</p>

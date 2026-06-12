@@ -134,9 +134,12 @@ export function assignmentFromRow(row: any): Assignment {
     description: row.description,
     deadline: row.deadline,
     maxScore: Number(row.max_score),
-    attachmentUrl: row.attachment_url || undefined
+    attachmentUrl: row.attachment_url || undefined,
+    lessonId: row.lesson_id || undefined,
+    type: row.type || undefined
   };
 }
+
 
 export function submissionFromRow(row: any): Submission {
   return {

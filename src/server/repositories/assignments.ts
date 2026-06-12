@@ -7,8 +7,18 @@ export const assignmentsRepository = {
   async create(db: Queryable, input: Omit<Assignment, "id">) {
     const assignment = { ...input, id: generateId("assign") };
     await db.query(
-      "INSERT INTO assignments (id, course_id, title, description, deadline, max_score, attachment_url) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-      [assignment.id, assignment.courseId, assignment.title, assignment.description, assignment.deadline, assignment.maxScore, assignment.attachmentUrl]
+      "INSERT INTO assignments (id, course_id, title, description, deadline, max_score, attachment_url, lesson_id, type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+      [
+        assignment.id,
+        assignment.courseId,
+        assignment.title,
+        assignment.description,
+        assignment.deadline,
+        assignment.maxScore,
+        assignment.attachmentUrl || null,
+        assignment.lessonId || null,
+        assignment.type || null
+      ]
     );
     return assignment;
   },

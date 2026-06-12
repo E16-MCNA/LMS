@@ -545,96 +545,143 @@ export default function AttendanceManager({
       )}
       
       {/* Course & Session selectors */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-950/30 backdrop-blur-md border border-white/10 p-5 rounded-3xl text-xs shadow-xl transition-all duration-200 items-end">
-        <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
-          <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-            1. Lựa chọn môn học / lớp học phần:
-          </label>
-          <div className="flex gap-2">
-            {currentUser.role !== "teacher" && (
-            <input
-              type="text"
-              placeholder="Lọc môn..."
-              value={courseFilterText}
-              onChange={(e) => setCourseFilterText(e.target.value)}
-              disabled={lockSelectors}
-              className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            )}
-            <select
-              value={selectedCourseId}
-              onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
-              disabled={lockSelectors}
-              className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">-- Click chọn lớp môn học --</option>
-              {filteredCourses.map(c => (
-                <option key={c.id} value={c.id} className="bg-slate-900">{c.title} ({c.category})</option>
-              ))}
-            </select>
+      <div className="bg-slate-950/30 backdrop-blur-md border border-white/10 p-5 rounded-3xl text-xs shadow-xl transition-all duration-200">
+        {lockSelectors ? (
+          <div className="space-y-3">
+            {(() => {
+              const lockedCourse = store.courses.find(c => c.id === selectedCourseId);
+              const lockedSection = (store.courseSections || []).find(s => s.id === selectedSectionId);
+              return lockedCourse ? (
+                <div className="text-[11px] text-white/50 bg-white/5 border border-white/5 rounded-xl px-3 py-2 flex flex-wrap gap-2 items-center">
+                  <span className="font-semibold text-white/70">Đang chọn:</span>
+                  <span className="bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-500/20 font-sans">{lockedCourse.title}</span>
+                  {lockedSection && (
+                    <span className="bg-violet-500/20 text-violet-300 px-2 py-0.5 rounded-md border border-violet-500/20 font-mono">Lớp: {lockedSection.sectionCode}</span>
+                  )}
+                </div>
+              ) : null;
+            })()}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <div className="col-span-1 sm:col-span-8 space-y-1.5">
+                <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                  Chọn đợt buổi học:
+                </label>
+                <select
+                  value={activeSessionId}
+                  onChange={(e) => setActiveSessionId(e.target.value)}
+                  className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
+                >
+                  <option value="">-- Mở bảng học kỳ --</option>
+                  {sessions.map(s => (
+                    <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-1 sm:col-span-4">
+                <button
+                  onClick={() => setShowCreateSession(true)}
+                  className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Tạo buổi / Gửi link 🚀</span>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-
-        {selectedCourseId && (
-          <>
-            <div className="col-span-1 md:col-span-3 space-y-1.5">
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
               <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
-                2. Chọn lớp học phần:
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                1. Lựa chọn môn học / lớp học phần:
               </label>
               <div className="flex gap-2">
                 {currentUser.role !== "teacher" && (
                 <input
                   type="text"
-                  placeholder="Lọc lớp..."
-                  value={sectionFilterText}
-                  onChange={(e) => setSectionFilterText(e.target.value)}
+                  placeholder="Lọc môn..."
+                  value={courseFilterText}
+                  onChange={(e) => setCourseFilterText(e.target.value)}
                   disabled={lockSelectors}
-                  className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 )}
                 <select
-                  value={selectedSectionId}
-                  onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}
+                  value={selectedCourseId}
+                  onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
                   disabled={lockSelectors}
-                  className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">-- Chọn lớp --</option>
-                  {filteredCourseSections.map((section: any) => (
-                    <option key={section.id} value={section.id} className="bg-slate-900">{section.sectionCode}</option>
+                  <option value="">-- Click chọn lớp môn học --</option>
+                  {filteredCourses.map(c => (
+                    <option key={c.id} value={c.id} className="bg-slate-900">{c.title} ({c.category})</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="col-span-1 md:col-span-3 space-y-1.5">
-              <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-                3. Chọn đợt buổi học:
-              </label>
-              <select
-                value={activeSessionId}
-                onChange={(e) => setActiveSessionId(e.target.value)}
-                className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
-              >
-                <option value="">-- Mở bảng học kỳ --</option>
-                {sessions.map(s => (
-                  <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="col-span-1 md:col-span-2">
-              <button
-                onClick={() => setShowCreateSession(true)}
-                className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
-              >
-                <Plus className="h-4 w-4 shrink-0" />
-                <span className="truncate">Tạo buổi / Gửi link 🚀</span>
-              </button>
-            </div>
-          </>
+            {selectedCourseId && (
+              <>
+                <div className="col-span-1 md:col-span-3 space-y-1.5">
+                  <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                    2. Chọn lớp học phần:
+                  </label>
+                  <div className="flex gap-2">
+                    {currentUser.role !== "teacher" && (
+                    <input
+                      type="text"
+                      placeholder="Lọc lớp..."
+                      value={sectionFilterText}
+                      onChange={(e) => setSectionFilterText(e.target.value)}
+                      disabled={lockSelectors}
+                      className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    )}
+                    <select
+                      value={selectedSectionId}
+                      onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}
+                      disabled={lockSelectors}
+                      className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">-- Chọn lớp --</option>
+                      {filteredCourseSections.map((section: any) => (
+                        <option key={section.id} value={section.id} className="bg-slate-900">{section.sectionCode}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="col-span-1 md:col-span-3 space-y-1.5">
+                  <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                    3. Chọn đợt buổi học:
+                  </label>
+                  <select
+                    value={activeSessionId}
+                    onChange={(e) => setActiveSessionId(e.target.value)}
+                    className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
+                  >
+                    <option value="">-- Mở bảng học kỳ --</option>
+                    {sessions.map(s => (
+                      <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="col-span-1 md:col-span-2">
+                  <button
+                    onClick={() => setShowCreateSession(true)}
+                    className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Tạo buổi / Gửi link 🚀</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 

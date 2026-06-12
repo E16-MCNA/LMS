@@ -504,14 +504,31 @@ export function backfillMegaDemoData(store: LMSDataStore) {
 
     const hasAssignment = store.assignments.some(a => a.courseId === course.id);
     if (!hasAssignment) {
+      // 1. Final term assignment
       store.assignments.push({
         id: `assign_${course.id}`,
         courseId: course.id,
         title: `Bài tập lớn thực hành cuối kỳ: ${course.title}`,
         description: "Sinh viên hoàn thành báo cáo mã nguồn, đẩy lên GitHub cá nhân và viết mô tả giải pháp chi tiết vào ô nộp bài.",
         deadline: new Date("2026-07-15T23:59:59Z").toISOString(),
-        maxScore: 100
+        maxScore: 100,
+        type: "final"
       });
+
+      // 2. Lesson specific assignment if lessons exist
+      const courseLessons = store.lessons.filter(l => l.courseId === course.id);
+      if (courseLessons.length > 0) {
+        store.assignments.push({
+          id: `assign_lesson_${course.id}`,
+          courseId: course.id,
+          title: `Bài tập tự luận: Luyện tập buổi học số 1`,
+          description: "Hoàn thành các bài tập thực hành nhỏ đã nêu trong phần nội dung lý thuyết của Buổi học số 1.",
+          deadline: new Date("2026-06-30T23:59:59Z").toISOString(),
+          maxScore: 100,
+          lessonId: courseLessons[0].id,
+          type: "lesson"
+        });
+      }
     }
   });
 

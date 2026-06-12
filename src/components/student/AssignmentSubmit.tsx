@@ -184,6 +184,38 @@ export default function AssignmentSubmit(props: ComponentProps) {
                         <div className="space-y-2 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-mono font-bold text-indigo-300 bg-indigo-500/10 py-0.5 px-2.5 rounded-full border border-indigo-500/20 uppercase">{courseTitle}</span>
+                            {(() => {
+                              if (a.type === "lesson" && a.lessonId) {
+                                const lesson = store.lessons.find((l: any) => l.id === a.lessonId);
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-violet-300 bg-violet-500/10 py-0.5 px-2.5 rounded-full border border-violet-500/20 uppercase">
+                                    Buổi {lesson?.order || ""}: {lesson?.title || "Bài học"}
+                                  </span>
+                                );
+                              }
+                              if (a.type === "chapter") {
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 py-0.5 px-2.5 rounded-full border border-amber-500/20 uppercase">
+                                    Cuối chương
+                                  </span>
+                                );
+                              }
+                              if (a.type === "midterm") {
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/10 py-0.5 px-2.5 rounded-full border border-rose-500/20 uppercase">
+                                    Giữa kỳ
+                                  </span>
+                                );
+                              }
+                              if (a.type === "final") {
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/10 py-0.5 px-2.5 rounded-full border border-emerald-500/20 uppercase">
+                                    Cuối kỳ
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                             <span className="text-[10px] font-mono text-white/40">Hạn nộp: {new Date(a.deadline).toLocaleDateString("vi-VN")}</span>
                           </div>
 
@@ -246,8 +278,40 @@ export default function AssignmentSubmit(props: ComponentProps) {
                     <div key={submission.id} className="bg-white/[0.03] border border-white/10 p-5 rounded-2xl space-y-3">
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                         <div className="space-y-2 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
+                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-mono font-bold text-cyan-200 bg-cyan-500/10 py-0.5 px-2.5 rounded-full border border-cyan-500/20 uppercase">{courseTitle}</span>
+                            {(() => {
+                              if (assignment.type === "lesson" && assignment.lessonId) {
+                                const lesson = store.lessons.find((l: any) => l.id === assignment.lessonId);
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-violet-300 bg-violet-500/10 py-0.5 px-2.5 rounded-full border border-violet-500/20 uppercase">
+                                    Buổi {lesson?.order || ""}: {lesson?.title || "Bài học"}
+                                  </span>
+                                );
+                              }
+                              if (assignment.type === "chapter") {
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/10 py-0.5 px-2.5 rounded-full border border-amber-500/20 uppercase">
+                                    Cuối chương
+                                  </span>
+                                );
+                              }
+                              if (assignment.type === "midterm") {
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-500/10 py-0.5 px-2.5 rounded-full border border-rose-500/20 uppercase">
+                                    Giữa kỳ
+                                  </span>
+                                );
+                              }
+                              if (assignment.type === "final") {
+                                return (
+                                  <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-500/10 py-0.5 px-2.5 rounded-full border border-emerald-500/20 uppercase">
+                                    Cuối kỳ
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
                             <span className="text-[10px] font-mono text-white/45">Đã nộp: {new Date(submission.submittedAt).toLocaleString("vi-VN")}</span>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeof submission.score === "number" ? "bg-emerald-200 text-emerald-950 border-emerald-100" : "bg-amber-500/10 text-amber-200 border-amber-300/20"}`}>
                               {typeof submission.score === "number" ? `${submission.score}/${assignment.maxScore} điểm` : "Chờ chấm"}

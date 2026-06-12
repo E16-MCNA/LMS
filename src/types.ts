@@ -105,7 +105,10 @@ export interface Assignment {
   deadline: string;
   maxScore: number;
   attachmentUrl?: string;
+  lessonId?: string;
+  type?: "lesson" | "chapter" | "midterm" | "final";
 }
+
 
 export interface Submission {
   id: string;

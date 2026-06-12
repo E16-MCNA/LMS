@@ -104,14 +104,13 @@ export default function MyLearningWorkspace(props: ComponentProps) {
       // Lesson index matches the session index
       const lessonsInSession = courseLessons.filter((_, lIdx) => lIdx === idx);
       
-      // Distribute assignments cleanly:
-      // If only 1 assignment, assign it to the last session.
-      // If multiple, distribute them using modulo arithmetic.
-      const assignmentsInSession = courseAssignments.filter((_, aIdx) => {
-        if (courseAssignments.length === 1) {
-          return sessionNum === numSessions;
+      // Distribute assignments cleanly based on their real lessonId
+      const assignmentsInSession = courseAssignments.filter((assign) => {
+        if (assign.lessonId) {
+          return lessonsInSession.some(l => l.id === assign.lessonId);
         }
-        return (aIdx % numSessions) === idx;
+        // Place general / non-lesson assignments in the last session so they can still be viewed
+        return sessionNum === numSessions;
       });
       const attendanceSession = courseSessionsData[idx];
       
@@ -283,8 +282,8 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                 </button>
                 <div className="h-6 w-px bg-white/10 hidden sm:block shrink-0" />
                 <div>
-                  <span className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-widest block">LỚP HỌC TRỰC TUYẾN</span>
-                  <h4 className="text-lg font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-indigo-300 truncate max-w-sm md:max-w-md mt-0.5">
+                  <span className="text-[11px] font-mono font-bold text-indigo-700 uppercase tracking-widest block">LỚP HỌC TRỰC TUYẾN</span>
+                  <h4 className="text-xl font-display font-extrabold text-indigo-950 truncate max-w-sm md:max-w-md mt-0.5">
                     {currentLearningCourse.title}
                   </h4>
                 </div>
@@ -429,8 +428,19 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                                     >
                                       <FileText className={`h-5 w-5 flex-shrink-0 mt-0.5 ${isSelected ? "text-indigo-400" : "text-white/30"}`} />
                                       
-                                      <div className="flex-1 min-w-0 space-y-1.5">
-                                        <p className="font-medium leading-normal break-words">{assign.title}</p>
+                                      <div className="flex-1 min-w-0 space-y-1.5 font-sans">
+                                        <div>
+                                          {assign.type && assign.type !== "lesson" && (
+                                            <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border mr-1.5 ${
+                                              assign.type === "final" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                              assign.type === "midterm" ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
+                                              "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                            }`}>
+                                              {assign.type === "final" ? "Cuối kỳ" : assign.type === "midterm" ? "Giữa kỳ" : "Cuối chương"}
+                                            </span>
+                                          )}
+                                          <p className="font-medium leading-normal break-words inline">{assign.title}</p>
+                                        </div>
                                         <div className="flex items-center justify-between gap-2 pt-0.5">
                                           <span className="text-[9px] font-mono text-white/30">Hạn: {new Date(assign.deadline).toLocaleDateString("vi-VN")}</span>
                                           <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-bold truncate shrink-0 ${statusBg}`}>
