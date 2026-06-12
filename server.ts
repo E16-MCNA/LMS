@@ -117,6 +117,7 @@ import { sendPasswordResetLinkEmail } from "./src/server/emailProvisioning/email
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT || 3000);
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -497,7 +498,8 @@ function requireCsrf(req: AuthRequest, res: express.Response, next: express.Next
   const cookieToken = extractCookie(req, "e16_lms_csrf");
   const headerToken = req.header("X-CSRF-Token");
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-    return res.status(403).json({ error: "Invalid CSRF token." });
+    console.warn(`[CSRF] Rejected ${req.method} ${req.originalUrl} — cookie=${cookieToken ? "present" : "MISSING"}, header=${headerToken ? "present" : "MISSING"}, match=${cookieToken === headerToken}`);
+    return res.status(403).json({ error: "Invalid CSRF token.", debug: { hasCookie: !!cookieToken, hasHeader: !!headerToken } });
   }
   next();
 }
