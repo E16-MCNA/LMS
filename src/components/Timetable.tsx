@@ -160,9 +160,62 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
   const activeWeekStartDate = getSpecificDateForDay(DAYS_OF_WEEK[0], activeSemesterId);
   const activeWeekEndDate = getSpecificDateForDay(DAYS_OF_WEEK[6], activeSemesterId);
   const visibleWeekDates = new Set(DAYS_OF_WEEK.map(day => getSpecificDateForDay(day, activeSemesterId)));
+
+  const semestersList = store.semesters || [];
+  const activeSem = semestersList.find(s => s.id === activeSemesterId);
+  const weeksList = React.useMemo(() => {
+    if (!activeSem || !activeSem.startDate || !activeSem.endDate) return [];
+    const start = new Date(String(activeSem.startDate).slice(0, 10));
+    const end = new Date(String(activeSem.endDate).slice(0, 10));
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+    
+    // Get Monday of start date week
+    const startDayIndex = start.getDay() === 0 ? 6 : start.getDay() - 1;
+    const startMonday = new Date(start);
+    startMonday.setDate(start.getDate() - startDayIndex);
+
+    // Get Monday of end date week
+    const endDayIndex = end.getDay() === 0 ? 6 : end.getDay() - 1;
+    const endMonday = new Date(end);
+    endMonday.setDate(end.getDate() - endDayIndex);
+
+    const diffTime = endMonday.getTime() - startMonday.getTime();
+    const totalWeeks = Math.max(1, Math.round(diffTime / (7 * 24 * 60 * 60 * 1000)) + 1);
+
+    const list = [];
+    for (let i = 0; i < totalWeeks; i++) {
+      const wStart = new Date(startMonday);
+      wStart.setDate(startMonday.getDate() + i * 7);
+      const wEnd = new Date(wStart);
+      wEnd.setDate(wStart.getDate() + 6);
+
+      const label = `Tuần ${i + 1} (${formatDateInput(wStart)} - ${formatDateInput(wEnd)})`;
+      list.push({ index: i, start: wStart, label });
+    }
+    return list;
+  }, [activeSem]);
+
+  const currentMondayStr = getSpecificDateForDay(DAYS_OF_WEEK[0], activeSemesterId);
+  const currentWeekIndex = weeksList.findIndex(w => formatDateInput(w.start) === currentMondayStr);
+
   const isSlotVisibleInCurrentWeek = (slot: { specificDate?: string }) => {
     const slotDate = slot.specificDate ? String(slot.specificDate).slice(0, 10) : "";
-    return !slotDate || visibleWeekDates.has(slotDate);
+    
+    // If it's a date-specific slot, it must match the current week's dates
+    if (slotDate) {
+      return visibleWeekDates.has(slotDate);
+    }
+    
+    // If it's a weekly recurring slot, it should only be visible within the semester dates
+    const semesters = store.semesters || [];
+    const activeSem = semesters.find(s => s.id === activeSemesterId);
+    if (activeSem && activeSem.startDate && activeSem.endDate) {
+      const semStart = String(activeSem.startDate).slice(0, 10);
+      const semEnd = String(activeSem.endDate).slice(0, 10);
+      return activeWeekStartDate <= semEnd && semStart <= activeWeekEndDate;
+    }
+    
+    return true;
   };
 
   const getLocalDateString = (date = new Date()) => {
@@ -495,7 +548,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
             dayOfWeek: day,
             startTime: slot.start,
             endTime: slot.end,
-            specificDate: getSpecificDateForDay(day, sec.semesterId)
+            specificDate: ""
           };
         }
         return s;
@@ -503,7 +556,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
     } else {
       // Dragging a pending slot from the left queue sidebar.
       // Overwrite the schedule since it wasn't active on the timetable.
-      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101", specificDate: getSpecificDateForDay(day, sec.semesterId) }];
+      newSlots = [{ dayOfWeek: day, startTime: slot.start, endTime: slot.end, room: "Phòng A101", specificDate: "" }];
     }
 
     // Run overlap logic against other active sections
@@ -658,26 +711,49 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
             ))}
           </select>
 
-          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-0.5">
-            <button
-              type="button"
-              onClick={() => setWeekOffset(prev => prev - 1)}
-              className="p-1.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
-              title="Tuần trước"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="px-2 text-[10px] font-mono text-cyan-200 whitespace-nowrap">
-              {activeWeekStartDate} - {activeWeekEndDate}
+          <div className="flex items-center gap-2">
+            {weeksList.length > 0 && (
+              <select
+                value={currentWeekIndex !== -1 ? currentWeekIndex : ""}
+                onChange={(e) => {
+                  const idx = Number(e.target.value);
+                  if (Number.isInteger(idx) && weeksList[idx]) {
+                    const targetMonday = weeksList[idx].start;
+                    const anchorMonday = getWeekStart(getSemesterAnchorDate(activeSemesterId), 0);
+                    const offset = Math.round((targetMonday.getTime() - anchorMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+                    setWeekOffset(offset);
+                  }
+                }}
+                className="px-3 py-1.5 bg-black/40 text-white border border-white/10 rounded-xl text-xs focus:outline-none max-w-[150px] sm:max-w-none"
+              >
+                <option value="" disabled>-- Chọn Tuần --</option>
+                {weeksList.map(w => (
+                  <option key={w.index} value={w.index}>{w.label}</option>
+                ))}
+              </select>
+            )}
+
+            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-0.5">
+              <button
+                type="button"
+                onClick={() => setWeekOffset(prev => prev - 1)}
+                className="p-1.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                title="Tuần trước"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <div className="px-2 text-[10px] font-mono text-cyan-200 whitespace-nowrap">
+                {activeWeekStartDate} - {activeWeekEndDate}
+              </div>
+              <button
+                type="button"
+                onClick={() => setWeekOffset(prev => prev + 1)}
+                className="p-1.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                title="Tuần sau"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setWeekOffset(prev => prev + 1)}
-              className="p-1.5 rounded-lg text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
-              title="Tuần sau"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
           </div>
 
           {weekOffset !== 0 && (
