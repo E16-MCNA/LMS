@@ -99,7 +99,13 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
       type: noteType,
       content: noteContent.trim(),
       shareWithParent: shareWithParent
+    }).then(() => {
+      setNoteContent("");
+      onRefreshData();
+      showToast("Thêm nhận xét cố vấn thành công!");
+      return;
     }).then((savedNote: any) => {
+      if (!savedNote) return;
       const freshStore = AppStore.get();
       const newNote: AdvisorNote & { shareWithParent?: boolean } = {
         id: savedNote.id || generateId("adv_note"),
@@ -169,6 +175,11 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
       
       // Call backend API to persist notes in PostgreSQL securely
       api.updateStudentNotes(selectedStudentId, updatedNotes).then(() => {
+        setSuggestedPlanText("");
+        onRefreshData();
+        showToast("Đã lưu kế hoạch đăng ký đề xuất!");
+        return;
+
         // Save semester suggested plan in profile notes locally
         profile.notes = updatedNotes;
         

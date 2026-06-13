@@ -104,6 +104,7 @@ import { leaveRequestsRepository } from "./src/server/repositories/leaveRequests
 import { graduationRepository } from "./src/server/repositories/graduation";
 import { scholarshipsRepository } from "./src/server/repositories/scholarships";
 import { notificationsRepository } from "./src/server/repositories/notifications";
+import { notifyStudent, notifyRole } from "./src/server/notify";
 import { attendanceRepository } from "./src/server/repositories/attendance";
 import { forumRepository } from "./src/server/repositories/forum";
 import { eventBus } from "./src/server/eventBus";
@@ -1649,6 +1650,15 @@ app.post("/api/courses/:id/submit", requireAuth, requireRole(["teacher", "manage
   if (!course) return res.status(404).json({ error: "Course not found." });
   invalidateStoreCache();
   await audit(req, req.user!.role === "teacher" ? "submit_course_for_review" : "publish_course_direct", course.id, course.title);
+
+  if (nextStatus === "pending") {
+    const teacherName = req.user!.name || "Giáo viên";
+    const message = `Giảng viên ${teacherName} đã gửi yêu cầu phê duyệt khóa học mới: "${course.title}".`;
+    await notifyRole(pool, "admin", message, { relatedEntityType: "course", relatedEntityId: course.id });
+    await notifyRole(pool, "manager", message, { relatedEntityType: "course", relatedEntityId: course.id });
+    await notifyRole(pool, "super_admin", message, { relatedEntityType: "course", relatedEntityId: course.id });
+  }
+
   res.json(course);
 }));
 app.post("/api/courses/:id/publish", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
@@ -1656,6 +1666,12 @@ app.post("/api/courses/:id/publish", requireAuth, requireRole(["manager", "admin
   if (!course) return res.status(404).json({ error: "Course not found." });
   invalidateStoreCache();
   await audit(req, "approve_course", course.id, course.title);
+
+  if (course.teacherId) {
+    const message = `Khóa học "${course.title}" của bạn đã được phê duyệt và xuất bản.`;
+    await notifyStudent(pool, course.teacherId, message, { relatedEntityType: "course", relatedEntityId: course.id });
+  }
+
   res.json(course);
 }));
 app.post("/api/courses/:id/reject", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.rejectCourse), asyncHandler(async (req, res) => {
@@ -1663,6 +1679,12 @@ app.post("/api/courses/:id/reject", requireAuth, requireRole(["manager", "admin"
   if (!course) return res.status(404).json({ error: "Course not found." });
   invalidateStoreCache();
   await audit(req, "reject_course", course.id, req.body.rejectionReason);
+
+  if (course.teacherId) {
+    const message = `Khóa học "${course.title}" của bạn đã bị từ chối phê duyệt. Lý do: ${req.body.rejectionReason}`;
+    await notifyStudent(pool, course.teacherId, message, { relatedEntityType: "course", relatedEntityId: course.id });
+  }
+
   res.json(course);
 }));
 

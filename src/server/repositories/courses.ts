@@ -26,6 +26,32 @@ export const coursesRepository = {
     return course;
   },
 
+  async updateDetails(db: Queryable, id: string, input: Pick<Course, "title" | "description" | "category"> & Partial<Pick<Course, "thumbnail" | "price" | "level" | "tags">>) {
+    const row = (await db.query(
+      `UPDATE courses
+       SET title = $1,
+           description = $2,
+           category = $3,
+           thumbnail = $4,
+           price = $5,
+           level = $6,
+           tags_json = $7
+       WHERE id = $8
+       RETURNING *`,
+      [
+        input.title,
+        input.description,
+        input.category,
+        input.thumbnail || null,
+        input.price || 0,
+        input.level || null,
+        JSON.stringify(input.tags || []),
+        id
+      ]
+    )).rows[0];
+    return row ? courseFromRow(row) : null;
+  },
+
   async setStatus(db: Queryable, id: string, status: Course["status"], rejectionReason?: string) {
     const row = (await db.query("UPDATE courses SET status = $1, rejection_reason = $2 WHERE id = $3 RETURNING *", [status, rejectionReason || null, id])).rows[0];
     return row ? courseFromRow(row) : null;

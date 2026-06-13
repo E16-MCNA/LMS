@@ -55,6 +55,18 @@ const formatDateOnly = (value?: string | null) => {
   return dateOnly;
 };
 
+const appendAuditLog = (storeData: LMSDataStore, userId: string, action: string, target: string, detail: string) => {
+  if (!storeData.auditLogs) storeData.auditLogs = [];
+  storeData.auditLogs.push({
+    id: generateId("log"),
+    userId,
+    action,
+    target,
+    detail,
+    createdAt: new Date().toISOString()
+  });
+};
+
 export default function AcademicManager({ store, currentUser, onRefreshData, triggerToast, initialTab, updateStore }: AcademicManagerProps) {
   const [activeTab, setActiveTab] = useState<"years" | "semesters" | "departments" | "programs">(initialTab ?? "years");
 
@@ -67,25 +79,25 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
         updateStore((draft) => {
           Object.assign(draft, next);
         });
-        onRefreshData();
+        await Promise.resolve(onRefreshData());
         return true;
       } catch (err: any) {
         console.error("Lỗi đồng bộ dữ liệu SIS:", err);
         triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
         // Rollback to server state
-        onRefreshData();
+        await Promise.resolve(onRefreshData());
         return false;
       }
     } else {
       // Fallback if updateStore is not provided
       try {
         await AppStore.save(next);
-        onRefreshData();
+        await Promise.resolve(onRefreshData());
         return true;
       } catch (err: any) {
         console.error("Lỗi đồng bộ dữ liệu SIS:", err);
         triggerToast(err.message || "Đồng bộ dữ liệu thất bại. Có thể do ràng buộc dữ liệu liên quan.");
-        onRefreshData();
+        await Promise.resolve(onRefreshData());
         return false;
       }
     }
@@ -206,7 +218,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     const saved = await persistFromSnapshot((storeData) => {
       if (!storeData.academicYears) storeData.academicYears = [];
       storeData.academicYears.push(newYear);
-      AppStore.log(currentUser.id, "add_academic_year", newYear.name, "Khởi tạo năm học mới.");
+      appendAuditLog(storeData, currentUser.id, "add_academic_year", newYear.name, "Khởi tạo năm học mới.");
     });
     if (!saved) return;
     triggerToast(`Đã thêm năm học: ${newYear.name}`);
@@ -228,7 +240,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
         isCurrent: currentInYear ? s.id === currentInYear.id : false
       }));
       const chosen = (storeData.academicYears || []).find(y => y.id === id);
-      AppStore.log(currentUser.id, "set_current_academic_year", chosen?.name || id, "Thay đổi năm học hiện đại của SIS.");
+      appendAuditLog(storeData, currentUser.id, "set_current_academic_year", chosen?.name || id, "Thay đổi năm học hiện đại của SIS.");
     });
     if (!saved) return;
     triggerToast("Đã chuyển đổi năm học hiện tại.");
@@ -268,7 +280,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     const saved = await persistFromSnapshot((storeData) => {
       if (!storeData.semesters) storeData.semesters = [];
       storeData.semesters.push(newSem);
-      AppStore.log(currentUser.id, "add_semester", newSem.name, "Liên kết học kỳ mới vào hệ thống.");
+      appendAuditLog(storeData, currentUser.id, "add_semester", newSem.name, "Liên kết học kỳ mới vào hệ thống.");
     });
     if (!saved) return;
     triggerToast(`Đã lưu học kỳ: ${newSem.name}`);
@@ -348,7 +360,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
           isCurrent: y.id === chosen.academicYearId
         }));
       }
-      AppStore.log(currentUser.id, "set_current_semester", chosen?.name || id, "Thay đổi học kỳ đang hoạt động.");
+      appendAuditLog(storeData, currentUser.id, "set_current_semester", chosen?.name || id, "Thay đổi học kỳ đang hoạt động.");
     });
     if (!saved) return;
     triggerToast("Đã chọn học kỳ đang hoạt động.");
@@ -414,7 +426,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     const saved = await persistFromSnapshot((storeData) => {
       if (!storeData.departments) storeData.departments = [];
       storeData.departments.push(newDept);
-      AppStore.log(currentUser.id, "add_department", newDept.name, `Đăng ký thành lập khoa chuyên môn code: ${newDept.code}`);
+      appendAuditLog(storeData, currentUser.id, "add_department", newDept.name, `Đăng ký thành lập khoa chuyên môn code: ${newDept.code}`);
     });
     if (!saved) return;
     triggerToast(`Đã lập khoa: ${newDept.name}`);
@@ -443,7 +455,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     const saved = await persistFromSnapshot((storeData) => {
       if (!storeData.programs) storeData.programs = [];
       storeData.programs.push(newProg);
-      AppStore.log(currentUser.id, "add_program", newProg.name, `Tạo hệ đào tạo ${newProg.type} ngành ${newProg.code}`);
+      appendAuditLog(storeData, currentUser.id, "add_program", newProg.name, `Tạo hệ đào tạo ${newProg.type} ngành ${newProg.code}`);
     });
     if (!saved) return;
     triggerToast(`Đã tạo ngành đào tạo: ${newProg.name}`);
@@ -476,7 +488,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     const saved = await persistFromSnapshot((storeData) => {
       if (!storeData.programCourses) storeData.programCourses = [];
       storeData.programCourses.push(newProgCourse);
-      AppStore.log(currentUser.id, "add_program_course", `Curriculum ${selectedProgramId}`, `Liên kết học phần ${currCourseId} vào khung đào tạo.`);
+      appendAuditLog(storeData, currentUser.id, "add_program_course", `Curriculum ${selectedProgramId}`, `Liên kết học phần ${currCourseId} vào khung đào tạo.`);
     });
     if (!saved) return;
     triggerToast("Học phần đã được ghim vào khung đào tạo thành công.");

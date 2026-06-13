@@ -57,6 +57,7 @@ export const api = {
   },
   getCourses: () => apiFetch("/api/courses"),
   createCourse: (payload: unknown) => apiFetch("/api/courses", { method: "POST", body: JSON.stringify(payload) }),
+  updateCourse: (courseId: string, payload: unknown) => apiFetch(`/api/courses/${courseId}`, { method: "PUT", body: JSON.stringify(payload) }),
   submitCourse: (courseId: string) => apiFetch(`/api/courses/${courseId}/submit`, { method: "POST" }),
   publishCourse: (courseId: string) => apiFetch(`/api/courses/${courseId}/publish`, { method: "POST" }),
   rejectCourse: (courseId: string, rejectionReason: string) => apiFetch(`/api/courses/${courseId}/reject`, { method: "POST", body: JSON.stringify({ rejectionReason }) }),

@@ -102,6 +102,9 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
       if (currentUser.role === "manager" || currentUser.role === "super_admin") {
         allowedLmsTabs.push("users");
       }
+      if (currentUser.role === "manager" || currentUser.role === "super_admin" || currentUser.role === "admin") {
+        allowedLmsTabs.push("approval");
+      }
       if (!allowedLmsTabs.includes(activeSubTab)) {
         setActiveSubTab("admin_guide");
       }
@@ -687,6 +690,21 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   }`}
                 >
                   <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Phân quyền người dùng</span>
+                </button>
+              )}
+              {(currentUser.role === "manager" || currentUser.role === "super_admin" || currentUser.role === "admin") && (
+                <button
+                  onClick={() => { setActiveSubTab("approval"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "approval" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Duyệt khóa học</span>
+                  {pendingCourses.length > 0 && (
+                    <span className="bg-amber-500 text-indigo-950 font-bold text-[9px] px-1.5 py-0.5 rounded-full">
+                      {pendingCourses.length}
+                    </span>
+                  )}
                 </button>
               )}
               <button

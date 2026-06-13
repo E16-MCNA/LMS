@@ -184,7 +184,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     setShowCourseModal(true);
   };
 
-  const handleSaveCourse = (e: React.FormEvent) => {
+  const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!courseTitle.trim() || !courseDesc.trim()) {
       triggerToast("Vui lòng điền đầy đủ các thông tin tiêu đề và mô tả khóa học.");
@@ -195,6 +195,33 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     const tagsArray = courseTags
       ? courseTags.split(",").map(item => item.trim()).filter(Boolean)
       : [];
+
+    const coursePayload = {
+      title: courseTitle,
+      description: courseDesc,
+      teacherId: currentUser.id,
+      category: courseCategory,
+      thumbnail: courseThumb || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=60",
+      price: Number(coursePrice) || 0,
+      level: courseLevel,
+      tags: tagsArray
+    };
+
+    try {
+      if (courseModalMode === "create") {
+        await api.createCourse(coursePayload);
+        triggerToast("Đã lập bản nháp khóa đào tạo mới thành công.");
+      } else if (editingCourseId) {
+        await api.updateCourse(editingCourseId, coursePayload);
+        triggerToast("Cập nhật thông tin khóa học thành công!");
+      }
+
+      setShowCourseModal(false);
+      await Promise.resolve(onRefreshData());
+    } catch (err: any) {
+      triggerToast(err.message || "Không thể lưu thông tin khóa học.");
+    }
+    return;
 
     if (courseModalMode === "create") {
       const newCourse: Course = {
@@ -250,7 +277,16 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
     onRefreshData();
   };
 
-  const handleSubmitCourseForApproval = (courseId: string) => {
+  const handleSubmitCourseForApproval = async (courseId: string) => {
+    try {
+      await api.submitCourse(courseId);
+      await Promise.resolve(onRefreshData());
+      triggerToast("Khóa học đã được gửi duyệt thành công.");
+    } catch (err: any) {
+      triggerToast(err.message || "Không thể gửi duyệt khóa học.");
+    }
+    return;
+
     const storeData = AppStore.get();
     storeData.courses = storeData.courses.map(c => {
       if (c.id === courseId) {
