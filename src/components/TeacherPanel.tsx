@@ -613,14 +613,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
           </p>
         </div>
 
-        {activeSystem !== "SIS" && (
-          <button
-            onClick={handleOpenCreateCourse}
-            className="px-4 py-2 text-xs font-bold text-indigo-950 bg-white hover:bg-white/95 rounded-xl flex items-center gap-1.5 transition duration-150 cursor-pointer self-start"
-          >
-            <FolderPlus className="h-4 w-4" /> Khởi tạo Khóa học Mới
-          </button>
-        )}
+        {/* Removed Course Creation button for Teachers */}
       </div>
 
       {/* Side-by-side dashboard layout: sidebar navigation on the left, workspace canvas on the right */}

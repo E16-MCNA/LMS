@@ -229,7 +229,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
               "Vào phân hệ 'SIS Học Vụ' -> Tab 'Thời khóa biểu giảng dạy'.",
               "Nhấp nút 'Tạo lớp học' ở góc trên bên phải để mở biểu mẫu thiết lập.",
               "Chọn 'Môn học đào tạo' trong danh sách các môn bạn đang làm giảng viên chính.",
-              "Điền 'Mã lớp học phần' (ví dụ: CS101-02), sức chứa tối đa và chọn học kỳ.",
+              "Điền 'Mã lớp học phần' (ví dụ: CS101-02), sức chứa tối đa và chọn tháng.",
               "Cấu hình các ca học tuần chi tiết bằng cách thêm ngày học, giờ học và phòng học.",
               "Nhấp 'Lưu thiết lập' để hệ thống tự động kiểm tra trùng lịch (giảng viên & phòng học) trước khi chính thức tạo lớp."
             ],
@@ -274,7 +274,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
           steps: [
             "Vào tab 'Quản lý Thời khóa biểu' dưới phân hệ SIS.",
             "Nhấp nút 'Tạo lớp học' ở góc trên bên phải để mở modal xếp lịch lớp học phần mới.",
-            "Chọn môn học, chọn học kỳ, gán Giảng viên phụ trách, nhập mã lớp (VD: CS101-02) và sức chứa tối đa.",
+            "Chọn môn học, chọn tháng, gán Giảng viên phụ trách, nhập mã lớp (VD: CS101-02) và sức chứa tối đa.",
             "Nhấp nút 'Thêm ca học tuần' để lập lịch biểu: chọn ngày trong tuần (Thứ Hai -> Chủ Nhật), giờ bắt đầu, giờ kết thúc, và nhập số phòng học cụ thể.",
             "Ấn 'Lưu thiết lập'. Hệ thống sẽ tự động chạy thuật toán phát hiện xung đột lịch: Kiểm tra xem Giảng viên đó có bị trùng lịch dạy khác, hoặc Phòng học đó có bị trùng lớp học khác vào cùng khung giờ hay không. Nếu trùng sẽ hiển thị cảnh báo đỏ ngăn lưu chéo."
           ],
@@ -288,7 +288,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
             "Vào tab 'Xếp lớp Học viên' trên Sidebar SIS.",
             "Hệ thống sẽ tự động quét cơ sở dữ liệu để đếm và thống kê chính xác: đang có bao nhiêu học viên đóng học phí/ghi danh nhưng chưa được phân lớp học phần hành chính.",
             "Tại tab 'Chờ xếp lớp', theo dõi danh sách học viên, nhấp nút 'Xếp lớp học phần' bên cạnh học viên.",
-            "Modal xếp lớp hiển thị thông tin học viên. Giáo vụ chọn 1 Lớp học phần đang mở của môn đó trong học kỳ hiện tại (Dropdown hiển thị rõ số lượng học viên thực tế đang có trong lớp để tránh quá tải sĩ số).",
+            "Modal xếp lớp hiển thị thông tin học viên. Giáo vụ chọn 1 Lớp học phần đang mở của môn đó trong tháng hiện tại (Dropdown hiển thị rõ số lượng học viên thực tế đang có trong lớp để tránh quá tải sĩ số).",
             "Ấn 'Xác nhận Xếp lớp' để hoàn tất phân lịch đi học chính thức cho sinh viên."
           ],
           tips: "💡 Giáo vụ cũng có thể quản lý hàng đợi 'Danh sách chờ (Waitlist)' tại tab bên cạnh, nhấp duyệt chuyển học viên từ danh sách chờ vào đăng ký lớp chính thức with 1 click."
@@ -357,7 +357,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
       return [
         {
           title: "Kiểm tra tiến độ & kết quả học tập GPA",
-          description: "Theo dõi học lực trực tuyến, xem nhận xét cố vấn và GPA học kỳ chuẩn hóa.",
+          description: "Theo dõi học lực trực tuyến, xem nhận xét cố vấn và GPA tháng chuẩn hóa.",
           icon: <Activity className="h-5 w-5 text-emerald-400" />,
           steps: [
             "Đăng nhập tài khoản Phụ huynh, hệ thống đưa bạn thẳng vào trang tổng quan giám sát.",
@@ -380,7 +380,7 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
         },
         {
           title: "Đóng học phí trực tuyến con em qua chuyển khoản",
-          description: "Rà soát hóa đơn học kỳ và thực hiện thanh toán chuyển khoản ngân hàng bảo mật.",
+          description: "Rà soát hóa đơn tháng và thực hiện thanh toán chuyển khoản ngân hàng bảo mật.",
           icon: <CreditCard className="h-5 w-5 text-emerald-400" />,
           steps: [
             "Vào tab 'Sổ Học Phí & Biên Lai' dưới Menu SIS.",
@@ -411,11 +411,11 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
         },
         {
           title: "Quản lý Công nợ học phí & Phát hành hóa đơn",
-          description: "Lập học phí đồng loạt cho lớp học phần học kỳ và rà soát nợ xấu.",
+          description: "Lập học phí đồng loạt cho lớp học phần tháng và rà soát nợ xấu.",
           icon: <FileText className="h-5 w-5 text-emerald-400" />,
           steps: [
             "Vào tab 'Quản lý Học phí & Công nợ' dưới phân hệ SIS.",
-            "Nhấp nút 'Tạo đợt học phí mới', chọn học kỳ, gán số tiền (VND) và đặt thời hạn đóng học phí quy định.",
+            "Nhấp nút 'Tạo đợt học phí mới', chọn tháng, gán số tiền (VND) và đặt thời hạn đóng học phí quy định.",
             "Tại Sổ theo dõi học phí, bộ phận vận hành có thể quét nhanh toàn bộ sinh viên quá hạn đóng tiền.",
             "Sử dụng tính năng 'Gửi SMS/Email nhắc nợ' để hệ thống gửi thư cảnh báo nợ tự động đến học sinh và phụ huynh liên quan."
           ],
@@ -496,8 +496,8 @@ export default function UserGuide({ role, activeSystem, onClose }: UserGuideProp
           tips: "💡 Ghi nhận xét đều đặn hàng tuần giúp nhà trường và gia đình có sự phối hợp kèm cặp tốt nhất."
         },
         {
-          title: "Lập lộ trình đề cử khóa học học kỳ mới",
-          description: "Đề xuất các lớp học phần học kỳ mới hiển thị trực tiếp lên cổng đăng ký của sinh viên.",
+          title: "Lập lộ trình đề cử khóa học tháng mới",
+          description: "Đề xuất các lớp học phần tháng mới hiển thị trực tiếp lên cổng đăng ký của sinh viên.",
           icon: <Calendar className="h-5 w-5 text-indigo-400" />,
           steps: [
             "Chọn sinh viên cần thiết lập lộ trình.",

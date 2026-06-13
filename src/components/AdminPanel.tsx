@@ -47,6 +47,7 @@ import CertificateVerifier from "./CertificateVerifier";
 import UserGuide from "./UserGuide";
 import ModalPortal from "./ModalPortal";
 import NotificationInbox from "./NotificationInbox";
+import CourseSectionManager from "./CourseSectionManager";
 
 interface AdminPanelProps {
   currentUser: User;
@@ -90,6 +91,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
     | "verify_certificates"
     | "notifications"
     | "users"
+    | "course_section_mgmt"
   >("admin_guide");
 
   useEffect(() => {
@@ -105,6 +107,9 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
       if (currentUser.role === "manager" || currentUser.role === "super_admin" || currentUser.role === "admin") {
         allowedLmsTabs.push("approval");
       }
+      if (currentUser.role === "admin" || currentUser.role === "super_admin") {
+        allowedLmsTabs.push("course_section_mgmt");
+      }
       if (!allowedLmsTabs.includes(activeSubTab)) {
         setActiveSubTab("admin_guide");
       }
@@ -113,6 +118,9 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
         "academic_years", "semesters", "departments", "programs", "students",
         "reports", "class_placement", "verify_certificates", "admin_guide", "notifications"
       ];
+      if (currentUser.role === "admin" || currentUser.role === "super_admin") {
+        allowedSisTabs.push("course_section_mgmt");
+      }
       if (currentUser.role === "super_admin") {
         allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "tuition", "users", "warnings", "audit");
       } else if (currentUser.role === "manager") {
@@ -473,7 +481,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
             CỔNG THÔNG TIN QUẢN TRỊ VIÊN & PHÒNG ĐÀO TẠO (SIS-LMS)
           </span>
           <h2 className="text-xl font-display font-bold text-white mt-2">Cổng Điều hành & Hồ sơ Học vụ</h2>
-          <p className="text-xs text-white/50">Phân quyền giám sát cấu trúc học kỳ niên khóa, chuyên cần học sinh và trạng thái thanh toán học phí.</p>
+          <p className="text-xs text-white/50">Phân quyền giám sát cấu trúc tháng niên khóa, chuyên cần học sinh và trạng thái thanh toán học phí.</p>
         </div>
 
         <div className="flex flex-wrap gap-2 text-xs">
@@ -557,7 +565,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   activeSubTab === "semesters" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
                 }`}
               >
-                <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> Học Kỳ</span>
+                <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> Tháng</span>
               </button>
               <button
                 onClick={() => { setActiveSubTab("departments"); setRegistryLookupStudentId(null); }}
@@ -575,6 +583,16 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
               >
                 <span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Chương trình đào tạo</span>
               </button>
+              {(currentUser.role === "admin" || currentUser.role === "super_admin") && (
+                <button
+                  onClick={() => { setActiveSubTab("course_section_mgmt"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "course_section_mgmt" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Quản lý Khóa học & Lớp</span>
+                </button>
+              )}
             </div>
 
             <div className="space-y-1.5 border-t border-white/5 pt-3">
@@ -707,6 +725,16 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   )}
                 </button>
               )}
+              {(currentUser.role === "admin" || currentUser.role === "super_admin") && (
+                <button
+                  onClick={() => { setActiveSubTab("course_section_mgmt"); setRegistryLookupStudentId(null); }}
+                  className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
+                    activeSubTab === "course_section_mgmt" ? "bg-white/10 text-white font-bold" : "text-white/60 hover:bg-white/2 hover:text-white"
+                  }`}
+                >
+                  <span className="flex items-center gap-2"><BookOpen className="h-4 w-4" /> Quản lý Khóa học & Lớp</span>
+                </button>
+              )}
               <button
                 onClick={() => { setActiveSubTab("notifications"); setRegistryLookupStudentId(null); }}
                 className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
@@ -819,6 +847,15 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
           {/* CLASS PLACEMENT GROUP */}
           {activeSubTab === "class_placement" && (
             <ClassPlacement
+              store={store}
+              currentUser={currentUser}
+              onRefreshData={onRefreshData}
+            />
+          )}
+
+          {/* COURSE & SECTION MANAGEMENT GROUP */}
+          {activeSubTab === "course_section_mgmt" && (
+            <CourseSectionManager
               store={store}
               currentUser={currentUser}
               onRefreshData={onRefreshData}

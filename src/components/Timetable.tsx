@@ -1358,7 +1358,7 @@ export default function Timetable({ role, currentUser, store, onRefreshData, def
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-white/60 block font-bold">Học Kỳ</label>
+                  <label className="text-white/60 block font-bold">Tháng</label>
                   <select
                     value={formSemesterId}
                     onChange={(e) => setFormSemesterId(e.target.value)}

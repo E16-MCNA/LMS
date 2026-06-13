@@ -159,7 +159,7 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
   const programCourses = programCoursesRes.rows.map(row => ({ id: row.id, programId: row.program_id, courseId: row.course_id, credits: row.credits, isRequired: Boolean(row.is_required), semester: row.semester }));
 
   // Missing Student Profiles, Attendance, Notifications & Transactions
-  const studentProfiles = studentProfilesRes.rows.map(row => ({ id: row.id, userId: row.user_id, studentCode: row.student_code, programId: row.program_id, departmentId: row.department_id, academicYear: row.academic_year, enrollmentDate: row.enrollment_date, expectedGraduation: row.expected_graduation, status: row.status, gpa: Number(row.gpa), totalCreditsEarned: row.total_credits_earned, address: row.address || undefined, phone: row.phone || undefined, dateOfBirth: row.date_of_birth || undefined, gender: row.gender || undefined, guardianName: row.guardian_name || undefined, guardianPhone: row.guardian_phone || undefined, guardianEmail: row.guardian_email || undefined, notes: row.notes || undefined, feeHold: Boolean(row.fee_hold), academicProbation: Boolean(row.academic_probation) }));
+  const studentProfiles = studentProfilesRes.rows.map(row => ({ id: row.id, userId: row.user_id, studentCode: row.student_code, programId: row.program_id, departmentId: row.department_id, academicYear: row.academic_year, enrollmentDate: row.enrollment_date, expectedGraduation: row.expected_graduation, status: row.status, gpa: Number(row.gpa), totalCreditsEarned: row.total_credits_earned, address: row.address || undefined, phone: row.phone || undefined, dateOfBirth: row.date_of_birth || undefined, gender: row.gender || undefined, guardianName: row.guardian_name || undefined, guardianPhone: row.guardian_phone || undefined, guardianEmail: row.guardian_email || undefined, notes: row.notes || undefined, feeHold: Boolean(row.fee_hold), academicProbation: Boolean(row.academic_probation), className: row.class_name || undefined }));
   const attendanceSessions = attendanceSessionsRes.rows.map(row => ({
     id: row.id,
     courseId: row.course_id,
@@ -196,7 +196,8 @@ export async function storeSnapshotFromDb(db: Queryable, forceBypassCache = fals
     schedule: row.schedule_json
       ? JSON.parse(row.schedule_json || "[]")
       : (typeof row.schedule === "string" ? JSON.parse(row.schedule || "[]") : row.schedule || []),
-    status: row.status
+    status: row.status,
+    openingDate: row.opening_date || undefined
   }));
   const registrationPeriods = registrationPeriodsRes.rows.map(row => ({ id: row.id, semesterId: row.semester_id, name: row.name, startDate: row.start_date, endDate: row.end_date, allowedYears: Array.isArray(row.allowed_years) ? row.allowed_years.map(Number) : JSON.parse(row.allowed_years_json || '[]'), isOpen: Boolean(row.is_open) }));
   const courseRegistrations = courseRegistrationsRes.rows.map(row => ({ id: row.id, studentId: row.student_id, sectionId: row.section_id, semesterId: row.semester_id, status: row.status, registeredAt: row.registered_at, droppedAt: row.dropped_at || undefined, grade: row.grade || undefined, letterGrade: row.letter_grade || undefined, gradePoint: row.grade_point === null ? undefined : Number(row.grade_point), credits: row.credits, isRetake: Boolean(row.is_retake) }));

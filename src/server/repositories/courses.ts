@@ -20,13 +20,28 @@ export const coursesRepository = {
   async create(db: Queryable, input: Omit<Course, "id" | "createdAt">) {
     const course: Course = { ...input, id: generateId("course"), createdAt: new Date().toISOString() };
     await db.query(
-      "INSERT INTO courses (id,title,description,teacher_id,status,category,thumbnail,price,level,tags_json,rejection_reason,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)",
-      [course.id, course.title, course.description, course.teacherId, course.status, course.category, course.thumbnail || null, course.price || 0, course.level || null, JSON.stringify(course.tags || []), course.rejectionReason || null, course.createdAt]
+      "INSERT INTO courses (id,title,description,teacher_id,status,category,thumbnail,price,level,tags_json,rejection_reason,created_at,opening_date,number_of_lessons) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+      [
+        course.id,
+        course.title,
+        course.description,
+        course.teacherId,
+        course.status,
+        course.category,
+        course.thumbnail || null,
+        course.price || 0,
+        course.level || null,
+        JSON.stringify(course.tags || []),
+        course.rejectionReason || null,
+        course.createdAt,
+        course.openingDate || null,
+        course.numberOfLessons || null
+      ]
     );
     return course;
   },
 
-  async updateDetails(db: Queryable, id: string, input: Pick<Course, "title" | "description" | "category"> & Partial<Pick<Course, "thumbnail" | "price" | "level" | "tags">>) {
+  async updateDetails(db: Queryable, id: string, input: Pick<Course, "title" | "description" | "category"> & Partial<Pick<Course, "thumbnail" | "price" | "level" | "tags" | "openingDate" | "numberOfLessons">>) {
     const row = (await db.query(
       `UPDATE courses
        SET title = $1,
@@ -35,8 +50,10 @@ export const coursesRepository = {
            thumbnail = $4,
            price = $5,
            level = $6,
-           tags_json = $7
-       WHERE id = $8
+           tags_json = $7,
+           opening_date = $8,
+           number_of_lessons = $9
+       WHERE id = $10
        RETURNING *`,
       [
         input.title,
@@ -46,6 +63,8 @@ export const coursesRepository = {
         input.price || 0,
         input.level || null,
         JSON.stringify(input.tags || []),
+        input.openingDate || null,
+        input.numberOfLessons || null,
         id
       ]
     )).rows[0];

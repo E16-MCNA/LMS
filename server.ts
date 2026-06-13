@@ -107,6 +107,7 @@ import { notificationsRepository } from "./src/server/repositories/notifications
 import { notifyStudent, notifyRole } from "./src/server/notify";
 import { attendanceRepository } from "./src/server/repositories/attendance";
 import { forumRepository } from "./src/server/repositories/forum";
+import { sectionsRepository } from "./src/server/repositories/sections";
 import { eventBus } from "./src/server/eventBus";
 import { registerEventHandlers } from "./src/server/eventHandlers";
 import { toGradePoint, toLetterGrade } from "./src/server/gpaCalculator";
@@ -193,6 +194,7 @@ type StudentProfileDefaults = {
   address?: string;
   guardianName?: string;
   guardianPhone?: string;
+  className?: string;
 };
 
 type UserCreateInput = {
@@ -203,6 +205,7 @@ type UserCreateInput = {
   linkedStudentId?: string;
   programId?: string;
   departmentId?: string;
+  className?: string;
 };
 
 async function resolveStudentProgramDefaults(db: Queryable, programId?: string, departmentId?: string) {
@@ -270,8 +273,8 @@ async function ensureStudentProfile(db: Queryable, userId: string, defaults: Stu
     `INSERT INTO student_profiles (
        id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
        expected_graduation, status, gpa, total_credits_earned, phone, date_of_birth, gender,
-       address, guardian_name, guardian_phone
-     ) VALUES ($1, $2, $3, $4, $5, 1, $6, $7, 'active', 0.0, 0, $8, $9, $10, $11, $12, $13)`,
+       address, guardian_name, guardian_phone, class_name
+     ) VALUES ($1, $2, $3, $4, $5, 1, $6, $7, 'active', 0.0, 0, $8, $9, $10, $11, $12, $13, $14)`,
     [
       generateId("profile"),
       userId,
@@ -285,7 +288,8 @@ async function ensureStudentProfile(db: Queryable, userId: string, defaults: Stu
       defaults.gender || null,
       defaults.address || null,
       defaults.guardianName || null,
-      defaults.guardianPhone || null
+      defaults.guardianPhone || null,
+      defaults.className || null
     ]
   );
   return true;
@@ -310,7 +314,8 @@ async function createUserAccount(db: Queryable, input: UserCreateInput, password
     await ensureStudentProfile(db, created.id, {
       programId: input.programId,
       departmentId: input.departmentId,
-      phone: input.phone
+      phone: input.phone,
+      className: input.className
     });
   }
   return created;
@@ -744,6 +749,7 @@ type SectionPayload = {
   maxStudents: number;
   schedule: SectionScheduleSlot[];
   status: "pending" | "open" | "closed" | "cancelled";
+  openingDate?: string;
 };
 
 async function getCourseSectionColumnSet(db: { query: (sql: string, params?: any[]) => Promise<any> }) {
@@ -781,6 +787,12 @@ async function upsertCourseSection(db: any, section: SectionPayload) {
     placeholders.push(`$${values.length}::jsonb`);
     updates.push("schedule = EXCLUDED.schedule");
   }
+  if (columns.has("opening_date")) {
+    insertColumns.push("opening_date");
+    values.push(section.openingDate || null);
+    placeholders.push(`$${values.length}`);
+    updates.push("opening_date = EXCLUDED.opening_date");
+  }
 
   const row = (await db.query(
     `INSERT INTO course_sections (${insertColumns.join(", ")})
@@ -798,7 +810,8 @@ async function upsertCourseSection(db: any, section: SectionPayload) {
     sectionCode: row.section_code,
     maxStudents: Number(row.max_students),
     schedule: row.schedule_json ? JSON.parse(row.schedule_json || "[]") : (typeof row.schedule === "string" ? JSON.parse(row.schedule || "[]") : row.schedule || []),
-    status: row.status
+    status: row.status,
+    openingDate: row.opening_date || undefined
   };
 }
 
@@ -1231,7 +1244,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
     }
 
     if (store.courseSections !== undefined) {
-      const dbRes = await client.query("SELECT id, course_id, semester_id, teacher_id, section_code, max_students, status, schedule_json, schedule FROM course_sections");
+      const dbRes = await client.query("SELECT id, course_id, semester_id, teacher_id, section_code, max_students, status, schedule_json, schedule, opening_date FROM course_sections");
       const dbMap = new Map<string, any>(dbRes.rows.map(r => [r.id, r]));
 
       const clientSections = store.courseSections || [];
@@ -1250,6 +1263,7 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
           dbVal.section_code !== sec.sectionCode ||
           Number(dbVal.max_students) !== (Number(sec.maxStudents) || 30) ||
           dbVal.status !== (sec.status || "open") ||
+          dbVal.opening_date !== (sec.openingDate || null) ||
           dbScheduleStr !== scheduleStr;
 
         if (isDirty) {
@@ -1261,7 +1275,8 @@ async function syncClientStoreToDb(store: Partial<LMSDataStore>) {
             sectionCode: sec.sectionCode,
             maxStudents: Number(sec.maxStudents) || 30,
             schedule: sec.schedule || [],
-            status: sec.status || "open"
+            status: sec.status || "open",
+            openingDate: sec.openingDate
           });
         }
       }
@@ -1626,22 +1641,65 @@ app.get("/api/dashboard/advisor", requireAuth, requireRole(["teacher"]), asyncHa
 app.get("/api/dashboard/parent", requireAuth, requireRole(["parent"]), resolveLinkedStudent, asyncHandler(async (req, res) => res.json(await parentRepository.getDashboard(pool, req.linkedStudentId!))));
 
 app.get("/api/courses", requireAuth, asyncHandler(async (_req, res) => res.json(await coursesRepository.list(pool))));
-app.post("/api/courses", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.createCourse), asyncHandler(async (req, res) => {
+app.post("/api/courses", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.createCourse), asyncHandler(async (req, res) => {
   const body = req.body;
   const course = await coursesRepository.create(pool, {
     title: body.title,
     description: body.description,
-    teacherId: req.user!.role === "teacher" ? req.user!.id : body.teacherId || req.user!.id,
-    status: req.user!.role === "teacher" ? "draft" : "published",
+    teacherId: body.teacherId || req.user!.id,
+    status: "published",
     category: body.category,
     thumbnail: body.thumbnail,
     price: body.price,
     level: body.level,
-    tags: body.tags
+    tags: body.tags,
+    openingDate: body.openingDate,
+    numberOfLessons: body.numberOfLessons
   });
   invalidateStoreCache();
   await audit(req, "create_course", course.id, course.title);
   res.status(201).json(course);
+}));
+
+app.put("/api/courses/:id", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.createCourse), asyncHandler(async (req, res) => {
+  const existing = await coursesRepository.findById(pool, req.params.id);
+  if (!existing) return res.status(404).json({ error: "Course not found." });
+
+  const body = req.body;
+  if (req.user!.role === "teacher") {
+    if (existing.teacherId !== req.user!.id) {
+      return res.status(403).json({ error: "Permission denied." });
+    }
+    const updated = await coursesRepository.updateDetails(pool, req.params.id, {
+      title: existing.title,
+      description: existing.description,
+      category: existing.category,
+      thumbnail: existing.thumbnail,
+      price: existing.price,
+      level: existing.level,
+      tags: existing.tags,
+      openingDate: existing.openingDate,
+      numberOfLessons: body.numberOfLessons
+    });
+    invalidateStoreCache();
+    await audit(req, "update_course_lessons_count", req.params.id, `Lessons: ${body.numberOfLessons}`);
+    return res.json(updated);
+  }
+
+  const updated = await coursesRepository.updateDetails(pool, req.params.id, {
+    title: body.title,
+    description: body.description,
+    category: body.category,
+    thumbnail: body.thumbnail,
+    price: body.price,
+    level: body.level,
+    tags: body.tags,
+    openingDate: body.openingDate,
+    numberOfLessons: body.numberOfLessons
+  });
+  invalidateStoreCache();
+  await audit(req, "update_course", req.params.id, body.title);
+  res.json(updated);
 }));
 app.post("/api/courses/:id/submit", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.params.id)) return res.status(403).json({ error: "Permission denied." });
@@ -1785,6 +1843,29 @@ app.post("/api/enrollments/register", requireAuth, requireRole(["student"]), val
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course || course.status !== "published") return res.status(404).json({ error: "Published course not found." });
   if (await enrollmentsRepository.existsForCourse(pool, req.user!.id, course.id)) return res.status(409).json({ error: "Enrollment already exists." });
+
+  const sectionId = req.body.sectionId;
+  if (sectionId) {
+    const section = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [sectionId])).rows[0];
+    if (!section) return res.status(404).json({ error: "Selected class section not found." });
+    if (section.course_id !== course.id) return res.status(400).json({ error: "Selected section does not belong to this course." });
+
+    // Check capacity
+    const countRes = await pool.query(
+      "SELECT COUNT(*) AS count FROM course_registrations WHERE section_id = $1 AND status = 'registered'",
+      [sectionId]
+    );
+    const count = Number(countRes.rows[0].count);
+    if (count >= section.max_students) {
+      return res.status(400).json({ error: "Lớp học phần này đã đạt sĩ số tối đa. Vui lòng chọn lớp khác." });
+    }
+
+    // Check timetable conflict
+    if (await sectionsRepository.conflictCheck(pool, req.user!.id, sectionId)) {
+      return res.status(400).json({ error: "Lớp học phần này bị trùng lịch học với các lớp khác bạn đã đăng ký." });
+    }
+  }
+
   const isPaid = Number(course.price || 0) > 0;
   const enrollment = await enrollmentsRepository.register(pool, req.user!.id, course.id, isPaid);
   if (isPaid) {
@@ -1795,18 +1876,39 @@ app.post("/api/enrollments/register", requireAuth, requireRole(["student"]), val
       [txId, req.user!.id, course.id, Number(course.price), new Date().toISOString()]
     );
   }
+
+  if (sectionId) {
+    const section = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [sectionId])).rows[0];
+    const creditsRow = (await pool.query(
+      "SELECT COALESCE(MAX(credits), 3) AS credits FROM program_courses WHERE course_id = $1",
+      [course.id]
+    )).rows[0];
+
+    await pool.query(
+      `INSERT INTO course_registrations (id, student_id, section_id, semester_id, status, registered_at, credits, is_retake)
+       VALUES ($1, $2, $3, $4, 'registered', $5, $6, false)`,
+      [generateId("reg"), req.user!.id, sectionId, section.semester_id, new Date().toISOString(), Number(creditsRow?.credits || 3)]
+    );
+
+    // If it is a free course, automatically activate the enrollment
+    if (!isPaid) {
+      await enrollmentsRepository.activateEnrollment(pool, enrollment.id);
+      enrollment.status = "active";
+    }
+  }
+
   invalidateStoreCache();
   await audit(req, "enroll_course", course.id, course.title);
   res.status(201).json(enrollment);
 }));
-app.post("/api/enrollments/:id/activate", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/enrollments/:id/activate", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
   const enrollment = await enrollmentsRepository.activateEnrollment(pool, req.params.id);
   if (!enrollment) return res.status(404).json({ error: "Enrollment not found." });
   invalidateStoreCache();
   await audit(req, "activate_enrollment", enrollment.id, `Activated enrollment for student ID: ${enrollment.studentId}`);
   res.json(enrollment);
 }));
-app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.approveEnrollment), asyncHandler(async (req, res) => {
+app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.approveEnrollment), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let committed = false;
   try {
@@ -1880,6 +1982,155 @@ app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["manager", "
   } finally {
     client.release();
   }
+}));
+
+app.post("/api/admin/enrollments/bulk-place", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const { placements } = req.body;
+  if (!Array.isArray(placements)) {
+    return res.status(400).json({ error: "Mảng danh sách xếp lớp placements là bắt buộc." });
+  }
+
+  const client = await pool.connect();
+  const results: any[] = [];
+  const errors: any[] = [];
+
+  try {
+    await client.query("BEGIN");
+    for (const [index, p] of placements.entries()) {
+      let studentId = "";
+      let enrollmentId = p.enrollmentId;
+      let sectionId = p.sectionId;
+
+      if (p.studentCode || p.email) {
+        const studentRow = (await client.query(
+          `SELECT u.id 
+           FROM users u
+           LEFT JOIN student_profiles sp ON u.id = sp.user_id
+           WHERE ($1::text IS NULL OR sp.student_code = $1)
+             AND ($2::text IS NULL OR u.email = $2)
+           LIMIT 1`,
+          [p.studentCode || null, p.email || null]
+        )).rows[0];
+        if (!studentRow) {
+          errors.push({ index, error: `Không tìm thấy học viên với mã: ${p.studentCode || ''}, email: ${p.email || ''}` });
+          continue;
+        }
+        studentId = studentRow.id;
+      }
+
+      if (p.sectionCode && !sectionId) {
+        const secRow = (await client.query("SELECT id FROM course_sections WHERE section_code = $1", [p.sectionCode])).rows[0];
+        if (!secRow) {
+          errors.push({ index, error: `Không tìm thấy lớp học phần với mã: ${p.sectionCode}` });
+          continue;
+        }
+        sectionId = secRow.id;
+      }
+
+      if (!sectionId) {
+        errors.push({ index, error: "Thiếu mã lớp học phần." });
+        continue;
+      }
+
+      const section = (await client.query("SELECT * FROM course_sections WHERE id = $1", [sectionId])).rows[0];
+      if (!section) {
+        errors.push({ index, error: `Không tìm thấy lớp học phần ID ${sectionId}.` });
+        continue;
+      }
+
+      if (!enrollmentId) {
+        if (!studentId) {
+          errors.push({ index, error: "Thiếu thông tin nhận diện học viên." });
+          continue;
+        }
+        const enrollRow = (await client.query(
+          "SELECT id FROM enrollments WHERE student_id = $1 AND course_id = $2 LIMIT 1",
+          [studentId, section.course_id]
+        )).rows[0];
+        if (enrollRow) {
+          enrollmentId = enrollRow.id;
+        } else {
+          enrollmentId = generateId("enroll");
+          await client.query(
+            "INSERT INTO enrollments (id, course_id, student_id, status, enrolled_at) VALUES ($1, $2, $3, 'active', $4)",
+            [enrollmentId, section.course_id, studentId, new Date().toISOString()]
+          );
+        }
+      }
+
+      await client.query(
+        "UPDATE enrollments SET status = 'active' WHERE id = $1",
+        [enrollmentId]
+      );
+
+      if (!studentId) {
+        const enroll = (await client.query("SELECT student_id FROM enrollments WHERE id = $1", [enrollmentId])).rows[0];
+        studentId = enroll?.student_id;
+      }
+
+      if (!studentId) {
+        errors.push({ index, error: "Không tìm thấy thông tin học viên của lượt ghi danh này." });
+        continue;
+      }
+
+      const existingRegistration = (await client.query(
+        `SELECT cr.id
+         FROM course_registrations cr
+         JOIN course_sections cs ON cs.id = cr.section_id
+         WHERE cr.student_id = $1
+           AND cs.course_id = $2
+           AND cr.semester_id = $3
+           AND cr.status IN ('registered', 'waitlisted')`,
+        [studentId, section.course_id, section.semester_id]
+      )).rows[0];
+
+      if (!existingRegistration) {
+        const creditsRow = (await client.query(
+          "SELECT COALESCE(MAX(credits), 3) AS credits FROM program_courses WHERE course_id = $1",
+          [section.course_id]
+        )).rows[0];
+        await client.query(
+          `INSERT INTO course_registrations (id, student_id, section_id, semester_id, status, registered_at, credits, is_retake)
+           VALUES ($1, $2, $3, $4, 'registered', $5, $6, false)`,
+          [generateId("reg"), studentId, sectionId, section.semester_id, new Date().toISOString(), Number(creditsRow?.credits || 3)]
+        );
+      } else {
+        await client.query(
+          "UPDATE course_registrations SET section_id = $1, status = 'registered' WHERE id = $2",
+          [sectionId, existingRegistration.id]
+        );
+      }
+
+      results.push({ index, enrollmentId, sectionId });
+    }
+
+    if (errors.length > 0) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Lỗi kiểm tra dữ liệu xếp lớp hàng loạt.", errors });
+    }
+
+    await client.query("COMMIT");
+    invalidateStoreCache();
+    res.json({ success: true, count: results.length });
+  } catch (err: any) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: err.message || "Không thể thực hiện xếp lớp hàng loạt." });
+  } finally {
+    client.release();
+  }
+}));
+
+app.post("/api/courses/:id/request-section", requireAuth, requireRole(["student"]), asyncHandler(async (req, res) => {
+  const course = await coursesRepository.findById(pool, req.params.id);
+  if (!course) return res.status(404).json({ error: "Course not found." });
+
+  const studentName = req.user!.name || "Học viên";
+  const message = `Học viên ${studentName} đã gửi yêu cầu mở thêm lớp học phần cho môn học: "${course.title}".`;
+  await notifyRole(pool, "admin", message, { relatedEntityType: "course", relatedEntityId: course.id });
+  await notifyRole(pool, "super_admin", message, { relatedEntityType: "course", relatedEntityId: course.id });
+
+  await audit(req, "request_new_section", course.id, course.title);
+  res.json({ success: true, message: "Yêu cầu mở thêm lớp học phần đã được gửi tới quản trị viên." });
 }));
 
 app.post("/api/certificates/issue", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.issueCertificate), asyncHandler(async (req, res) => {
@@ -2516,47 +2767,36 @@ app.patch("/api/notifications/:id/read", requireAuth, asyncHandler(async (req, r
   res.status(204).send();
 }));
 
-app.post("/api/course-sections", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.courseSection), asyncHandler(async (req, res) => {
+app.post("/api/course-sections", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.courseSection), asyncHandler(async (req, res) => {
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });
   const payload: SectionPayload = {
-    ...req.body,
-    teacherId: req.user!.role === "teacher" ? req.user!.id : req.body.teacherId
+    ...req.body
   };
   if (!payload.teacherId) return res.status(400).json({ error: "teacherId is required." });
-  if (req.user!.role === "teacher" && course.teacherId !== req.user!.id) {
-    return res.status(403).json({ error: "Permission denied." });
-  }
   const row = await upsertCourseSection(pool, payload);
   await audit(req, "create_course_section", row.id, row.sectionCode);
   res.status(201).json(row);
 }));
 
-app.put("/api/course-sections/:id", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), validateBody(schemas.courseSection), asyncHandler(async (req, res) => {
+app.put("/api/course-sections/:id", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.courseSection), asyncHandler(async (req, res) => {
   const existing = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [req.params.id])).rows[0];
   if (!existing) return res.status(404).json({ error: "Course section not found." });
   const course = await coursesRepository.findById(pool, req.body.courseId);
   if (!course) return res.status(404).json({ error: "Course not found." });
   const payload: SectionPayload = {
     ...req.body,
-    id: req.params.id,
-    teacherId: req.user!.role === "teacher" ? req.user!.id : req.body.teacherId
+    id: req.params.id
   };
   if (!payload.teacherId) return res.status(400).json({ error: "teacherId is required." });
-  if (req.user!.role === "teacher" && (existing.teacher_id !== req.user!.id || course.teacherId !== req.user!.id)) {
-    return res.status(403).json({ error: "Permission denied." });
-  }
   const row = await upsertCourseSection(pool, payload);
   await audit(req, "update_course_section", row.id, row.sectionCode);
   res.json(row);
 }));
 
-app.delete("/api/course-sections/:id", requireAuth, requireRole(["teacher", "manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.delete("/api/course-sections/:id", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
   const existing = (await pool.query("SELECT * FROM course_sections WHERE id = $1", [req.params.id])).rows[0];
   if (!existing) return res.status(404).json({ error: "Course section not found." });
-  if (req.user!.role === "teacher" && existing.teacher_id !== req.user!.id) {
-    return res.status(403).json({ error: "Permission denied." });
-  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

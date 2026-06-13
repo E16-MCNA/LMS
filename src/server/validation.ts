@@ -29,7 +29,8 @@ export const schemas = {
     phone: z.string().trim().optional(),
     linkedStudentId: z.string().trim().optional(),
     programId: z.string().trim().optional(),
-    departmentId: z.string().trim().optional()
+    departmentId: z.string().trim().optional(),
+    className: z.string().trim().optional()
   }),
   bulkCreateUsers: z.object({
     users: z.array(z.object({
@@ -39,7 +40,8 @@ export const schemas = {
       phone: z.string().trim().optional(),
       linkedStudentId: z.string().trim().optional(),
       programId: z.string().trim().optional(),
-      departmentId: z.string().trim().optional()
+      departmentId: z.string().trim().optional(),
+      className: z.string().trim().optional()
     })).min(1).max(5000),
     defaultPassword: z.string().min(8).optional()
   }),
@@ -54,7 +56,9 @@ export const schemas = {
     thumbnail: z.string().trim().optional(),
     price: z.coerce.number().min(0).default(0),
     level: z.string().trim().optional(),
-    tags: z.array(z.string().trim()).default([])
+    tags: z.array(z.string().trim()).default([]),
+    openingDate: z.string().trim().optional(),
+    numberOfLessons: z.coerce.number().int().min(1).optional()
   }),
   rejectCourse: z.object({
     rejectionReason: z.string().trim().min(1)
@@ -83,7 +87,8 @@ export const schemas = {
     correctAnswer: z.string().trim().min(1)
   }),
   registerEnrollment: z.object({
-    courseId: z.string().trim().min(1)
+    courseId: z.string().trim().min(1),
+    sectionId: z.string().trim().optional()
   }),
   approveEnrollment: z.object({
     sectionId: z.string().trim().min(1).optional(),
@@ -242,7 +247,8 @@ export const schemas = {
       room: z.string().trim().optional(),
       specificDate: z.string().trim().optional()
     })).default([]),
-    status: z.enum(["pending", "open", "closed", "cancelled"]).default("open")
+    status: z.enum(["pending", "open", "closed", "cancelled"]).default("open"),
+    openingDate: z.string().trim().optional()
   }),
   bulkIssueTuition: z.object({
     semesterId: z.string().trim().min(1),

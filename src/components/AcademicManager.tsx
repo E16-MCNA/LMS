@@ -249,7 +249,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   const handleDeleteYear = async (id: string) => {
     const linkedSems = store.semesters.filter(s => s.academicYearId === id);
     if (linkedSems.length > 0) {
-      triggerToast("Không thể xóa năm học vì có các học kỳ đang ràng buộc.");
+      triggerToast("Không thể xóa năm học vì có các tháng đang ràng buộc.");
       return;
     }
     const saved = await persistFromSnapshot((storeData) => {
@@ -263,7 +263,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
   const handleAddSemester = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!semYearId || !semName.trim() || !semStart || !semEnd || !semRegOpen || !semRegClose) {
-      triggerToast("Vui lòng nhập đầy đủ thông tin học kỳ.");
+      triggerToast("Vui lòng nhập đầy đủ thông tin tháng.");
       return;
     }
     const newSem: Semester = {
@@ -280,10 +280,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     const saved = await persistFromSnapshot((storeData) => {
       if (!storeData.semesters) storeData.semesters = [];
       storeData.semesters.push(newSem);
-      appendAuditLog(storeData, currentUser.id, "add_semester", newSem.name, "Liên kết học kỳ mới vào hệ thống.");
+      appendAuditLog(storeData, currentUser.id, "add_semester", newSem.name, "Liên kết tháng mới vào hệ thống.");
     });
     if (!saved) return;
-    triggerToast(`Đã lưu học kỳ: ${newSem.name}`);
+    triggerToast(`Đã lưu tháng: ${newSem.name}`);
     setSemName("");
     setSemStart("");
     setSemEnd("");
@@ -295,41 +295,41 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
     // Check if any course sections are linked
     const linkedSections = (store.courseSections || []).filter(s => s.semesterId === id);
     if (linkedSections.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có các lớp học phần đang được lên lịch.");
+      triggerToast("Không thể xóa tháng vì có các lớp học phần đang được lên lịch.");
       return;
     }
     // Check if any tuition fees are linked
     const linkedTuition = (store.tuitionFees || []).filter(f => f.semesterId === id);
     if (linkedTuition.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có thông tin học phí đang ràng buộc.");
+      triggerToast("Không thể xóa tháng vì có thông tin học phí đang ràng buộc.");
       return;
     }
     // Check if any registrations are linked
     const linkedRegistrations = (store.courseRegistrations || []).filter(r => r.semesterId === id);
     if (linkedRegistrations.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có học viên đã đăng ký môn học trong học kỳ này.");
+      triggerToast("Không thể xóa tháng vì có học viên đã đăng ký môn học trong tháng này.");
       return;
     }
-    if (!window.confirm("Bạn có chắc chắn muốn xóa học kỳ này?")) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa tháng này?")) return;
     const linkedRegistrationPeriods = (store.registrationPeriods || []).filter((p: any) => p.semesterId === id);
     if (linkedRegistrationPeriods.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có đợt đăng ký môn đang ràng buộc.");
+      triggerToast("Không thể xóa tháng vì có đợt đăng ký môn đang ràng buộc.");
       return;
     }
     const linkedScholarships = (store.scholarships || []).filter((s: any) => s.semesterId === id);
     const linkedScholarshipApplications = (store.scholarshipApplications || []).filter((s: any) => s.semesterId === id);
     if (linkedScholarships.length > 0 || linkedScholarshipApplications.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có dữ liệu học bổng đang ràng buộc.");
+      triggerToast("Không thể xóa tháng vì có dữ liệu học bổng đang ràng buộc.");
       return;
     }
     const linkedAdvisorAssignments = (store.advisorAssignments || []).filter((a: any) => a.semesterId === id);
     if (linkedAdvisorAssignments.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có phân công cố vấn đang ràng buộc.");
+      triggerToast("Không thể xóa tháng vì có phân công cố vấn đang ràng buộc.");
       return;
     }
     const linkedLeaveRequests = (store.leaveRequests || []).filter((r: any) => r.semesterId === id || r.resumeSemesterId === id);
     if (linkedLeaveRequests.length > 0) {
-      triggerToast("Không thể xóa học kỳ vì có đơn bảo lưu/nghỉ học đang ràng buộc.");
+      triggerToast("Không thể xóa tháng vì có đơn bảo lưu/nghỉ học đang ràng buộc.");
       return;
     }
     const saved = await persistFromSnapshot((storeData) => {
@@ -344,7 +344,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       }));
     });
     if (!saved) return;
-    triggerToast("Đã loại bỏ học kỳ khỏi danh sách.");
+    triggerToast("Đã loại bỏ tháng khỏi danh sách.");
   };
 
   const handleSetCurrentSemester = async (id: string) => {
@@ -360,10 +360,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
           isCurrent: y.id === chosen.academicYearId
         }));
       }
-      appendAuditLog(storeData, currentUser.id, "set_current_semester", chosen?.name || id, "Thay đổi học kỳ đang hoạt động.");
+      appendAuditLog(storeData, currentUser.id, "set_current_semester", chosen?.name || id, "Thay đổi tháng đang hoạt động.");
     });
     if (!saved) return;
-    triggerToast("Đã chọn học kỳ đang hoạt động.");
+    triggerToast("Đã chọn tháng đang hoạt động.");
   };
 
   const handleDeleteDept = async (id: string) => {
@@ -528,14 +528,14 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping animate-duration-1000" />
               <span className="text-emerald-400 text-[10px] font-extrabold uppercase tracking-widest font-mono">
-                Học Kỳ Đang Hoạt Động (Active)
+                Tháng Đang Hoạt Động (Active)
               </span>
             </div>
             <h3 className="text-lg font-display font-black text-white">
               {activeSemester.name} — Năm học {activeYear?.name || "Hiện tại"}
             </h3>
             <p className="text-xs text-white/60">
-              Thời gian học kỳ: <span className="text-white font-medium">{formatDateOnly(activeSemester.startDate)}</span> đến <span className="text-white font-medium">{formatDateOnly(activeSemester.endDate)}</span>
+              Thời gian tháng: <span className="text-white font-medium">{formatDateOnly(activeSemester.startDate)}</span> đến <span className="text-white font-medium">{formatDateOnly(activeSemester.endDate)}</span>
             </p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-3 text-xs space-y-1">
@@ -558,10 +558,10 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             </span>
           </div>
           <h3 className="text-base font-display font-bold text-white mt-1">
-            Chưa có học kỳ nào đang trong thời gian hoạt động (Active).
+            Chưa có tháng nào đang trong thời gian hoạt động (Active).
           </h3>
           <p className="text-xs text-white/60 mt-0.5">
-            Vui lòng cấu hình thời gian bắt đầu và kết thúc của học kỳ trong năm học hiện tại để kích hoạt.
+            Vui lòng cấu hình thời gian bắt đầu và kết thúc của tháng trong năm học hiện tại để kích hoạt.
           </p>
         </div>
       )}
@@ -581,7 +581,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             activeTab === "semesters" ? "bg-white/10 text-white" : "text-white/60 hover:text-white"
           }`}
         >
-          <Clock className="inline-block h-3.5 w-3.5 mr-1.5" /> Học kỳ
+          <Clock className="inline-block h-3.5 w-3.5 mr-1.5" /> Tháng
         </button>
         <button
           onClick={() => { setActiveTab("departments"); setSelectedProgramId(null); }}
@@ -608,7 +608,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
             type="text"
             placeholder={`Tìm kiếm trong danh sách ${
               activeTab === "years" ? "năm học" :
-              activeTab === "semesters" ? "học kỳ" :
+              activeTab === "semesters" ? "tháng" :
               activeTab === "departments" ? "khoa" :
               "chương trình / ngành"
             }...`}
@@ -753,13 +753,13 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
       {activeTab === "semesters" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={`${currentUser.role === "admin" ? "lg:col-span-3" : "lg:col-span-2"} space-y-4`}>
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Danh sách học kỳ trong năm học</h4>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Danh sách tháng trong năm học</h4>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 text-white/50 text-[10px] uppercase">
                     <th className="py-2.5 px-3 cursor-pointer select-none hover:text-white transition" onClick={() => handleSemsSort("name")}>
-                      Tên Học Kỳ {semsSortField === "name" ? (semsSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                      Tên Tháng {semsSortField === "name" ? (semsSortOrder === "asc" ? "▲" : "▼") : "↕"}
                     </th>
                     <th className="py-2.5 px-3 cursor-pointer select-none hover:text-white transition" onClick={() => handleSemsSort("academicYearId")}>
                       Năm Học {semsSortField === "academicYearId" ? (semsSortOrder === "asc" ? "▲" : "▼") : "↕"}
@@ -847,7 +847,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   })}
                   {semesters.filter(s => s.name.toLowerCase().includes(academicSearch.toLowerCase())).length === 0 && (
                     <tr>
-                      <td colSpan={currentUser.role === "admin" ? 5 : 6} className="py-8 text-center text-white/40 italic">Không tìm thấy học kỳ nào phù hợp.</td>
+                      <td colSpan={currentUser.role === "admin" ? 5 : 6} className="py-8 text-center text-white/40 italic">Không tìm thấy tháng nào phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -857,7 +857,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
 
           {currentUser.role !== "admin" && (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4 h-fit">
-              <h4 className="text-sm font-bold text-white">Thêm học kỳ mới</h4>
+              <h4 className="text-sm font-bold text-white">Thêm tháng mới</h4>
               <form onSubmit={handleAddSemester} className="space-y-3 text-xs">
                 <div className="space-y-1">
                   <label className="text-white/60 font-medium">Thuộc năm học</label>
@@ -874,7 +874,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-white/60 font-medium">Tên học kỳ</label>
+                  <label className="text-white/60 font-medium">Tên tháng</label>
                   <input
                     type="text"
                     required
@@ -885,7 +885,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-white/60 font-medium">Kiểu học kỳ</label>
+                  <label className="text-white/60 font-medium">Kiểu tháng</label>
                   <select
                     value={semType}
                     onChange={(e) => setSemType(e.target.value as any)}
@@ -944,7 +944,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                   type="submit"
                   className="w-full py-2 bg-white text-indigo-950 font-bold rounded-xl hover:bg-white/90 transition cursor-pointer"
                 >
-                  Khởi tạo học kỳ
+                  Khởi tạo tháng
                 </button>
               </form>
             </div>
@@ -1250,7 +1250,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                               Loại môn {currSortField === "isRequired" ? (currSortOrder === "asc" ? "▲" : "▼") : "↕"}
                             </th>
                             <th className="py-2 px-1 text-center cursor-pointer select-none hover:text-white transition" onClick={() => handleCurrSort("semester")}>
-                              Học kỳ sắp xếp {currSortField === "semester" ? (currSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                              Tháng sắp xếp {currSortField === "semester" ? (currSortOrder === "asc" ? "▲" : "▼") : "↕"}
                             </th>
                             <th className="py-2 px-1 text-right">Rút môn</th>
                           </tr>
@@ -1359,7 +1359,7 @@ export default function AcademicManager({ store, currentUser, onRefreshData, tri
                           />
                         </div>
                         <div className="space-y-0.5">
-                          <label className="text-white/60">Học kỳ đề xuất</label>
+                          <label className="text-white/60">Tháng đề xuất</label>
                           <input
                             type="number"
                             required

@@ -12,7 +12,9 @@ import {
   HelpCircle,
   TrendingUp,
   UserCheck,
-  Search
+  Search,
+  Upload,
+  Info
 } from "lucide-react";
 import { LMSDataStore, User } from "../types";
 import { AppStore } from "../store";
@@ -38,6 +40,15 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
   const [activeSemesterId, setActiveSemesterId] = useState<string>(() => resolveCurrentSemesterId(store));
   const [searchQuery, setSearchQuery] = useState("");
   
+  // Selection and filter states
+  const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<string[]>([]);
+  const [selectedClassFilter, setSelectedClassFilter] = useState("all");
+  const [bulkPlaceSectionId, setBulkPlaceSectionId] = useState("");
+  
+  // CSV Import States
+  const [showCsvImportPanel, setShowCsvImportPanel] = useState(false);
+  const [csvFileText, setCsvFileText] = useState("");
+
   // Placement Modal states
   const [showModal, setShowModal] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState<{
@@ -81,6 +92,10 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
 
       // If no active registration exists, the student is unplaced!
       if (studentRegsForCourse.length === 0) {
+        // Fetch className from student profile
+        const profile = (store.studentProfiles || []).find((p: any) => p.studentId === e.studentId);
+        const className = profile?.className || "Tự do";
+
         return {
           enrollmentId: e.id,
           studentId: e.studentId,
@@ -89,7 +104,8 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
           courseId: e.courseId,
           courseTitle: course.title,
           enrolledAt: e.enrolledAt,
-          status: e.status
+          status: e.status,
+          className: className
         };
       }
       return null;
@@ -102,6 +118,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
       courseTitle: string;
       enrolledAt: string;
       status: string;
+      className: string;
     }>;
   };
 
@@ -140,15 +157,31 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     }>;
   };
 
-  const unplacedList = getUnplacedStudents().filter(item => 
+  // Base unfiltered lists
+  const rawUnplacedList = getUnplacedStudents();
+  const rawWaitlistedList = getWaitlistedStudents();
+
+  // Search filtered lists
+  const unplacedList = rawUnplacedList.filter(item => 
     item.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
     item.courseTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const waitlistedList = getWaitlistedStudents().filter(item => 
+  const waitlistedList = rawWaitlistedList.filter(item => 
     item.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
     item.courseTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Class Name filter dropdown items
+  const uniqueClasses = Array.from(new Set(rawUnplacedList.map(item => item.className).filter(Boolean)));
+
+  // Class filtered list
+  const filteredUnplacedList = unplacedList.filter(item => {
+    if (selectedClassFilter !== "all" && item.className !== selectedClassFilter) {
+      return false;
+    }
+    return true;
+  });
 
   const handleOpenPlacement = (item: typeof unplacedList[0]) => {
     setSelectedEnrollment({
@@ -199,9 +232,117 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
       });
       setShowModal(false);
       onRefreshData();
-      triggerToast(`✅ Đã duyệt và xếp lớp thành công cho học viên ${selectedEnrollment.studentName}!`);
+      triggerToast(`✅ Đã xếp lớp thành công cho học viên ${selectedEnrollment.studentName}!`);
     } catch (err: any) {
       triggerToast(err.message || "Không thể duyệt và xếp lớp học viên.");
+    }
+  };
+
+  // Submit bulk placement
+  const handleBulkPlaceSubmit = async () => {
+    if (!bulkPlaceSectionId || selectedEnrollmentIds.length === 0) return;
+
+    const section = (store.courseSections || []).find(s => s.id === bulkPlaceSectionId);
+    if (!section) return;
+
+    const placements = selectedEnrollmentIds.map(id => ({
+      enrollmentId: id,
+      sectionId: bulkPlaceSectionId
+    }));
+
+    try {
+      const res = (await api.bulkPlaceEnrollments(placements)) as any;
+      triggerToast(`✅ Đã xếp lớp hàng loạt thành công cho ${res.count || placements.length} học viên!`);
+      setSelectedEnrollmentIds([]);
+      setBulkPlaceSectionId("");
+      onRefreshData();
+    } catch (err: any) {
+      triggerToast(`❌ Lỗi: ${err.message || "Không thể xếp lớp hàng loạt"}`);
+    }
+  };
+
+  // Submit CSV Import
+  const handleCsvImportSubmit = async () => {
+    if (!csvFileText.trim()) {
+      triggerToast("⚠️ Vui lòng nhập hoặc tải tệp CSV.");
+      return;
+    }
+
+    const lines = csvFileText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) {
+      triggerToast("⚠️ Tệp CSV trống hoặc thiếu hàng tiêu đề.");
+      return;
+    }
+
+    const parseCsvLine = (row: string) => {
+      const columns: string[] = [];
+      let value = "";
+      let quoted = false;
+      for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+        const next = row[i + 1];
+        if (char === '"' && quoted && next === '"') {
+          value += '"';
+          i++;
+          continue;
+        }
+        if (char === '"') {
+          quoted = !quoted;
+          continue;
+        }
+        if (char === "," && !quoted) {
+          columns.push(value.trim());
+          value = "";
+          continue;
+        }
+        value += char;
+      }
+      columns.push(value.trim());
+      return columns;
+    };
+
+    const headers = parseCsvLine(lines[0]);
+    const studentCodeIdx = headers.findIndex(h => h.toLowerCase() === "studentcode");
+    const emailIdx = headers.findIndex(h => h.toLowerCase() === "email");
+    const sectionCodeIdx = headers.findIndex(h => h.toLowerCase() === "sectioncode");
+
+    if (sectionCodeIdx === -1 || (studentCodeIdx === -1 && emailIdx === -1)) {
+      triggerToast("⚠️ Tiêu đề cột CSV không hợp lệ. Phải chứa (studentCode hoặc email) và sectionCode.");
+      return;
+    }
+
+    const placements: any[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCsvLine(lines[i]);
+      if (cols.length < headers.length) continue;
+
+      const placement: any = {
+        sectionCode: cols[sectionCodeIdx].toUpperCase()
+      };
+
+      if (studentCodeIdx !== -1) {
+        placement.studentCode = cols[studentCodeIdx];
+      }
+      if (emailIdx !== -1) {
+        placement.email = cols[emailIdx];
+      }
+
+      placements.push(placement);
+    }
+
+    if (placements.length === 0) {
+      triggerToast("⚠️ Không tìm thấy dòng dữ liệu nào để xử lý.");
+      return;
+    }
+
+    try {
+      const res = (await api.bulkPlaceEnrollments(placements)) as any;
+      triggerToast(`✅ Xếp lớp thành công cho ${res.count || placements.length} học viên từ file CSV!`);
+      setCsvFileText("");
+      setShowCsvImportPanel(false);
+      onRefreshData();
+    } catch (err: any) {
+      triggerToast(`❌ Lỗi: ${err.message || "Lỗi xếp lớp hàng loạt bằng tệp CSV"}`);
     }
   };
 
@@ -224,10 +365,11 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans text-white">
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-indigo-600 border border-white/20 text-white text-xs px-4 py-3 rounded-2xl shadow-2xl">
-          {toastMessage}
+        <div className="fixed bottom-6 right-6 z-50 bg-indigo-600 border border-white/20 text-white text-xs px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2">
+          <Info className="h-4 w-4" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
@@ -239,14 +381,24 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
             Điều phối & Sắp xếp Lớp học
           </h3>
           <p className="text-xs text-white/50 mt-1">
-            Quản lý những học viên đã đóng học phí/đăng ký môn học nhưng chưa được phân vào lớp cụ thể để đi học theo thời khóa biểu.
+            Quản lý những học viên đã đăng ký học môn nhưng chưa có ca xếp lớp chi tiết.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCsvImportPanel(!showCsvImportPanel)}
+            className="px-4 py-2 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white font-bold text-xs rounded-xl border border-indigo-500/20 transition cursor-pointer flex items-center gap-1.5"
+          >
+            <Upload className="h-3.5 w-3.5" /> CSV Xếp lớp nhanh
+          </button>
+          
           <select
             value={activeSemesterId}
-            onChange={(e) => setActiveSemesterId(e.target.value)}
+            onChange={(e) => {
+              setActiveSemesterId(e.target.value);
+              setSelectedEnrollmentIds([]);
+            }}
             className="px-3 py-1.5 bg-black/40 text-white border border-white/10 rounded-xl text-xs focus:outline-none"
           >
             {store.semesters.map(sem => (
@@ -256,22 +408,89 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
         </div>
       </div>
 
+      {/* CSV Import Panel */}
+      {showCsvImportPanel && (
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-5 space-y-4 text-xs">
+          <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+            <span className="font-bold text-sm text-indigo-300">Nhập danh sách xếp lớp từ CSV</span>
+            <button
+              onClick={() => {
+                const csvTemplate = "studentCode,sectionCode\nSV001,JV101-01\nSV002,JV101-01";
+                const blob = new Blob([csvTemplate], { type: "text/csv;charset=utf-8;" });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.setAttribute("href", url);
+                a.setAttribute("download", "template_xep_lop.csv");
+                a.click();
+              }}
+              className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+            >
+              Tải file CSV mẫu
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[11px] text-white/50 leading-relaxed">
+              Vui lòng dán định dạng CSV hoặc tải tệp lên. Cần định dạng chuẩn: <strong>studentCode</strong> (hoặc <strong>email</strong>) và <strong>sectionCode</strong>.
+            </p>
+            <textarea
+              rows={4}
+              placeholder="studentCode,sectionCode&#10;SV001,CS101-01&#10;SV002,CS101-01"
+              value={csvFileText}
+              onChange={(e) => setCsvFileText(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-950 text-white font-mono text-[11px] border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+            <div className="flex justify-between items-center pt-1.5">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setCsvFileText(event.target?.result as string || "");
+                    };
+                    reader.readAsText(file);
+                  }
+                }}
+                className="text-[11px] text-white/40"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCsvImportPanel(false)}
+                  className="px-3 py-1.5 bg-transparent text-white/50 hover:text-white"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={handleCsvImportSubmit}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition cursor-pointer"
+                >
+                  Xử lý Import
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Key Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-white/10 p-5 rounded-3xl relative overflow-hidden space-y-1">
           <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest font-mono">
             Học viên chờ xếp lớp
           </span>
-          <h4 className="text-3xl font-mono font-black text-white">{getUnplacedStudents().length} HV</h4>
-          <p className="text-[10px] text-white/40">Đã đăng ký nhưng chưa có lịch học cụ thể.</p>
+          <h4 className="text-3xl font-mono font-black text-white">{rawUnplacedList.length} HV</h4>
+          <p className="text-[10px] text-white/40">Đã đăng ký nhưng chưa có ca xếp lớp cụ thể.</p>
         </div>
 
         <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-white/10 p-5 rounded-3xl relative overflow-hidden space-y-1">
           <span className="text-[10px] text-amber-400 font-bold uppercase tracking-widest font-mono">
             Danh sách chờ (Waitlist)
           </span>
-          <h4 className="text-3xl font-mono font-black text-amber-400">{getWaitlistedStudents().length} HV</h4>
-          <p className="text-[10px] text-white/40">Đang xếp hàng chờ lớp học phần trống chỗ.</p>
+          <h4 className="text-3xl font-mono font-black text-amber-400">{rawWaitlistedList.length} HV</h4>
+          <p className="text-[10px] text-white/40">Đang chờ lớp học phần được thêm sĩ số trống.</p>
         </div>
 
         <div className="bg-gradient-to-br from-indigo-950/40 to-slate-900 border border-white/10 p-5 rounded-3xl relative overflow-hidden space-y-1">
@@ -281,42 +500,102 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
           <h4 className="text-3xl font-mono font-black text-emerald-400">
             {(store.courseSections || []).filter(s => s.semesterId === activeSemesterId && s.status === "open").length} Lớp
           </h4>
-          <p className="text-[10px] text-white/40">Lớp học phần mở trong kỳ {activeSemesterId}.</p>
+          <p className="text-[10px] text-white/40">Số lớp học phần đang tuyển sinh tháng này.</p>
         </div>
       </div>
 
       {/* Tab select and search input bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10">
-        <div className="flex gap-1 w-full sm:w-auto">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10">
+        <div className="flex gap-1 w-full md:w-auto">
           <button
             onClick={() => setActiveTab("unplaced")}
-            className={`flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+            className={`flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
               activeTab === "unplaced" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"
             }`}
           >
-            Chờ xếp lớp ({getUnplacedStudents().length})
+            Chờ xếp lớp ({rawUnplacedList.length})
           </button>
           <button
             onClick={() => setActiveTab("waitlisted")}
-            className={`flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+            className={`flex-1 md:flex-none px-4 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
               activeTab === "waitlisted" ? "bg-indigo-600 text-white shadow-md" : "text-white/60 hover:text-white"
             }`}
           >
-            Danh sách Chờ ({getWaitlistedStudents().length})
+            Danh sách Chờ ({rawWaitlistedList.length})
           </button>
         </div>
 
-        <div className="relative max-w-md w-full">
-          <input
-            type="text"
-            placeholder="Tìm theo tên học viên, môn học..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-black/25 text-white border border-white/10 rounded-xl py-1.5 px-3 pl-8 text-xs outline-none focus:border-indigo-400 placeholder-white/20"
-          />
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-white/30" />
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          {activeTab === "unplaced" && (
+            <div className="flex items-center gap-1.5 text-xs text-white/60 w-full sm:w-auto">
+              <span>Lớp Sinh hoạt:</span>
+              <select
+                value={selectedClassFilter}
+                onChange={(e) => {
+                  setSelectedClassFilter(e.target.value);
+                  setSelectedEnrollmentIds([]);
+                }}
+                className="px-2 py-1 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none text-[11px]"
+              >
+                <option value="all">Tất cả lớp</option>
+                {uniqueClasses.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Tìm theo học viên, môn học..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black/25 text-white border border-white/10 rounded-xl py-1.5 px-3 pl-8 text-xs outline-none focus:border-indigo-400 placeholder-white/20"
+            />
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-white/30" />
+          </div>
         </div>
       </div>
+
+      {/* Bulk Action Toolbar */}
+      {activeTab === "unplaced" && selectedEnrollmentIds.length > 0 && (
+        <div className="bg-indigo-950/40 border border-indigo-500/25 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs animate-in slide-in-from-top-1 duration-150">
+          <div className="flex items-center gap-2">
+            <span className="font-bold">Đang chọn:</span>
+            <span className="px-2 py-0.5 bg-indigo-600 text-white rounded font-mono font-bold">
+              {selectedEnrollmentIds.length} học viên
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-white/70 font-medium">Chọn lớp học phần đích:</label>
+            <select
+              value={bulkPlaceSectionId}
+              onChange={(e) => setBulkPlaceSectionId(e.target.value)}
+              className="px-3 py-1.5 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/40 text-xs"
+            >
+              <option value="">-- Chọn lớp học phần --</option>
+              {(store.courseSections || [])
+                .filter(s => s.semesterId === activeSemesterId && s.status === "open")
+                .map(s => {
+                  const courseTitle = store.courses.find(c => c.id === s.courseId)?.title || "";
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.sectionCode} ({courseTitle})
+                    </option>
+                  );
+                })}
+            </select>
+            <button
+              onClick={handleBulkPlaceSubmit}
+              disabled={!bulkPlaceSectionId}
+              className="px-4.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Xếp lớp hàng loạt
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* DATA TABLE */}
       <div className="bg-slate-900 border border-white/10 rounded-3xl p-5 overflow-x-auto">
@@ -324,18 +603,49 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-white/10 text-white/40 uppercase text-[10px]">
+                <th className="py-3 px-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={filteredUnplacedList.length > 0 && selectedEnrollmentIds.length === filteredUnplacedList.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedEnrollmentIds(filteredUnplacedList.map(item => item.enrollmentId));
+                      } else {
+                        setSelectedEnrollmentIds([]);
+                      }
+                    }}
+                    className="rounded border-white/20 bg-slate-950 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </th>
                 <th className="py-3">Học viên chờ xếp</th>
-                <th className="py-3">Môn học đã đăng ký</th>
-                <th className="py-3">Ngày đăng ký môn</th>
-                <th className="py-3 text-right">Hành động</th>
+                <th className="py-3 font-sans">Môn học đã đăng ký</th>
+                <th className="py-3 font-sans">Ngày đăng ký môn</th>
+                <th className="py-3 text-right font-sans">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-xs text-white/85">
-              {unplacedList.map((item, idx) => (
+              {filteredUnplacedList.map((item, idx) => (
                 <tr key={idx} className="hover:bg-white/2 transition">
+                  <td className="py-3.5 px-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedEnrollmentIds.includes(item.enrollmentId)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedEnrollmentIds([...selectedEnrollmentIds, item.enrollmentId]);
+                        } else {
+                          setSelectedEnrollmentIds(selectedEnrollmentIds.filter(id => id !== item.enrollmentId));
+                        }
+                      }}
+                      className="rounded border-white/20 bg-slate-950 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </td>
                   <td className="py-3.5">
                     <div className="font-bold text-white">{item.studentName}</div>
                     <div className="text-[10px] text-white/40 font-mono">{item.studentEmail}</div>
+                    <span className="mt-1 inline-block px-1.5 py-0.5 bg-indigo-500/10 text-indigo-300 font-mono text-[9px] rounded border border-indigo-500/20">
+                      Lớp: {item.className}
+                    </span>
                   </td>
                   <td className="py-3.5 font-semibold text-white/90">{item.courseTitle}</td>
                   <td className="py-3.5 font-mono text-indigo-300">
@@ -352,10 +662,10 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                 </tr>
               ))}
 
-              {unplacedList.length === 0 && (
+              {filteredUnplacedList.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-white/30 italic">
-                    🎉 Tất cả học viên đã được sắp xếp lớp học cụ thể học kỳ này!
+                  <td colSpan={5} className="py-12 text-center text-white/30 italic">
+                    🎉 Không tìm thấy học viên chờ xếp lớp nào phù hợp!
                   </td>
                 </tr>
               )}
@@ -472,7 +782,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                   <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-[10.5px] leading-relaxed flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
                     <span>
-                      ⚠️ Hiện chưa có lớp học phần mở nào cho môn học này trong học kỳ {activeSemesterId}. Vui lòng tạo mới Lớp học phần trước!
+                      ⚠️ Hiện chưa có lớp học phần mở nào cho môn học này trong tháng {activeSemesterId}. Vui lòng tạo mới Lớp học phần trước!
                     </span>
                   </div>
                 )}

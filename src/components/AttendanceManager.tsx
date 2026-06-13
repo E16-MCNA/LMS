@@ -572,7 +572,7 @@ export default function AttendanceManager({
                   onChange={(e) => setActiveSessionId(e.target.value)}
                   className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
                 >
-                  <option value="">-- Mở bảng học kỳ --</option>
+                  <option value="">-- Mở bảng tháng --</option>
                   {sessions.map(s => (
                     <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
                   ))}
@@ -663,7 +663,7 @@ export default function AttendanceManager({
                     onChange={(e) => setActiveSessionId(e.target.value)}
                     className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
                   >
-                    <option value="">-- Mở bảng học kỳ --</option>
+                    <option value="">-- Mở bảng tháng --</option>
                     {sessions.map(s => (
                       <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
                     ))}

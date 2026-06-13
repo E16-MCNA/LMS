@@ -62,7 +62,9 @@ export function courseFromRow(row: any): Course {
     level: row.level || undefined,
     tags: row.tags_json ? JSON.parse(row.tags_json) : [],
     rejectionReason: row.rejection_reason || undefined,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    openingDate: row.opening_date || undefined,
+    numberOfLessons: row.number_of_lessons === null || row.number_of_lessons === undefined ? undefined : Number(row.number_of_lessons)
   };
 }
 

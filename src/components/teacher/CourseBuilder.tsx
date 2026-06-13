@@ -136,6 +136,35 @@ export default function CourseBuilder(props: ComponentProps) {
   const [editingSectionId, setEditingSectionId] = React.useState<string | null>(null);
   const [showAttendanceModal, setShowAttendanceModal] = React.useState(false);
 
+  const [localLessonsCount, setLocalLessonsCount] = React.useState<number>(activeCourse?.numberOfLessons || 10);
+
+  React.useEffect(() => {
+    if (activeCourse) {
+      setLocalLessonsCount(activeCourse.numberOfLessons || 10);
+    }
+  }, [activeCourse]);
+
+  const handleUpdateLessonsCount = async () => {
+    if (!activeCourse) return;
+    try {
+      await api.updateCourse(activeCourse.id, {
+        title: activeCourse.title,
+        description: activeCourse.description,
+        category: activeCourse.category || "General",
+        thumbnail: activeCourse.thumbnail,
+        price: activeCourse.price || 0,
+        level: activeCourse.level,
+        tags: activeCourse.tags || [],
+        openingDate: activeCourse.openingDate,
+        numberOfLessons: localLessonsCount
+      });
+      if (triggerToast) triggerToast("✅ Đã cập nhật số buổi học thành công!");
+      onRefreshData();
+    } catch (err: any) {
+      if (triggerToast) triggerToast(`❌ Lỗi: ${err.message || "Không thể cập nhật số buổi học"}`);
+    }
+  };
+
   // Form states
   const [formSemesterId, setFormSemesterId] = React.useState(() => resolveCurrentSemesterId(store));
   const [formSectionCode, setFormSectionCode] = React.useState("");
@@ -436,12 +465,14 @@ export default function CourseBuilder(props: ComponentProps) {
                       <span className="text-white/50">{enrolledCount} học viên đã đăng ký</span>
                       
                       <div className="flex gap-1.5">
-                        <button
-                          onClick={() => handleOpenEditCourse(course)}
-                          className="p-1 px-2.5 bg-white/5 hover:bg-white/10 text-[10px] rounded-lg border border-white/10 text-white/85 cursor-pointer flex items-center"
-                        >
-                          <Edit className="h-3 w-3 inline mr-1" /> Sửa
-                        </button>
+                        {currentUser.role !== "teacher" && (
+                          <button
+                            onClick={() => handleOpenEditCourse(course)}
+                            className="p-1 px-2.5 bg-white/5 hover:bg-white/10 text-[10px] rounded-lg border border-white/10 text-white/85 cursor-pointer flex items-center"
+                          >
+                            <Edit className="h-3 w-3 inline mr-1" /> Sửa
+                          </button>
+                        )}
                         <button
                           onClick={() => setSelectedCourseId(course.id)}
                           className="p-1 px-2.5 bg-white/10 hover:bg-indigo-600 font-bold hover:text-white text-[10px] rounded-lg text-white transition cursor-pointer flex items-center"
@@ -459,7 +490,7 @@ export default function CourseBuilder(props: ComponentProps) {
                   <p className="text-xs text-white/50 mb-3">
                     {myCourses.length === 0 ? "Chưa có bản nháp khóa học nào được tạo trên hồ sơ này." : "Không tìm thấy khóa học nào phù hợp với bộ lọc."}
                   </p>
-                  {myCourses.length === 0 && (
+                  {myCourses.length === 0 && currentUser.role !== "teacher" && (
                     <button 
                       onClick={handleOpenCreateCourse}
                       className="px-4 py-2 bg-indigo-500 text-white text-xs font-bold rounded-xl"
@@ -738,7 +769,7 @@ export default function CourseBuilder(props: ComponentProps) {
                         <span className="text-xs font-semibold text-white block">Các Lớp học phần đang mở</span>
                         <span className="text-[10px] text-white/40 block">Phân bổ ca học & thời khóa biểu</span>
                       </div>
-                      {activeCourse.status === "published" && (
+                      {activeCourse.status === "published" && currentUser.role !== "teacher" && (
                         <button 
                           onClick={handleOpenCreateSection}
                           className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
@@ -766,20 +797,24 @@ export default function CourseBuilder(props: ComponentProps) {
                                   >
                                     <MessageSquare className="h-3 w-3" />
                                   </button>
-                                  <button
-                                    onClick={() => handleOpenEditSection(sec)}
-                                    className="p-0.5 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
-                                    title="Chỉnh sửa ca học"
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteSection(sec.id, sec.sectionCode)}
-                                    className="p-0.5 hover:bg-red-500/20 text-red-400 rounded cursor-pointer"
-                                    title="Xóa lớp học phần"
-                                  >
-                                    <Trash className="h-3 w-3" />
-                                  </button>
+                                  {currentUser.role !== "teacher" && (
+                                    <>
+                                      <button
+                                        onClick={() => handleOpenEditSection(sec)}
+                                        className="p-0.5 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
+                                        title="Chỉnh sửa ca học"
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteSection(sec.id, sec.sectionCode)}
+                                        className="p-0.5 hover:bg-red-500/20 text-red-400 rounded cursor-pointer"
+                                        title="Xóa lớp học phần"
+                                      >
+                                        <Trash className="h-3 w-3" />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               
@@ -912,6 +947,40 @@ export default function CourseBuilder(props: ComponentProps) {
                         Khóa học đã gửi duyệt và đang chờ quản lý phê duyệt trước khi công khai.
                       </div>
                     )}
+                  </div>
+
+                  {/* Settings / Config Number of Lessons for Teacher */}
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                    <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5 flex items-center gap-1.5">
+                      <Settings className="h-4 w-4 text-indigo-400" /> Thiết lập Khóa học
+                    </span>
+                    <div className="space-y-3 text-xs font-sans">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-white/50 block">Số buổi học thiết lập</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            className="w-20 px-2 py-1 bg-black/25 text-white border border-white/10 rounded-lg text-xs"
+                            value={localLessonsCount}
+                            onChange={(e) => setLocalLessonsCount(Number(e.target.value))}
+                          />
+                          <button
+                            onClick={handleUpdateLessonsCount}
+                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition cursor-pointer"
+                          >
+                            Lưu lại
+                          </button>
+                        </div>
+                      </div>
+                      {activeCourse.openingDate && (
+                        <div>
+                          <span className="text-[11px] text-white/50 block">Ngày khai giảng</span>
+                          <span className="text-white font-medium">{new Date(activeCourse.openingDate).toLocaleDateString("vi-VN")}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Quizzes overview in Course details */}
@@ -1212,7 +1281,7 @@ export default function CourseBuilder(props: ComponentProps) {
                 {/* Basic info row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-white/60 block font-bold">Học Kỳ</label>
+                    <label className="text-white/60 block font-bold">Tháng</label>
                     <select
                       value={formSemesterId}
                       onChange={(e) => setFormSemesterId(e.target.value)}

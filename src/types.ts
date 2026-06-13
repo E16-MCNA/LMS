@@ -35,6 +35,8 @@ export interface Course {
   tags?: string[];
   rejectionReason?: string;
   createdAt: string;
+  openingDate?: string;
+  numberOfLessons?: number;
 }
 
 export interface Lesson {
@@ -252,6 +254,7 @@ export interface StudentProfile {
   notes?: string;
   feeHold?: boolean;
   academicProbation?: boolean;
+  className?: string;
 }
 
 export interface AttendanceSession {
@@ -335,6 +338,7 @@ export interface CourseSection {
   maxStudents: number;          // capacity cap
   schedule: Array<{ dayOfWeek: string; startTime: string; endTime: string; room: string; specificDate?: string }>;
   status: "pending" | "open" | "closed" | "cancelled";
+  openingDate?: string;
 }
 
 export interface RegistrationPeriod {

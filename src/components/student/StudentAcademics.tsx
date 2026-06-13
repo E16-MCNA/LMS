@@ -250,9 +250,9 @@ export default function StudentAcademics(props: ComponentProps) {
       valB = b.id || "";
     } else if (txSortField === "notes") {
       const courseA = store.courses.find((c: any) => c.id === a.courseId);
-      valA = a.notes && a.notes.startsWith("tuition_fee_pay:") ? "Học phí học kỳ" : (courseA ? courseA.title : "Học phí");
+      valA = a.notes && a.notes.startsWith("tuition_fee_pay:") ? "Học phí tháng" : (courseA ? courseA.title : "Học phí");
       const courseB = store.courses.find((c: any) => c.id === b.courseId);
-      valB = b.notes && b.notes.startsWith("tuition_fee_pay:") ? "Học phí học kỳ" : (courseB ? courseB.title : "Học phí");
+      valB = b.notes && b.notes.startsWith("tuition_fee_pay:") ? "Học phí tháng" : (courseB ? courseB.title : "Học phí");
     } else if (txSortField === "amount") {
       valA = a.amount || 0;
       valB = b.amount || 0;
@@ -735,7 +735,7 @@ export default function StudentAcademics(props: ComponentProps) {
               <h4 className="text-base font-display font-bold text-white flex items-center gap-1.5">
                 <Activity className="h-5 w-5 text-indigo-400" /> Báo cáo chuyên học & Giờ điểm danh
               </h4>
-              <p className="text-xs text-white/50">Quy chuẩn chuyên cần nghiêm thắt, vắng quá 20% (dưới mốc 80%) sẽ bị đình chỉ tư cách dự thi kết môn học kỳ.</p>
+              <p className="text-xs text-white/50">Quy chuẩn chuyên cần nghiêm thắt, vắng quá 20% (dưới mốc 80%) sẽ bị đình chỉ tư cách dự thi kết môn tháng.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -814,7 +814,7 @@ export default function StudentAcademics(props: ComponentProps) {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
                       <div>
                         <span className="text-[10px] font-mono text-indigo-300 uppercase tracking-widest font-black">
-                          Học Kỳ: {fee.semesterId === "sem_spring25" ? "Spring 2025" : fee.semesterId}
+                          Tháng: {fee.semesterId === "sem_spring25" ? "Spring 2025" : fee.semesterId}
                         </span>
                         <h5 className="font-bold text-white text-xs mt-1">Học phí đợt tuyển sinh và hoạt động lý thuyết học viện</h5>
                       </div>
@@ -963,7 +963,7 @@ export default function StudentAcademics(props: ComponentProps) {
                             <td className="p-3 font-mono font-bold text-cyan-400">{tx.id}</td>
                             <td className="p-3 font-medium text-white">
                               <div className="flex items-center gap-2">
-                                <span>{tx.notes && tx.notes.startsWith("tuition_fee_pay:") ? "Học phí học kỳ" : (course ? course.title : "Học phí")}</span>
+                                <span>{tx.notes && tx.notes.startsWith("tuition_fee_pay:") ? "Học phí tháng" : (course ? course.title : "Học phí")}</span>
                                 {course && (
                                   <button
                                     onClick={() => setCourseDetailId(course.id)}

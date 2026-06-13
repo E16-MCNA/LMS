@@ -351,7 +351,7 @@ export default function AdvisorPanel({ currentUser, onLogout, onRefreshData }: A
             })}
 
             {myStudents.length === 0 && (
-              <p className="text-xs text-white/30 text-center py-6">Không có sinh viên nào được cố vấn trực tiếp học kỳ này.</p>
+              <p className="text-xs text-white/30 text-center py-6">Không có sinh viên nào được cố vấn trực tiếp tháng này.</p>
             )}
           </div>
         </div>

@@ -23,7 +23,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
       status: "on-leave" as const,
       gpa: 2.8,
       credits: 30,
-      notes: "Sinh viên xin bảo lưu học kỳ này."
+      notes: "Sinh viên xin bảo lưu tháng này."
     },
     {
       id: "user_student_suspended",

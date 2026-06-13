@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BookOpen, GraduationCap, CheckCircle, Bookmark, Award, Send, Clock, Play, Check, Lock, User, Search, ChevronRight, ArrowRight, HelpCircle, FileCheck, AlertCircle, X, FileText, CreditCard, Phone, Calendar, Home, Shield, Activity, DollarSign, Printer, FileSpreadsheet, Cpu, BadgeAlert } from "lucide-react";
 import { AppStore } from "../../store";
 import ModalPortal from "../ModalPortal";
+import { api } from "../../api";
 
 interface ComponentProps {
   [key: string]: any;
@@ -9,6 +10,7 @@ interface ComponentProps {
 
 export default function CourseCatalog(props: ComponentProps) {
   const [catalogPage, setCatalogPage] = useState(0);
+  const [sectionSelections, setSectionSelections] = useState<Record<string, string>>({});
   const COURSES_PER_PAGE = 9;
   const {
     activeSubTab,
@@ -282,12 +284,88 @@ export default function CourseCatalog(props: ComponentProps) {
                           </button>
                         )
                       ) : (
-                        <button
-                          onClick={() => handleEnrollIntoCourse(crs.id)}
-                          className={`w-full py-2.5 ${crs.price ? "bg-[#16a34a] text-white" : "bg-sky-600 text-white"} font-bold rounded-xl text-xs transition uppercase tracking-wider shadow-md cursor-pointer text-center block`}
-                        >
-                          {crs.price ? `Đăng ký học | ${new Intl.NumberFormat("vi-VN").format(crs.price)} VND` : "Đăng ký học miễn phí"}
-                        </button>
+                        <div className="space-y-3">
+                          {(() => {
+                            const semesters = store.semesters || [];
+                            const todayStr = new Date().toISOString().slice(0, 10);
+                            const activeSemesterId = semesters.find((s: any) => s.isCurrent)?.id ||
+                              semesters.find((s: any) => s.startDate && s.endDate && todayStr >= String(s.startDate).slice(0, 10) && todayStr <= String(s.endDate).slice(0, 10))?.id ||
+                              semesters[0]?.id ||
+                              "";
+                            
+                            const courseSections = (store.courseSections || []).filter(
+                              (s: any) => s.courseId === crs.id && s.semesterId === activeSemesterId
+                            );
+
+                            const selectedSectionId = sectionSelections[crs.id] || "";
+                            const isAllSectionsFull = courseSections.length > 0 && courseSections.every((s: any) => {
+                              const regCount = (store.courseRegistrations || []).filter((r: any) => r.sectionId === s.id && r.status === "registered").length;
+                              return regCount >= s.maxStudents;
+                            });
+
+                            return (
+                              <>
+                                {courseSections.length === 0 ? (
+                                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-[11px] leading-relaxed flex items-start gap-2">
+                                    <AlertCircle className="h-4 w-4 shrink-0 text-red-500 mt-0.5" />
+                                    <span>Chưa có lớp học phần nào được mở cho môn học này trong tháng hiện tại.</span>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    <label className="text-white/60 block font-bold text-xs">Chọn lớp học phần:</label>
+                                    <select
+                                      value={selectedSectionId}
+                                      onChange={(e) => setSectionSelections({ ...sectionSelections, [crs.id]: e.target.value })}
+                                      className="w-full px-3 py-2 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/40 text-xs"
+                                    >
+                                      <option value="">-- Chọn lớp học phần --</option>
+                                      {courseSections.map((s: any) => {
+                                        const regCount = (store.courseRegistrations || []).filter((r: any) => r.sectionId === s.id && r.status === "registered").length;
+                                        const isFull = regCount >= s.maxStudents;
+                                        const schedStr = s.schedule.map((slot: any) => `${slot.dayOfWeek} (${slot.startTime}-${slot.endTime})`).join(", ");
+                                        return (
+                                          <option key={s.id} value={s.id} disabled={isFull}>
+                                            {s.sectionCode} ({regCount}/{s.maxStudents} HV) {isFull ? "[ĐẦY]" : ""} - Lịch: {schedStr}
+                                          </option>
+                                        );
+                                      })}
+                                    </select>
+                                  </div>
+                                )}
+
+                                {(courseSections.length === 0 || isAllSectionsFull) && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await api.requestNewSection(crs.id);
+                                        triggerToast("✅ Gửi yêu cầu mở thêm lớp học phần thành công!");
+                                      } catch (err: any) {
+                                        triggerToast(err.message || "Không thể gửi yêu cầu.");
+                                      }
+                                    }}
+                                    className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition uppercase tracking-wider shadow-md cursor-pointer text-center block"
+                                  >
+                                    Yêu cầu mở thêm lớp
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    if (courseSections.length > 0 && !selectedSectionId) {
+                                      triggerToast("⚠️ Vui lòng chọn lớp học phần trước khi đăng ký!");
+                                      return;
+                                    }
+                                    handleEnrollIntoCourse(crs.id, selectedSectionId);
+                                  }}
+                                  disabled={courseSections.length > 0 && !selectedSectionId}
+                                  className={`w-full py-2.5 ${crs.price ? "bg-[#16a34a] text-white" : "bg-sky-600 text-white"} font-bold rounded-xl text-xs transition uppercase tracking-wider shadow-md cursor-pointer text-center block disabled:opacity-40 disabled:cursor-not-allowed`}
+                                >
+                                  {crs.price ? `Đăng ký học | ${new Intl.NumberFormat("vi-VN").format(crs.price)} VND` : "Đăng ký học miễn phí"}
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
                       );
                     })()}
                   </div>

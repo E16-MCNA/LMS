@@ -123,7 +123,7 @@ export default function TuitionManager({ store, onRefreshData, triggerToast }: T
   // Bulk issue tuition fees
   const handleBulkIssueTuition = async () => {
     if (!selectedSemesterId) {
-      triggerToast("Vui lòng chọn học kỳ để áp dụng biểu phí.");
+      triggerToast("Vui lòng chọn tháng để áp dụng biểu phí.");
       return;
     }
 
@@ -218,7 +218,7 @@ export default function TuitionManager({ store, onRefreshData, triggerToast }: T
             <TrendingUp className="h-4 w-4 text-cyan-400" /> Tổng học phí phát hành
           </div>
           <h3 className="text-xl font-mono font-black text-white mt-1.5">{totalBilled.toLocaleString()} <span className="text-[10px] text-white/40">VND</span></h3>
-          <p className="text-[9.5px] text-white/40 mt-1">Dựa trên niên học kỳ đang lọc</p>
+          <p className="text-[9.5px] text-white/40 mt-1">Dựa trên niên tháng đang lọc</p>
         </div>
 
         <div className="md:col-span-1 bg-white/4 border border-white/5 p-4 rounded-2xl">
@@ -369,7 +369,7 @@ export default function TuitionManager({ store, onRefreshData, triggerToast }: T
                   Học sinh Sinh viên {tuitionSortField === "studentName" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}
                 </th>
                 <th className="py-2 px-3 cursor-pointer select-none hover:text-white transition" onClick={() => handleTuitionSort("semesterId")}>
-                  Học Kỳ Billed {tuitionSortField === "semesterId" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}
+                  Tháng Billed {tuitionSortField === "semesterId" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}
                 </th>
                 <th className="py-2 px-3 text-right cursor-pointer select-none hover:text-white transition" onClick={() => handleTuitionSort("amount")}>
                   Tổng Định Phí {tuitionSortField === "amount" ? (tuitionSortOrder === "asc" ? "▲" : "▼") : "↕"}

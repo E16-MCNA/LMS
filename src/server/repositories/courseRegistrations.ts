@@ -76,7 +76,7 @@ export const courseRegistrationsRepository = {
       )).rows;
       if (periods.length === 0) {
         await client.query("ROLLBACK");
-        return { error: "Kỳ đăng ký học phần hiện đang đóng hoặc không khả dụng cho học kỳ này.", status: 403 };
+        return { error: "Kỳ đăng ký học phần hiện đang đóng hoặc không khả dụng cho tháng này.", status: 403 };
       }
       const studentYear = Number(profile.academic_year || 1);
       const isYearAllowed = periods.some(period => {

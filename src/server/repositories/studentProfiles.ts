@@ -17,14 +17,15 @@ export const studentProfilesRepository = {
       `INSERT INTO student_profiles (
         id, user_id, student_code, program_id, department_id, academic_year, enrollment_date,
         expected_graduation, status, gpa, total_credits_earned, address, phone, date_of_birth,
-        gender, guardian_name, guardian_phone, guardian_email, notes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+        gender, guardian_name, guardian_phone, guardian_email, notes, class_name
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
       [
         profile.id, profile.userId, profile.studentCode, profile.programId, profile.departmentId,
         profile.academicYear, profile.enrollmentDate, profile.expectedGraduation, profile.status,
         profile.gpa, profile.totalCreditsEarned, profile.address || null, profile.phone || null,
         profile.dateOfBirth || null, profile.gender || null, profile.guardianName || null,
-        profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null
+        profile.guardianPhone || null, profile.guardianEmail || null, profile.notes || null,
+        profile.className || null
       ]
     );
     return profile;
@@ -58,7 +59,8 @@ export const studentProfilesRepository = {
       guardianName: row.guardian_name || undefined,
       guardianPhone: row.guardian_phone || undefined,
       guardianEmail: row.guardian_email || undefined,
-      notes: row.notes || undefined
+      notes: row.notes || undefined,
+      className: row.class_name || undefined
     };
   }
 };

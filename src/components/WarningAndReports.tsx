@@ -263,7 +263,7 @@ export default function WarningAndReports({
                     <option value="low_gpa" className="bg-slate-900">GPA Thấp (Dưới 2.0)</option>
                     <option value="low_attendance" className="bg-slate-900">Nghỉ chuyên cần nhiều</option>
                     <option value="unpaid_fee" className="bg-slate-900">Trễ nợ học phí</option>
-                    <option value="exam_ban" className="bg-slate-900">Đình chỉ thi học kỳ</option>
+                    <option value="exam_ban" className="bg-slate-900">Đình chỉ thi tháng</option>
                     <option value="overdue_assignment" className="bg-slate-900">Trễ hạn nộp bài tập</option>
                   </select>
                 </div>
@@ -274,7 +274,7 @@ export default function WarningAndReports({
                 <textarea
                   value={warningMessage}
                   onChange={(e) => setWarningMessage(e.target.value)}
-                  placeholder="Ví dụ: GPA học kỳ hiện tại là 1.85, dưới mức tối thiểu 2.0. Vui lòng liên hệ Văn phòng Học vụ trước ngày 15/06 để đăng ký học cải thiện..."
+                  placeholder="Ví dụ: GPA tháng hiện tại là 1.85, dưới mức tối thiểu 2.0. Vui lòng liên hệ Văn phòng Học vụ trước ngày 15/06 để đăng ký học cải thiện..."
                   className="w-full px-3.5 py-2.5 bg-black/25 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 placeholder-white/20 min-h-[120px] font-sans leading-relaxed"
                   required
                 />
@@ -521,7 +521,7 @@ export default function WarningAndReports({
           {/* Col 4: Semester Tuition Collection percentage ratios */}
           <div className="bg-white/4 border border-white/10 rounded-2xl p-5 space-y-3 md:col-span-1">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1">
-              <Info className="h-4 w-4 text-cyan-400" /> Hiệu suất và Thu hồi Học phí theo đợt Học Kỳ
+              <Info className="h-4 w-4 text-cyan-400" /> Hiệu suất và Thu hồi Học phí theo đợt Tháng
             </h4>
 
             <div className="divide-y divide-white/5 text-xs text-white/90">

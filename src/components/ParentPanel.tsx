@@ -482,7 +482,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
                               </div>
                             </td>
                             <td className="py-3 text-white/45">{teacher?.name || "Không xác định"}</td>
-                            <td className="py-3 font-mono">Học kỳ {course?.category || "Lớp SIS"}</td>
+                            <td className="py-3 font-mono">Tháng {course?.category || "Lớp SIS"}</td>
                             <td className="py-3 text-center font-mono text-white/60">
                               {midtermVal !== null ? `${midtermVal}%` : "—"}
                             </td>
@@ -610,7 +610,7 @@ export default function ParentPanel({ currentUser, onLogout, onRefreshData, acti
                   return (
                     <div key={fee.id} className="p-5 bg-black/20 rounded-2xl border border-white/5 space-y-3">
                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">{semester?.name || "Học kỳ Hiện Tại"}</span>
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">{semester?.name || "Tháng Hiện Tại"}</span>
                         <span className={`text-[10px] font-bold py-0.5 px-2 rounded font-mono ${
                           fee.status === "paid" ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
                         }`}>

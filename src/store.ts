@@ -415,7 +415,7 @@ export function getInitialStore(): LMSDataStore {
         id: "note_welcome_advisor",
         userId: "user_advisor",
         type: "info",
-        message: "Chào mừng Cố vấn học tập. Danh sách sinh viên được phân công cố vấn, sổ nhật ký tư vấn và phê duyệt lộ trình đăng ký lớp học kỳ mới đã sẵn sàng.",
+        message: "Chào mừng Cố vấn học tập. Danh sách sinh viên được phân công cố vấn, sổ nhật ký tư vấn và phê duyệt lộ trình đăng ký lớp tháng mới đã sẵn sàng.",
         isRead: false,
         createdAt: new Date("2026-05-25T08:35:00Z").toISOString()
       }
@@ -677,7 +677,7 @@ export function getInitialStore(): LMSDataStore {
       {
         id: "rp_spring25",
         semesterId: "sem_spring25",
-        name: "Đăng ký học kỳ Mùa Xuân 2025",
+        name: "Đăng ký tháng Mùa Xuân 2025",
         startDate: "2024-12-01",
         endDate: "2026-12-31",
         allowedYears: [1, 2, 3, 4],

@@ -255,7 +255,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
   const myEnrolledCourseIds = myEnrollments.map(e => e.courseId);
 
   // Handle Enrollment
-  const handleEnrollIntoCourse = (courseId: string) => {
+  const handleEnrollIntoCourse = (courseId: string, sectionId?: string) => {
     const storeData = AppStore.get();
     const courseObj = storeData.courses.find(c => c.id === courseId);
     if (!courseObj) return;
@@ -267,7 +267,7 @@ export default function StudentPanel({ currentUser, onLogout, onRefreshData, act
     }
 
     const price = courseObj.price || 0;
-    api.registerEnrollment(courseId)
+    api.registerEnrollment(courseId, sectionId)
       .then(() => {
         onRefreshData();
         triggerToast("Đã lập yêu cầu đăng ký học thành công!");

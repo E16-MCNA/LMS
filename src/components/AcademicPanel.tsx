@@ -952,7 +952,7 @@ export default function AcademicPanel({ currentUser, onLogout, onRefreshData, ac
           <div className="space-y-6">
             <div className="border-b border-white/5 pb-4">
               <h4 className="text-base font-display font-semibold text-white">Báo cáo & Phổ điểm Hệ thống</h4>
-              <p className="text-xs text-white/50">Thống kê biểu đồ phổ điểm GPA toàn trường và hiệu suất thu hồi học phí học kỳ.</p>
+              <p className="text-xs text-white/50">Thống kê biểu đồ phổ điểm GPA toàn trường và hiệu suất thu hồi học phí tháng.</p>
             </div>
             <WarningAndReports 
               store={store} 
