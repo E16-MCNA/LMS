@@ -42,6 +42,20 @@ export default function CourseSectionManager({ store, currentUser, onRefreshData
   const [sectionModalMode, setSectionModalMode] = useState<"create" | "edit">("create");
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
+  // Lessons Management States
+  const [showLessonsModal, setShowLessonsModal] = useState(false);
+  const [selectedCourseForLessons, setSelectedCourseForLessons] = useState<Course | null>(null);
+  const [showLessonFormModal, setShowLessonFormModal] = useState(false);
+  const [lessonFormMode, setLessonFormMode] = useState<"create" | "edit">("create");
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+
+  // Lesson Form States
+  const [lessonTitle, setLessonTitle] = useState("");
+  const [lessonContent, setLessonContent] = useState("");
+  const [lessonVideoUrl, setLessonVideoUrl] = useState("");
+  const [lessonDuration, setLessonDuration] = useState("15 mins");
+  const [lessonOrder, setLessonOrder] = useState(1);
+
   // Course Form States
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDesc, setCourseDesc] = useState("");
@@ -317,6 +331,77 @@ export default function CourseSectionManager({ store, currentUser, onRefreshData
     }
   };
 
+  // Lessons Management Event Handlers
+  const handleOpenManageLessons = (course: Course) => {
+    setSelectedCourseForLessons(course);
+    setShowLessonsModal(true);
+  };
+
+  const handleOpenCreateLesson = () => {
+    setLessonFormMode("create");
+    setEditingLessonId(null);
+    setLessonTitle("");
+    setLessonContent("");
+    setLessonVideoUrl("");
+    setLessonDuration("15 mins");
+    const courseLessons = (store.lessons || []).filter((l: any) => l.courseId === selectedCourseForLessons?.id);
+    setLessonOrder(courseLessons.length + 1);
+    setShowLessonFormModal(true);
+  };
+
+  const handleOpenEditLesson = (lesson: any) => {
+    setLessonFormMode("edit");
+    setEditingLessonId(lesson.id);
+    setLessonTitle(lesson.title);
+    setLessonContent(lesson.content);
+    setLessonVideoUrl(lesson.videoUrl || "");
+    setLessonDuration(lesson.duration || "15 mins");
+    setLessonOrder(lesson.order);
+    setShowLessonFormModal(true);
+  };
+
+  const handleSaveLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseForLessons) return;
+
+    const payload = {
+      courseId: selectedCourseForLessons.id,
+      title: lessonTitle,
+      content: lessonContent,
+      videoUrl: lessonVideoUrl || undefined,
+      order: lessonOrder,
+      duration: lessonDuration
+    };
+
+    try {
+      if (lessonFormMode === "create") {
+        await api.addLesson(payload);
+        showToast("✅ Đã thêm bài học thành công!");
+      } else {
+        if (!editingLessonId) return;
+        await api.updateLesson(editingLessonId, payload);
+        showToast("✅ Đã cập nhật bài học thành công!");
+      }
+      setShowLessonFormModal(false);
+      onRefreshData();
+    } catch (err: any) {
+      showToast(`❌ Lỗi: ${err.message || "Không thể lưu bài học"}`);
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: string, title: string) => {
+    if (!window.confirm(`⚠️ Bạn có chắc chắn muốn xóa bài học "${title}" không?`)) {
+      return;
+    }
+    try {
+      await api.deleteLesson(lessonId);
+      showToast("✅ Đã xóa bài học!");
+      onRefreshData();
+    } catch (err: any) {
+      showToast(`❌ Không thể xóa bài học: ${err.message}`);
+    }
+  };
+
   // Render Schedule Helper
   const renderSchedule = (slots: any[]) => {
     if (!slots || slots.length === 0) return <span className="text-amber-400">Chưa xếp lịch</span>;
@@ -455,6 +540,13 @@ export default function CourseSectionManager({ store, currentUser, onRefreshData
                     <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-4 text-xs">
                       <span className="text-white/40">{courseSectionsList.length} lớp học phần</span>
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => handleOpenManageLessons(c)}
+                          className="p-1.5 hover:bg-white/10 text-indigo-300 rounded-lg cursor-pointer"
+                          title="Quản lý bài học"
+                        >
+                          <BookOpen className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => handleOpenEditCourse(c)}
                           className="p-1.5 hover:bg-white/10 text-indigo-300 rounded-lg cursor-pointer"
@@ -951,6 +1043,188 @@ export default function CourseSectionManager({ store, currentUser, onRefreshData
                     className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
                   >
                     Lưu ca học
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Modal 3: MANAGE LESSONS LIST */}
+      {showLessonsModal && selectedCourseForLessons && (
+        <ModalPortal>
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto font-sans">
+            <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-2xl shadow-2xl relative text-xs text-white">
+              <button 
+                onClick={() => setShowLessonsModal(false)}
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-3 pr-8">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-1.5 font-sans">
+                    <BookOpen className="h-5 w-5 text-indigo-400 font-sans" />
+                    Quản lý bài học: {selectedCourseForLessons.title}
+                  </h3>
+                  <p className="text-[11px] text-white/50 font-sans">Xem và cập nhật khung chương trình từng buổi học của môn học.</p>
+                </div>
+                <button
+                  onClick={handleOpenCreateLesson}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition cursor-pointer flex items-center gap-1 font-sans"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Thêm Bài học
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                {(store.lessons || [])
+                  .filter((l: any) => l.courseId === selectedCourseForLessons.id)
+                  .sort((a: any, b: any) => a.order - b.order)
+                  .map((lesson: any) => (
+                    <div key={lesson.id} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-7 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[10px] flex items-center justify-center flex-shrink-0">
+                          Buổi {lesson.order}
+                        </div>
+                        <div className="min-w-0">
+                          <h5 className="font-semibold text-white truncate text-xs font-sans">{lesson.title}</h5>
+                          <p className="text-[10px] text-white/40 truncate font-sans">{lesson.duration || "15 phút"}{lesson.videoUrl ? ` | ${lesson.videoUrl}` : ""}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenEditLesson(lesson)}
+                          className="p-1.5 hover:bg-white/10 text-indigo-300 rounded-lg cursor-pointer"
+                          title="Chỉnh sửa bài học"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLesson(lesson.id, lesson.title)}
+                          className="p-1.5 hover:bg-red-500/10 text-red-400 rounded-lg cursor-pointer"
+                          title="Xóa bài học"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                {(store.lessons || []).filter((l: any) => l.courseId === selectedCourseForLessons.id).length === 0 && (
+                  <div className="text-center py-8 bg-black/20 rounded-xl border border-dashed border-white/10 text-white/40 font-sans">
+                    Chưa có bài học nào được tạo cho khóa học này.
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 mt-4 border-t border-white/10 flex justify-end">
+                <button
+                  onClick={() => setShowLessonsModal(false)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer font-sans"
+                >
+                  Hoàn tất
+                </button>
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Modal 4: CREATE/EDIT LESSON FORM */}
+      {showLessonFormModal && selectedCourseForLessons && (
+        <ModalPortal>
+          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto font-sans">
+            <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative text-xs text-white">
+              <button 
+                onClick={() => setShowLessonFormModal(false)}
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3 font-sans">
+                <BookOpen className="h-5 w-5 text-indigo-400 font-sans" />
+                {lessonFormMode === "create" ? "Thêm bài học mới" : "Chỉnh sửa bài học"}
+              </h3>
+
+              <form onSubmit={handleSaveLesson} className="space-y-4 font-sans">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Tiêu đề bài học *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nhập tiêu đề bài học..."
+                    value={lessonTitle}
+                    onChange={(e) => setLessonTitle(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70">Buổi số *</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={lessonOrder}
+                      onChange={(e) => setLessonOrder(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70">Thời lượng bài học *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="ví dụ: 15 mins, 2 giờ..."
+                      value={lessonDuration}
+                      onChange={(e) => setLessonDuration(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Đường dẫn video bài giảng (nếu có)</label>
+                  <input
+                    type="url"
+                    placeholder="ví dụ: https://www.youtube.com/watch?v=..."
+                    value={lessonVideoUrl}
+                    onChange={(e) => setLessonVideoUrl(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-white/70">Nội dung bài học lý thuyết / hướng dẫn *</label>
+                  <textarea
+                    required
+                    rows={6}
+                    placeholder="Nhập nội dung bài học lý thuyết, tài liệu hướng dẫn học viên..."
+                    value={lessonContent}
+                    onChange={(e) => setLessonContent(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans leading-relaxed text-xs"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowLessonFormModal(false)}
+                    className="px-4 py-2 bg-transparent text-white/60 hover:text-white cursor-pointer font-sans"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer font-sans"
+                  >
+                    Lưu bài học
                   </button>
                 </div>
               </form>

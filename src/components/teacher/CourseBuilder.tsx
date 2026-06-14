@@ -596,12 +596,14 @@ export default function CourseBuilder(props: ComponentProps) {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học ({lessons.length})</span>
-                        <button
-                          onClick={() => setShowLessonModal(true)}
-                          className="p-1.5 bg-white/10 hover:bg-white/15 text-[10px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
-                        >
-                          <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm
-                        </button>
+                        {currentUser.role !== "teacher" && (
+                          <button
+                            onClick={() => setShowLessonModal(true)}
+                            className="p-1.5 bg-white/10 hover:bg-white/15 text-[10px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
+                          >
+                            <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm
+                          </button>
+                        )}
                       </div>
                       <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
                         {lessons.map((lesson: any) => (
@@ -868,12 +870,14 @@ export default function CourseBuilder(props: ComponentProps) {
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
                     <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                       <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học trong môn ({lessons.length})</span>
-                      <button
-                        onClick={() => setShowLessonModal(true)}
-                        className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
-                      >
-                        <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm Bài học
-                      </button>
+                      {currentUser.role !== "teacher" && (
+                        <button
+                          onClick={() => setShowLessonModal(true)}
+                          className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
+                        >
+                          <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm Bài học
+                        </button>
+                      )}
                     </div>
 
                     <div className="space-y-3">

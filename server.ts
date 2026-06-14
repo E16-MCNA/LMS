@@ -1831,11 +1831,27 @@ app.delete("/api/courses/:id", requireAuth, requireRole(["manager", "admin", "su
   res.json({ ok: true });
 }));
 
-app.post("/api/lessons", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.addLesson), asyncHandler(async (req, res) => {
-  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, req.body.courseId)) return res.status(403).json({ error: "Permission denied." });
+app.post("/api/lessons", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.addLesson), asyncHandler(async (req, res) => {
   const lesson = await coursesRepository.addLesson(pool, req.body);
   await audit(req, "add_lesson", lesson.id, lesson.title);
   res.status(201).json(lesson);
+}));
+
+app.put("/api/lessons/:id", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.updateLesson), asyncHandler(async (req, res) => {
+  const lesson = await coursesRepository.updateLesson(pool, req.params.id, req.body);
+  if (!lesson) return res.status(404).json({ error: "Lesson not found." });
+  await audit(req, "update_lesson", lesson.id, lesson.title);
+  res.json(lesson);
+}));
+
+app.delete("/api/lessons/:id", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const lessonRes = await pool.query("SELECT * FROM lessons WHERE id = $1", [req.params.id]);
+  const lessonRow = lessonRes.rows[0];
+  if (!lessonRow) return res.status(404).json({ error: "Lesson not found." });
+
+  await coursesRepository.deleteLesson(pool, req.params.id);
+  await audit(req, "delete_lesson", req.params.id, lessonRow.title);
+  res.json({ ok: true });
 }));
 
 app.get("/api/enrollments", requireAuth, asyncHandler(async (req, res) => res.json(await enrollmentsRepository.listForUser(pool, req.user!))));

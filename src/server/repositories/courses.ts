@@ -85,6 +85,33 @@ export const coursesRepository = {
     return lesson;
   },
 
+  async updateLesson(db: Queryable, id: string, input: Partial<Omit<Lesson, "id" | "courseId">>) {
+    const row = (await db.query(
+      "UPDATE lessons SET title = COALESCE($1, title), content = COALESCE($2, content), video_url = $3, lesson_order = COALESCE($4, lesson_order), duration = COALESCE($5, duration) WHERE id = $6 RETURNING *",
+      [
+        input.title || null,
+        input.content || null,
+        input.videoUrl || null,
+        input.order !== undefined ? input.order : null,
+        input.duration || null,
+        id
+      ]
+    )).rows[0];
+    return row ? {
+      id: row.id,
+      courseId: row.course_id,
+      title: row.title,
+      content: row.content,
+      videoUrl: row.video_url || undefined,
+      order: row.lesson_order,
+      duration: row.duration
+    } : null;
+  },
+
+  async deleteLesson(db: Queryable, id: string) {
+    await db.query("DELETE FROM lessons WHERE id = $1", [id]);
+  },
+
   async teacherOwnsCourse(db: Queryable, teacherId: string, courseId: string) {
     return Boolean((await db.query("SELECT id FROM courses WHERE id = $1 AND teacher_id = $2", [courseId, teacherId])).rows[0]);
   }

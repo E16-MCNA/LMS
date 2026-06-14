@@ -71,6 +71,13 @@ export const schemas = {
     order: z.coerce.number().int().min(0),
     duration: z.string().trim().min(1)
   }),
+  updateLesson: z.object({
+    title: z.string().trim().min(1).optional(),
+    content: z.string().trim().min(1).optional(),
+    videoUrl: z.string().trim().optional(),
+    order: z.coerce.number().int().min(0).optional(),
+    duration: z.string().trim().min(1).optional()
+  }),
   createQuiz: z.object({
     courseId: z.string().trim().min(1),
     lessonId: z.string().trim().optional(),

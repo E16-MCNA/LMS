@@ -63,6 +63,8 @@ export const api = {
   rejectCourse: (courseId: string, rejectionReason: string) => apiFetch(`/api/courses/${courseId}/reject`, { method: "POST", body: JSON.stringify({ rejectionReason }) }),
   deleteCourse: (courseId: string) => apiFetch(`/api/courses/${courseId}`, { method: "DELETE" }),
   addLesson: (payload: unknown) => apiFetch("/api/lessons", { method: "POST", body: JSON.stringify(payload) }),
+  updateLesson: (lessonId: string, payload: unknown) => apiFetch(`/api/lessons/${lessonId}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteLesson: (lessonId: string) => apiFetch(`/api/lessons/${lessonId}`, { method: "DELETE" }),
   getEnrollments: () => apiFetch("/api/enrollments"),
   registerEnrollment: (courseId: string, sectionId?: string) => apiFetch("/api/enrollments/register", { method: "POST", body: JSON.stringify({ courseId, sectionId }) }),
   approveEnrollment: (enrollmentId: string, payload: { sectionId?: string; semesterId?: string } = {}) => apiFetch(`/api/enrollments/${enrollmentId}/approve`, { method: "PATCH", body: JSON.stringify(payload) }),
