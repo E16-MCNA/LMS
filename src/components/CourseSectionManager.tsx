@@ -661,151 +661,226 @@ export default function CourseSectionManager({ store, currentUser, onRefreshData
       {showCourseModal && (
         <ModalPortal>
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto font-sans">
-            <div className="bg-slate-900 border border-white/20 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative text-xs text-white">
+            <div className={`bg-slate-900 border border-white/20 rounded-3xl p-6 w-full shadow-2xl relative text-xs text-white transition-all duration-300 ${courseModalMode === "edit" ? "max-w-4xl" : "max-w-lg"}`}>
               <button 
                 onClick={() => setShowCourseModal(false)}
-                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60"
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-white/10 text-white/60 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
 
-              <h3 className="text-base font-bold text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-1.5 border-b border-white/10 pb-3">
                 <BookOpen className="h-5 w-5 text-indigo-400" />
                 {courseModalMode === "create" ? "Khởi tạo Khóa học mới" : "Chỉnh sửa thông tin Khóa học"}
               </h3>
 
-              <form onSubmit={handleSaveCourse} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/70">Tên khóa học *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: Lập trình Node.js & React nâng cao"
-                    value={courseTitle}
-                    onChange={(e) => setCourseTitle(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/70">Mô tả tóm tắt *</label>
-                  <textarea
-                    required
-                    rows={3}
-                    placeholder="Nhập mô tả chi tiết chương trình đào tạo..."
-                    value={courseDesc}
-                    onChange={(e) => setCourseDesc(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              <div className={courseModalMode === "edit" ? "grid grid-cols-1 md:grid-cols-2 gap-8 items-start" : "space-y-4"}>
+                {/* COLUMN 1: Edit course metadata form */}
+                <form onSubmit={handleSaveCourse} className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Danh mục</label>
-                    <select
-                      value={courseCategory}
-                      onChange={(e) => setCourseCategory(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
-                    >
-                      <option value="Web Development">Lập trình Web</option>
-                      <option value="Mobile App">Lập trình Di động</option>
-                      <option value="Data Science">Khoa học Dữ liệu</option>
-                      <option value="UI/UX Design">Thiết kế UI/UX</option>
-                      <option value="General">Đại cương</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Trình độ</label>
-                    <select
-                      value={courseLevel}
-                      onChange={(e) => setCourseLevel(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
-                    >
-                      <option value="Cơ bản">Cơ bản</option>
-                      <option value="Trung cấp">Trung cấp</option>
-                      <option value="Nâng cao">Nâng cao</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Giảng viên phụ trách</label>
-                    <select
-                      value={courseTeacherId}
-                      onChange={(e) => setCourseTeacherId(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
-                    >
-                      <option value="">-- Chưa phân công --</option>
-                      {teachers.map((t: any) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Học phí (VND)</label>
+                    <label className="text-xs font-bold text-white/70 font-sans">Tên khóa học *</label>
                     <input
-                      type="number"
-                      min={0}
-                      value={coursePrice}
-                      onChange={(e) => setCoursePrice(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Ngày khai giảng</label>
-                    <input
-                      type="date"
-                      value={courseOpeningDate}
-                      onChange={(e) => setCourseOpeningDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
+                      type="text"
+                      required
+                      placeholder="Ví dụ: Lập trình Node.js & React nâng cao"
+                      value={courseTitle}
+                      onChange={(e) => setCourseTitle(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-white/70">Số buổi học</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={courseLessonsCount}
-                      onChange={(e) => setCourseLessonsCount(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
+                    <label className="text-xs font-bold text-white/70 font-sans">Mô tả tóm tắt *</label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Nhập mô tả chi tiết chương trình đào tạo..."
+                      value={courseDesc}
+                      onChange={(e) => setCourseDesc(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-white/70">Từ khóa (Tags - phân tách bằng dấu phẩy)</label>
-                  <input
-                    type="text"
-                    placeholder="ví dụ: react, javascript, frontend"
-                    value={courseTags}
-                    onChange={(e) => setCourseTags(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-white/70 font-sans">Danh mục</label>
+                      <select
+                        value={courseCategory}
+                        onChange={(e) => setCourseCategory(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                      >
+                        <option value="Web Development">Lập trình Web</option>
+                        <option value="Mobile App">Lập trình Di động</option>
+                        <option value="Data Science">Khoa học Dữ liệu</option>
+                        <option value="UI/UX Design">Thiết kế UI/UX</option>
+                        <option value="General">Đại cương</option>
+                      </select>
+                    </div>
 
-                <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setShowCourseModal(false)}
-                    className="px-4 py-2 bg-transparent text-white/60 hover:text-white cursor-pointer"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer"
-                  >
-                    Lưu thông tin
-                  </button>
-                </div>
-              </form>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-white/70 font-sans">Trình độ</label>
+                      <select
+                        value={courseLevel}
+                        onChange={(e) => setCourseLevel(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                      >
+                        <option value="Cơ bản">Cơ bản</option>
+                        <option value="Trung cấp">Trung cấp</option>
+                        <option value="Nâng cao">Nâng cao</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-white/70 font-sans">Giảng viên phụ trách</label>
+                      <select
+                        value={courseTeacherId}
+                        onChange={(e) => setCourseTeacherId(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                      >
+                        <option value="">-- Chưa phân công --</option>
+                        {teachers.map((t: any) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-white/70 font-sans">Học phí (VND)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={coursePrice}
+                        onChange={(e) => setCoursePrice(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-white/70 font-sans">Ngày khai giảng</label>
+                      <input
+                        type="date"
+                        value={courseOpeningDate}
+                        onChange={(e) => setCourseOpeningDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-white/70 font-sans">Số buổi học</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={courseLessonsCount}
+                        onChange={(e) => setCourseLessonsCount(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-white/70 font-sans">Từ khóa (Tags - phân tách bằng dấu phẩy)</label>
+                    <input
+                      type="text"
+                      placeholder="ví dụ: react, javascript, frontend"
+                      value={courseTags}
+                      onChange={(e) => setCourseTags(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-950 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500 font-sans"
+                    />
+                  </div>
+
+                  <div className="pt-4 flex justify-end gap-3 border-t border-white/10 font-sans">
+                    <button
+                      type="button"
+                      onClick={() => setShowCourseModal(false)}
+                      className="px-4 py-2 bg-transparent text-white/60 hover:text-white cursor-pointer font-sans"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer font-sans"
+                    >
+                      Lưu thông tin
+                    </button>
+                  </div>
+                </form>
+
+                {/* COLUMN 2: Class Sections and Timetables List (only in edit mode) */}
+                {courseModalMode === "edit" && editingCourseId && (
+                  <div className="space-y-4 border-t md:border-t-0 md:border-l md:pl-8 border-white/10 pt-4 md:pt-0 font-sans">
+                    <div className="flex justify-between items-center pb-2 border-b border-white/10">
+                      <div>
+                        <h4 className="text-xs font-bold text-white tracking-wide uppercase font-sans">Các lớp học phần tương ứng</h4>
+                        <p className="text-[10px] text-white/50 font-sans">Thời khóa biểu, phòng học và giảng viên</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSectionCourseId(editingCourseId);
+                          handleOpenCreateSection();
+                        }}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] rounded-lg transition cursor-pointer flex items-center gap-1 font-sans"
+                      >
+                        <Plus className="h-3 w-3" /> Thêm lớp
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                      {(store.courseSections || [])
+                        .filter((sec: CourseSection) => sec.courseId === editingCourseId)
+                        .map((sec: CourseSection) => {
+                          const teacherName = teachers.find(u => u.id === sec.teacherId)?.name || "Chưa phân công";
+                          const semesterName = semesters.find((s: any) => s.id === sec.semesterId)?.name || "Chưa chọn";
+                          const currentCount = getSectionRegisteredCount(sec.id);
+
+                          return (
+                            <div key={sec.id} className="bg-white/5 border border-white/10 rounded-2xl p-3.5 space-y-2.5 relative group font-sans">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="font-mono font-bold text-indigo-300 text-xs block">{sec.sectionCode}</span>
+                                  <span className="text-[10px] text-white/40 font-sans">{semesterName} | Sĩ số: {currentCount}/{sec.maxStudents}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditSection(sec)}
+                                    className="p-1 hover:bg-white/10 text-indigo-300 rounded cursor-pointer"
+                                    title="Sửa ca học"
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSection(sec.id, sec.sectionCode)}
+                                    className="p-1 hover:bg-red-500/10 text-red-400 rounded cursor-pointer"
+                                    title="Xóa lớp học"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="text-[11px] text-white/50 font-sans space-y-1">
+                                <div>Giảng viên: <span className="text-white font-medium">{teacherName}</span></div>
+                                <div className="space-y-0.5">{renderSchedule(sec.schedule)}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                      {(store.courseSections || []).filter((sec: CourseSection) => sec.courseId === editingCourseId).length === 0 && (
+                        <div className="text-center py-10 bg-black/20 rounded-2xl border border-dashed border-white/10 text-white/40 font-sans">
+                          Chưa có lớp học phần nào được tạo cho môn học này.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </ModalPortal>

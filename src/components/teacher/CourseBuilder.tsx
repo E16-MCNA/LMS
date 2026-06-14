@@ -954,38 +954,40 @@ export default function CourseBuilder(props: ComponentProps) {
                   </div>
 
                   {/* Settings / Config Number of Lessons for Teacher */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5 flex items-center gap-1.5">
-                      <Settings className="h-4 w-4 text-indigo-400" /> Thiết lập Khóa học
-                    </span>
-                    <div className="space-y-3 text-xs font-sans">
-                      <div className="space-y-1">
-                        <label className="text-[11px] text-white/50 block">Số buổi học thiết lập</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min={1}
-                            max={100}
-                            className="w-20 px-2 py-1 bg-black/25 text-white border border-white/10 rounded-lg text-xs"
-                            value={localLessonsCount}
-                            onChange={(e) => setLocalLessonsCount(Number(e.target.value))}
-                          />
-                          <button
-                            onClick={handleUpdateLessonsCount}
-                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition cursor-pointer"
-                          >
-                            Lưu lại
-                          </button>
+                  {currentUser.role !== "teacher" && (
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                      <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5 flex items-center gap-1.5">
+                        <Settings className="h-4 w-4 text-indigo-400" /> Thiết lập Khóa học
+                      </span>
+                      <div className="space-y-3 text-xs font-sans">
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-white/50 block">Số buổi học thiết lập</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={100}
+                              className="w-20 px-2 py-1 bg-black/25 text-white border border-white/10 rounded-lg text-xs"
+                              value={localLessonsCount}
+                              onChange={(e) => setLocalLessonsCount(Number(e.target.value))}
+                            />
+                            <button
+                              onClick={handleUpdateLessonsCount}
+                              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition cursor-pointer"
+                            >
+                              Lưu lại
+                            </button>
+                          </div>
                         </div>
+                        {activeCourse.openingDate && (
+                          <div>
+                            <span className="text-[11px] text-white/50 block">Ngày khai giảng</span>
+                            <span className="text-white font-medium">{new Date(activeCourse.openingDate).toLocaleDateString("vi-VN")}</span>
+                          </div>
+                        )}
                       </div>
-                      {activeCourse.openingDate && (
-                        <div>
-                          <span className="text-[11px] text-white/50 block">Ngày khai giảng</span>
-                          <span className="text-white font-medium">{new Date(activeCourse.openingDate).toLocaleDateString("vi-VN")}</span>
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Quizzes overview in Course details */}
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
