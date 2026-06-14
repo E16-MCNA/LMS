@@ -2254,6 +2254,38 @@ app.post("/api/quizzes", requireAuth, requireRole(["teacher", "admin", "super_ad
   await audit(req, "create_quiz", quiz.id, quiz.title);
   res.status(201).json(quiz);
 }));
+
+app.put("/api/quizzes/:id", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.updateQuiz), asyncHandler(async (req, res) => {
+  const quiz = await quizzesRepository.findById(pool, req.params.id);
+  if (!quiz) return res.status(404).json({ error: "Quiz not found." });
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, quiz.courseId)) return res.status(403).json({ error: "Permission denied." });
+  const updated = await quizzesRepository.update(pool, req.params.id, req.body);
+  await audit(req, "update_quiz", req.params.id, updated!.title);
+  res.json(updated);
+}));
+
+app.delete("/api/quizzes/:id", requireAuth, requireRole(["teacher", "admin", "super_admin"]), asyncHandler(async (req, res) => {
+  const quiz = await quizzesRepository.findById(pool, req.params.id);
+  if (!quiz) return res.status(404).json({ error: "Quiz not found." });
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, quiz.courseId)) return res.status(403).json({ error: "Permission denied." });
+  await quizzesRepository.delete(pool, req.params.id);
+  await audit(req, "delete_quiz", req.params.id, quiz.title);
+  res.json({ ok: true });
+}));
+
+app.post("/api/quizzes/:id/questions/bulk", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.bulkAddQuestions), asyncHandler(async (req, res) => {
+  const quiz = await quizzesRepository.findById(pool, req.params.id);
+  if (!quiz) return res.status(404).json({ error: "Quiz not found." });
+  if (req.user!.role === "teacher" && !await coursesRepository.teacherOwnsCourse(pool, req.user!.id, quiz.courseId)) return res.status(403).json({ error: "Permission denied." });
+  
+  const createdQuestions = [];
+  for (const q of req.body.questions) {
+    const qCreated = await quizzesRepository.addQuestion(pool, { ...q, quizId: req.params.id });
+    createdQuestions.push(qCreated);
+  }
+  await audit(req, "bulk_add_quiz_questions", req.params.id, `Imported ${createdQuestions.length} questions`);
+  res.status(201).json(createdQuestions);
+}));
 app.post("/api/quizzes/:id/questions", requireAuth, requireRole(["teacher", "admin", "super_admin"]), validateBody(schemas.addQuestion), asyncHandler(async (req, res) => {
   const quiz = await quizzesRepository.findById(pool, req.params.id);
   if (!quiz) return res.status(404).json({ error: "Quiz not found." });

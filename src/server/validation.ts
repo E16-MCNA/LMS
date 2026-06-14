@@ -87,6 +87,22 @@ export const schemas = {
     maxAttempts: z.coerce.number().int().min(1),
     deadline: z.string().trim().nullish()
   }),
+  updateQuiz: z.object({
+    lessonId: z.string().trim().optional().nullable(),
+    title: z.string().trim().min(1).optional(),
+    passingScore: z.coerce.number().min(0).max(100).optional(),
+    timeLimit: z.coerce.number().int().min(1).optional(),
+    maxAttempts: z.coerce.number().int().min(1).optional(),
+    deadline: z.string().trim().nullish()
+  }),
+  bulkAddQuestions: z.object({
+    questions: z.array(z.object({
+      text: z.string().trim().min(1),
+      type: z.enum(["single", "multiple", "text"]),
+      options: z.array(z.string()).default([]),
+      correctAnswer: z.string().trim().min(1)
+    }))
+  }),
   addQuestion: z.object({
     text: z.string().trim().min(1),
     type: z.enum(["single", "multiple", "text"]),

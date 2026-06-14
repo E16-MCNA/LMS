@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings, Download, Tv, Trash, ChevronRight, TrendingUp, BarChart, Users, Clock, Search, MessageSquare, X, PlusCircle, FolderPlus } from "lucide-react";
+import { BookOpen, HelpCircle, FileText, Plus, Eye, Edit, Check, Award, Settings, Download, Tv, Trash, ChevronRight, TrendingUp, BarChart, Users, Clock, Search, MessageSquare, X, PlusCircle, FolderPlus, Upload, AlertCircle } from "lucide-react";
 import { AppStore } from "../../store";
 import { generateId } from "../../utils";
 import { Question, LMSDataStore } from "../../types";
@@ -12,6 +12,12 @@ interface ComponentProps {
 
 export default function QuizBuilder(props: ComponentProps) {
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [quizEditId, setQuizEditId] = useState<string | null>(null);
+  const [showImportPanel, setShowImportPanel] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [modalCsvText, setModalCsvText] = useState("");
+  const [modalCsvFileName, setModalCsvFileName] = useState("");
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, setter: (url: string) => void) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -35,8 +41,6 @@ export default function QuizBuilder(props: ComponentProps) {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [assessmentType, setAssessmentType] = useState<"quiz" | "essay">("quiz");
-  const [selectedEssayId, setSelectedEssayId] = useState<string | null>(null);
   const {
     activeSubTab,
     setActiveSubTab,
@@ -44,6 +48,10 @@ export default function QuizBuilder(props: ComponentProps) {
     setSelectedCourseId,
     selectedQuizId,
     setSelectedQuizId,
+    selectedEssayId,
+    setSelectedEssayId,
+    assessmentType,
+    setAssessmentType,
     showCourseModal,
     setShowCourseModal,
     courseModalMode,
@@ -133,6 +141,428 @@ export default function QuizBuilder(props: ComponentProps) {
     triggerToast,
     updateStore
   } = props;
+
+  const handleStartEditQuiz = () => {
+    const quizObj = store.quizzes.find((q: any) => q.id === selectedQuizId);
+    if (!quizObj) return;
+
+    setQuizEditId(quizObj.id);
+    setQuizTitle(quizObj.title);
+    setQuizPassing(quizObj.passingScore);
+    setQuizLimit(quizObj.timeLimit);
+    setQuizAttempts(quizObj.maxAttempts);
+    setQuizDeadline(quizObj.deadline ? quizObj.deadline.split("T")[0] : "");
+    setSelectedCourseId(quizObj.courseId);
+    setShowQuizModal(true);
+  };
+
+  const handleDeleteQuiz = async () => {
+    if (!selectedQuizId) return;
+    const quizObj = store.quizzes.find((q: any) => q.id === selectedQuizId);
+    if (!quizObj) return;
+
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa đề thi "${quizObj.title}" không? Tất cả câu hỏi đi kèm sẽ bị xóa vĩnh viễn.`)) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await api.deleteQuiz(selectedQuizId);
+      
+      if (updateStore) {
+        updateStore((draft: LMSDataStore) => {
+          draft.quizzes = draft.quizzes.filter(q => q.id !== selectedQuizId);
+          draft.questions = draft.questions.filter(q => q.quizId !== selectedQuizId);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.quizzes = storeData.quizzes.filter(q => q.id !== selectedQuizId);
+        storeData.questions = storeData.questions.filter(q => q.quizId !== selectedQuizId);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
+
+      setSelectedQuizId(null);
+      triggerToast("Đã xóa đề thi trắc nghiệm thành công.");
+    } catch (err: any) {
+      console.error("Failed to delete quiz:", err);
+      triggerToast(err.message || "Lỗi xóa đề thi trên máy chủ.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuizSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourseId || isSubmitting) return;
+    if (!quizTitle.trim()) {
+      triggerToast("Vui lòng nhập tiêu đề đề thi.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (quizEditId) {
+        const updated = await api.updateQuiz(quizEditId, {
+          courseId: selectedCourseId,
+          title: quizTitle,
+          passingScore: quizPassing,
+          timeLimit: quizLimit,
+          maxAttempts: quizAttempts,
+          deadline: quizDeadline || null
+        });
+
+        if (updateStore) {
+          updateStore((draft: LMSDataStore) => {
+            draft.quizzes = draft.quizzes.map(q => q.id === quizEditId ? { ...q, ...(updated as any) } : q);
+          });
+        } else {
+          const storeData = AppStore.get();
+          storeData.quizzes = storeData.quizzes.map(q => q.id === quizEditId ? { ...q, ...(updated as any) } : q);
+          AppStore.save(storeData);
+          onRefreshData();
+        }
+
+        // Also if modalCsvText is present during edit, we can import questions too!
+        if (modalCsvText.trim()) {
+          const parsed = parseCSVText(modalCsvText);
+          const validQuestions = parsed.filter(q => !q.error);
+          if (validQuestions.length > 0) {
+            const payload = validQuestions.map(q => ({
+              text: q.text,
+              type: q.type,
+              options: q.options,
+              correctAnswer: q.correctAnswer
+            }));
+            const createdQuestions = (await api.bulkAddQuestions(quizEditId, payload)) as any[];
+            if (updateStore) {
+              updateStore((draft: LMSDataStore) => {
+                draft.questions.push(...createdQuestions);
+              });
+            } else {
+              const storeData = AppStore.get();
+              storeData.questions.push(...createdQuestions);
+              AppStore.save(storeData);
+              onRefreshData();
+            }
+          }
+        }
+
+        AppStore.log(currentUser.id, "edit_quiz", quizTitle, `Updated assessment: ${quizEditId}`);
+        triggerToast("Cập nhật cấu hình đề thi thành công.");
+        setShowQuizModal(false);
+        setQuizEditId(null);
+        setModalCsvText("");
+        setModalCsvFileName("");
+      } else {
+        const created = (await api.createQuiz({
+          courseId: selectedCourseId,
+          title: quizTitle,
+          passingScore: quizPassing,
+          timeLimit: quizLimit,
+          maxAttempts: quizAttempts,
+          deadline: quizDeadline || null
+        })) as any;
+
+        if (updateStore) {
+          updateStore(draft => {
+            draft.quizzes.push(created);
+          });
+        } else {
+          const storeData = AppStore.get();
+          storeData.quizzes.push(created);
+          AppStore.save(storeData);
+          onRefreshData();
+        }
+
+        AppStore.log(currentUser.id, "create_quiz", created.title, `Added assessment linked to course: ${selectedCourseId}`);
+
+        if (modalCsvText.trim()) {
+          const parsed = parseCSVText(modalCsvText);
+          const validQuestions = parsed.filter(q => !q.error);
+          if (validQuestions.length > 0) {
+            const payload = validQuestions.map(q => ({
+              text: q.text,
+              type: q.type,
+              options: q.options,
+              correctAnswer: q.correctAnswer
+            }));
+            const createdQuestions = (await api.bulkAddQuestions(created.id, payload)) as any[];
+            
+            if (updateStore) {
+              updateStore((draft: LMSDataStore) => {
+                draft.questions.push(...createdQuestions);
+              });
+            } else {
+              const storeData = AppStore.get();
+              storeData.questions.push(...createdQuestions);
+              AppStore.save(storeData);
+              onRefreshData();
+            }
+            triggerToast(`Đã tạo đề thi và import thành công ${createdQuestions.length} câu hỏi.`);
+          } else {
+            triggerToast("Đã thiết lập đề thi mới thành công.");
+          }
+        } else {
+          triggerToast("Đã thiết lập đề thi mới thành công.");
+        }
+
+        setSelectedQuizId(created.id);
+        setQuizTitle("");
+        setQuizPassing(70);
+        setQuizLimit(15);
+        setQuizAttempts(3);
+        setQuizDeadline("");
+        setModalCsvText("");
+        setModalCsvFileName("");
+        setShowQuizModal(false);
+      }
+    } catch (err: any) {
+      console.error("Failed to save quiz:", err);
+      triggerToast(err.message || "Lỗi lưu cấu hình đề thi trên máy chủ.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadSample = () => {
+    const csvContent = "\ufeff" + "Câu hỏi trắc nghiệm một đáp án?,single,Đáp án A|Đáp án B|Đáp án C,0\nCâu hỏi trắc nghiệm nhiều đáp án?,multiple,Lựa chọn 1|Lựa chọn 2|Lựa chọn 3,\"0,2\"\nCâu hỏi tự điền từ?,text,,từ khóa đáp án\n";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const encodedUri = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "mau_cau_hoi.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleCSVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target && typeof event.target.result === "string") {
+        setCsvText(event.target.result);
+      }
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
+  const handleModalCSVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setModalCsvFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target && typeof event.target.result === "string") {
+        setModalCsvText(event.target.result);
+      }
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
+  const handleCSVUploadSubmit = async () => {
+    if (!selectedQuizId || importing) return;
+    const parsed = parseCSVText(csvText);
+    const validQuestions = parsed.filter(q => !q.error);
+    const hasErrors = parsed.some(q => q.error);
+
+    if (validQuestions.length === 0) {
+      triggerToast("Không tìm thấy câu hỏi hợp lệ nào để import.");
+      return;
+    }
+
+    if (hasErrors) {
+      if (!window.confirm("Một số câu hỏi bị lỗi định dạng và sẽ bị bỏ qua. Bạn có muốn tiếp tục import các câu hỏi hợp lệ không?")) {
+        return;
+      }
+    }
+
+    try {
+      setImporting(true);
+      const payload = validQuestions.map(q => ({
+        text: q.text,
+        type: q.type,
+        options: q.options,
+        correctAnswer: q.correctAnswer
+      }));
+
+      const createdQuestions = (await api.bulkAddQuestions(selectedQuizId, payload)) as any[];
+
+      if (updateStore) {
+        updateStore((draft: LMSDataStore) => {
+          draft.questions.push(...createdQuestions);
+        });
+      } else {
+        const storeData = AppStore.get();
+        storeData.questions.push(...createdQuestions);
+        AppStore.save(storeData);
+        onRefreshData();
+      }
+
+      AppStore.log(currentUser.id, "bulk_add_quiz_questions", `Imported ${createdQuestions.length} questions`, `Quiz ID: ${selectedQuizId}`);
+      triggerToast(`Import thành công ${createdQuestions.length} câu hỏi.`);
+      setCsvText("");
+      setShowImportPanel(false);
+    } catch (err: any) {
+      console.error("Failed to import questions:", err);
+      triggerToast(err.message || "Lỗi import câu hỏi lên máy chủ.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result.map(val => val.replace(/^"|"$/g, ''));
+  };
+
+  interface ParsedQuestion {
+    text: string;
+    type: "single" | "multiple" | "text";
+    options: string[];
+    correctAnswer: string;
+    error?: string;
+  }
+
+  const parseCSVText = (text: string): ParsedQuestion[] => {
+    const lines = text.split(/\r?\n/);
+    const results: ParsedQuestion[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const fields = parseCSVLine(line);
+      if (fields.length < 4) {
+        results.push({
+          text: fields[0] || `Dòng ${i + 1}`,
+          type: "single",
+          options: [],
+          correctAnswer: "",
+          error: `Thiếu cột thông tin ở dòng ${i + 1} (Yêu cầu ít nhất 4 cột: Câu hỏi, Loại, Lựa chọn, Đáp án)`
+        });
+        continue;
+      }
+      
+      const [qText, qTypeRaw, qOptionsRaw, qCorrectRaw] = fields;
+      const qType = qTypeRaw.trim().toLowerCase();
+      
+      if (qType !== "single" && qType !== "multiple" && qType !== "text") {
+        results.push({
+          text: qText,
+          type: "single",
+          options: [],
+          correctAnswer: "",
+          error: `Loại câu hỏi không hợp lệ '${qTypeRaw}' ở dòng ${i + 1} (Chấp nhận: single, multiple, text)`
+        });
+        continue;
+      }
+      
+      const options = qOptionsRaw
+        ? qOptionsRaw.split("|").map(o => o.trim()).filter(o => o !== "")
+        : [];
+        
+      if (qType !== "text" && options.length < 2) {
+        results.push({
+          text: qText,
+          type: qType as any,
+          options,
+          correctAnswer: qCorrectRaw,
+          error: `Câu hỏi trắc nghiệm ở dòng ${i + 1} phải có ít nhất 2 lựa chọn (phân tách bằng |)`
+        });
+        continue;
+      }
+      
+      if (!qCorrectRaw.trim()) {
+        results.push({
+          text: qText,
+          type: qType as any,
+          options,
+          correctAnswer: "",
+          error: `Đáp án đúng ở dòng ${i + 1} không được để trống`
+        });
+        continue;
+      }
+      
+      if (qType === "single") {
+        const correctIdx = Number(qCorrectRaw);
+        if (isNaN(correctIdx) || correctIdx < 0 || correctIdx >= options.length) {
+          results.push({
+            text: qText,
+            type: "single",
+            options,
+            correctAnswer: qCorrectRaw,
+            error: `Đáp án đúng ở dòng ${i + 1} phải là chỉ số hợp lệ từ 0 đến ${options.length - 1}`
+          });
+          continue;
+        }
+      } else if (qType === "multiple") {
+        const correctIndices = qCorrectRaw.split(",").map(v => Number(v.trim()));
+        let hasError = false;
+        for (const idx of correctIndices) {
+          if (isNaN(idx) || idx < 0 || idx >= options.length) {
+            results.push({
+              text: qText,
+              type: "multiple",
+              options,
+              correctAnswer: qCorrectRaw,
+              error: `Các đáp án đúng ở dòng ${i + 1} phải là chỉ số hợp lệ từ 0 đến ${options.length - 1}`
+            });
+            hasError = true;
+            break;
+          }
+        }
+        if (hasError) continue;
+      }
+      
+      results.push({
+        text: qText,
+        type: qType as any,
+        options,
+        correctAnswer: qCorrectRaw.trim()
+      });
+    }
+    
+    return results;
+  };
+
+  const handleDeleteOption = (idxToDelete: number) => {
+    if (qOptions.length <= 2) {
+      triggerToast("Câu hỏi trắc nghiệm cần có ít nhất 2 đáp án.");
+      return;
+    }
+    const nextOpts = qOptions.filter((_, idx) => idx !== idxToDelete);
+    setQOptions(nextOpts);
+    
+    // Adjust correct answers
+    const currentCorrect = qCorrect.split(",").filter(v => v !== "");
+    const nextCorrect: string[] = [];
+    for (const c of currentCorrect) {
+      const val = Number(c);
+      if (val < idxToDelete) {
+        nextCorrect.push(String(val));
+      } else if (val > idxToDelete) {
+        nextCorrect.push(String(val - 1));
+      }
+    }
+    setQCorrect(nextCorrect.join(","));
+  };
 
   const handleStartEditQuestion = (qst: Question) => {
     setEditingQuestionId(qst.id);
@@ -363,6 +793,13 @@ export default function QuizBuilder(props: ComponentProps) {
                       }
                       setSelectedCourseId(myCourses[0].id);
                       setQuizTitle("");
+                      setQuizPassing(70);
+                      setQuizLimit(15);
+                      setQuizAttempts(3);
+                      setQuizDeadline("");
+                      setQuizEditId(null);
+                      setModalCsvText("");
+                      setModalCsvFileName("");
                       setShowQuizModal(true);
                     }}
                     className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl flex items-center justify-center gap-1 cursor-pointer transition text-xs"
@@ -397,18 +834,185 @@ export default function QuizBuilder(props: ComponentProps) {
                     <>
                       <div className="flex items-center justify-between border-b border-white/10 pb-3">
                         <div>
-                          <h5 className="text-sm font-bold text-white">Cấu hình câu hỏi đề thi trắc nghiệm</h5>
+                          <div className="flex items-center gap-2">
+                            <h5 className="text-sm font-bold text-white">
+                              {store.quizzes.find((q: any) => q.id === selectedQuizId)?.title || "Cấu hình câu hỏi đề thi trắc nghiệm"}
+                            </h5>
+                            <button
+                              type="button"
+                              onClick={handleStartEditQuiz}
+                              className="p-1 text-white/50 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
+                              title="Chỉnh sửa đề thi"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeleteQuiz}
+                              className="p-1 text-red-400/50 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition cursor-pointer"
+                              title="Xóa đề thi"
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                           <p className="text-[11px] text-white/40">Mã đề thi: <span className="font-mono">{selectedQuizId}</span></p>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => { setEditingQuestionId(null); setQText(""); setQOptions(["", "", ""]); setQCorrect("0"); setShowQuestionModal(true); }}
-                          className="p-1 px-2.5 bg-[#2563eb] text-white font-bold text-xs rounded-xl hover:bg-opacity-90 flex items-center gap-1 cursor-pointer"
-                        >
-                          <PlusCircle className="h-4 w-4 inline" /> Thêm Câu hỏi
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowImportPanel(!showImportPanel);
+                              setCsvText("");
+                            }}
+                            className="p-1 px-2.5 bg-slate-800 text-white font-bold text-xs rounded-xl hover:bg-slate-700 flex items-center gap-1 cursor-pointer transition"
+                            title="Nhập câu hỏi hàng loạt từ tệp CSV"
+                          >
+                            <Upload className="h-4 w-4 inline" /> Nhập từ CSV
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingQuestionId(null); setQText(""); setQOptions(["", "", ""]); setQCorrect("0"); setShowQuestionModal(true); }}
+                            className="p-1 px-2.5 bg-[#2563eb] text-white font-bold text-xs rounded-xl hover:bg-opacity-90 flex items-center gap-1 cursor-pointer"
+                          >
+                            <PlusCircle className="h-4 w-4 inline" /> Thêm Câu hỏi
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Import CSV Panel */}
+                      {showImportPanel && (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                          <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                            <h6 className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1">
+                              <Upload className="h-4 w-4" /> Nhập câu hỏi từ CSV
+                            </h6>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowImportPanel(false);
+                                setCsvText("");
+                              }}
+                              className="text-white/40 hover:text-white"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="text-[11px] text-white/60 space-y-1">
+                            <p><strong>Hướng dẫn cấu trúc CSV (không có dòng tiêu đề):</strong></p>
+                            <p className="font-mono bg-black/30 p-2 rounded text-[10px] text-indigo-200 border border-white/5 whitespace-pre-wrap select-all">
+                              Nội dung câu hỏi, Loại câu hỏi, Các đáp án lựa chọn (cách nhau bởi |), Đáp án đúng
+                            </p>
+                            <div className="pl-3 list-disc space-y-0.5">
+                              <div>• <strong>Loại câu hỏi:</strong> <code className="bg-white/5 px-1 py-0.2 rounded font-mono">single</code> (một đáp án), <code className="bg-white/5 px-1 py-0.2 rounded font-mono">multiple</code> (nhiều đáp án), <code className="bg-white/5 px-1 py-0.2 rounded font-mono">text</code> (tự điền).</div>
+                              <div>• <strong>Các đáp án:</strong> Phân tách bằng dấu <code className="bg-white/5 px-1 py-0.2 rounded font-mono">|</code> (ví dụ: <code className="bg-white/5 px-1 py-0.2 rounded font-mono">Đáp án A|Đáp án B|Đáp án C</code>). Bỏ trống nếu là tự điền.</div>
+                              <div>• <strong>Đáp án đúng:</strong> Chỉ số đáp án đúng bắt đầu từ 0 (ví dụ: <code className="bg-white/5 px-1 py-0.2 rounded font-mono">0</code> cho Single Choice, <code className="bg-white/5 px-1 py-0.2 rounded font-mono">0,2</code> cho Multiple Choice) hoặc từ khóa cho tự điền.</div>
+                            </div>
+                            <div className="pt-2">
+                              <button
+                                type="button"
+                                onClick={handleDownloadSample}
+                                className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
+                              >
+                                <Download className="h-3.5 w-3.5" /> Tải file mẫu CSV câu hỏi
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-bold text-white/70 block">Chọn file CSV từ máy tính</label>
+                              <div className="border border-dashed border-white/10 hover:border-indigo-500/50 rounded-xl p-4 flex flex-col items-center justify-center gap-2 bg-black/20 transition cursor-pointer relative">
+                                <Upload className="h-6 w-6 text-white/40" />
+                                <span className="text-[10px] text-white/60 text-center">Nhấp để chọn file .csv hoặc kéo thả vào đây</span>
+                                <input
+                                  type="file"
+                                  accept=".csv"
+                                  onChange={handleCSVFileChange}
+                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-bold text-white/70 block">Hoặc dán nội dung CSV thô</label>
+                              <textarea
+                                value={csvText}
+                                onChange={(e) => setCsvText(e.target.value)}
+                                placeholder="Dán nội dung CSV của bạn tại đây..."
+                                className="w-full h-[88px] px-3 py-2 bg-black/20 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-400 text-[10px] font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Preview Area */}
+                          {csvText.trim() && (() => {
+                            const parsed = parseCSVText(csvText);
+                            const errors = parsed.filter(q => q.error);
+                            const valids = parsed.filter(q => !q.error);
+
+                            return (
+                              <div className="space-y-2 border-t border-white/5 pt-3">
+                                <div className="flex justify-between items-center text-[11px] font-semibold">
+                                  <span className="text-white/80">Xem trước kết quả phân tích:</span>
+                                  <div className="space-x-2">
+                                    <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{valids.length} Hợp lệ</span>
+                                    {errors.length > 0 && (
+                                      <span className="text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">{errors.length} Lỗi</span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="max-h-[150px] overflow-y-auto bg-black/35 rounded-xl border border-white/5 divide-y divide-white/5 text-[10px]">
+                                  {parsed.map((q, idx) => (
+                                    <div key={idx} className="p-2 flex items-start gap-2">
+                                      {q.error ? (
+                                        <AlertCircle className="h-3.5 w-3.5 text-rose-400 shrink-0 mt-0.5" />
+                                      ) : (
+                                        <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-white truncate">{q.text}</p>
+                                        <p className="text-white/40 text-[9px] mt-0.5">
+                                          Loại: <span className="font-mono text-indigo-300">{q.type}</span>
+                                          {q.options.length > 0 && ` | Lựa chọn: ${q.options.join(", ")}`}
+                                          {` | Đáp án đúng: ${q.correctAnswer}`}
+                                        </p>
+                                        {q.error && (
+                                          <p className="text-rose-400 font-semibold text-[9px] mt-0.5">{q.error}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowImportPanel(false);
+                                      setCsvText("");
+                                    }}
+                                    className="px-4 py-1.5 bg-transparent text-white/60 hover:text-white text-xs transition cursor-pointer"
+                                  >
+                                    Hủy
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCSVUploadSubmit}
+                                    disabled={valids.length === 0 || importing}
+                                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
+                                  >
+                                    {importing && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                                    Xác nhận Import ({valids.length} câu)
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
 
                       <div className="space-y-3.5 pt-2 max-h-[600px] overflow-y-auto pr-1">
                         {store.questions.filter(qst => qst.quizId === selectedQuizId).map((qst, n) => (
@@ -566,10 +1170,10 @@ export default function QuizBuilder(props: ComponentProps) {
             </button>
 
             <h3 className="text-lg font-display font-medium text-white mb-2 flex items-center gap-1.5 border-b border-white/10 pb-3">
-              <Award className="h-5 w-5 text-indigo-400" /> Thiết lập Đề thi trắc nghiệm Khóa học
+              <Award className="h-5 w-5 text-indigo-400" /> {quizEditId ? "Chỉnh sửa Đề thi trắc nghiệm" : "Thiết lập Đề thi trắc nghiệm Khóa học"}
             </h3>
 
-            <form onSubmit={handleAddQuizSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleQuizSubmit} className="space-y-4 text-xs">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-white/70">Chọn Khóa học tương ứng</label>
                 <select
@@ -650,6 +1254,63 @@ export default function QuizBuilder(props: ComponentProps) {
                 </div>
               </div>
 
+              {/* Optional CSV Import on Creation */}
+              <div className="space-y-1 border-t border-white/10 pt-3 mt-3">
+                <label className="text-[11px] font-bold text-white/70 flex items-center gap-1.5">
+                  <Upload className="h-4 w-4 text-indigo-400" /> Nhập câu hỏi từ CSV (Tùy chọn)
+                </label>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex-1 border border-dashed border-white/10 hover:border-indigo-500/50 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 bg-black/20 transition cursor-pointer relative">
+                    <span className="text-[10px] text-white/60 text-center truncate w-full">
+                      {modalCsvFileName ? `📁 ${modalCsvFileName}` : "Chọn file mẫu .csv hoặc kéo thả tại đây"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleModalCSVFileChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                  {modalCsvText && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalCsvText("");
+                        setModalCsvFileName("");
+                      }}
+                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/20 text-[10px] transition cursor-pointer"
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
+                {modalCsvText && (() => {
+                  const parsed = parseCSVText(modalCsvText);
+                  const valids = parsed.filter(q => !q.error);
+                  const errors = parsed.filter(q => q.error);
+                  return (
+                    <div className="text-[10px] mt-1 space-y-1 bg-black/30 p-2 rounded-xl border border-white/5">
+                      <div className="flex justify-between font-semibold">
+                        <span className="text-emerald-400">{valids.length} câu hợp lệ</span>
+                        {errors.length > 0 && <span className="text-rose-400">{errors.length} câu lỗi</span>}
+                      </div>
+                      {errors.length > 0 && (
+                        <p className="text-rose-400 text-[9px]">Cảnh báo: Có dòng bị lỗi định dạng và sẽ bị bỏ qua khi tạo.</p>
+                      )}
+                    </div>
+                  );
+                })()}
+                <div className="flex justify-start">
+                  <button
+                    type="button"
+                    onClick={handleDownloadSample}
+                    className="text-indigo-400 hover:text-indigo-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer mt-1"
+                  >
+                    <Download className="h-3 w-3" /> Tải file mẫu CSV
+                  </button>
+                </div>
+              </div>
+
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
@@ -660,9 +1321,11 @@ export default function QuizBuilder(props: ComponentProps) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4.5 py-2 bg-white text-indigo-950 font-bold rounded-xl transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Thiết lập Đề thi
+                  {isSubmitting && <div className="w-3.5 h-3.5 border-2 border-indigo-950 border-t-transparent rounded-full animate-spin"></div>}
+                  {quizEditId ? "Cập nhật cấu hình" : "Thiết lập Đề thi"}
                 </button>
               </div>
             </form>
@@ -758,7 +1421,7 @@ export default function QuizBuilder(props: ComponentProps) {
 
               {qType !== "text" && (
                 <div className="space-y-2.5">
-                  <span className="text-xs font-bold text-white/70 block">Cung cấp các lựa chọn đáp án (Tối đa 3 lựa chọn) và chọn đáp án đúng</span>
+                  <span className="text-xs font-bold text-white/70 block">Cung cấp các lựa chọn đáp án và chọn đáp án đúng (tối thiểu 2)</span>
                   {qOptions.map((opt, id) => {
                     const isCorrect = qType === "multiple"
                       ? (qCorrect || "").split(",").includes(String(id))
@@ -807,9 +1470,26 @@ export default function QuizBuilder(props: ComponentProps) {
                           }}
                           className="flex-1 px-3 py-1.5 bg-black/20 text-white border border-white/10 rounded-lg text-xs"
                         />
+                        {qOptions.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOption(id)}
+                            className="p-1.5 text-red-400 hover:text-red-300 rounded hover:bg-red-500/10 cursor-pointer transition shrink-0"
+                            title="Xóa lựa chọn này"
+                          >
+                            <Trash className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => setQOptions([...qOptions, ""])}
+                    className="mt-1.5 py-1 px-3 border border-dashed border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer transition w-fit"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Thêm lựa chọn đáp án
+                  </button>
                 </div>
               )}
 

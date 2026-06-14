@@ -34,6 +34,10 @@ export default function CourseBuilder(props: ComponentProps) {
     setSelectedCourseId,
     selectedQuizId,
     setSelectedQuizId,
+    selectedEssayId,
+    setSelectedEssayId,
+    assessmentType,
+    setAssessmentType,
     showCourseModal,
     setShowCourseModal,
     courseModalMode,
@@ -1003,12 +1007,22 @@ export default function CourseBuilder(props: ComponentProps) {
 
                     <div className="space-y-2.5">
                       {courseQuizzes.map(q => (
-                        <div key={q.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5">
-                          <span className="truncate text-white max-w-[140px] font-medium">{q.title}</span>
+                        <button
+                          key={q.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedQuizId(q.id);
+                            setAssessmentType("quiz");
+                            setActiveSubTab("quizzes");
+                          }}
+                          className="w-full text-left text-xs flex items-center justify-between bg-black/25 hover:bg-white/5 hover:text-white p-2 rounded-xl border border-white/5 transition duration-150 cursor-pointer text-white"
+                          title="Click để chỉnh sửa / import câu hỏi đề thi"
+                        >
+                          <span className="truncate max-w-[140px] font-medium">{q.title}</span>
                           <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/80 font-mono">
                             {q.passingScore}% đạt
                           </span>
-                        </div>
+                        </button>
                       ))}
 
                       {courseQuizzes.length === 0 && (
@@ -1043,15 +1057,25 @@ export default function CourseBuilder(props: ComponentProps) {
                           typeLabel = "[Cuối kỳ]";
                         }
                         return (
-                          <div key={a.id} className="text-xs flex items-center justify-between bg-black/25 p-2 rounded-xl border border-white/5 font-sans">
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedEssayId(a.id);
+                              setAssessmentType("essay");
+                              setActiveSubTab("quizzes");
+                            }}
+                            className="w-full text-left text-xs flex items-center justify-between bg-black/25 hover:bg-white/5 hover:text-white p-2 rounded-xl border border-white/5 transition duration-150 cursor-pointer font-sans text-white"
+                            title="Click để chấm bài học viên"
+                          >
                             <div className="flex flex-col min-w-0 pr-2 flex-1">
-                              <span className="truncate text-white font-medium">{a.title}</span>
+                              <span className="truncate font-medium">{a.title}</span>
                               {typeLabel && <span className="text-[9px] text-white/45 mt-0.5">{typeLabel}</span>}
                             </div>
                             <span className="text-[10px] font-mono text-indigo-200 shrink-0">
                               Tối đa: {a.maxScore} đ
                             </span>
-                          </div>
+                          </button>
                         );
                       })}
 

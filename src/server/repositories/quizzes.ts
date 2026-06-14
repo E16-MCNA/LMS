@@ -114,5 +114,28 @@ export const quizzesRepository = {
       { relatedEntityType: "quiz", relatedEntityId: quizId }
     );
     return { row: { ...attempt, correctAnswers: correctCount, total: questions.length } };
+  },
+
+  async update(db: Queryable, id: string, input: Partial<Omit<Quiz, "id" | "courseId">>) {
+    const row = (await db.query(
+      "UPDATE quizzes SET title = COALESCE($1, title), lesson_id = COALESCE($2, lesson_id), passing_score = COALESCE($3, passing_score), time_limit = COALESCE($4, time_limit), max_attempts = COALESCE($5, max_attempts), deadline = COALESCE($6, deadline) WHERE id = $7 RETURNING *",
+      [
+        input.title || null,
+        input.lessonId !== undefined ? input.lessonId : null,
+        input.passingScore !== undefined ? input.passingScore : null,
+        input.timeLimit !== undefined ? input.timeLimit : null,
+        input.maxAttempts !== undefined ? input.maxAttempts : null,
+        input.deadline !== undefined ? input.deadline : null,
+        id
+      ]
+    )).rows[0];
+    return row ? quizFromRow(row) : null;
+  },
+
+  async delete(db: Queryable, id: string) {
+    // Delete all questions associated with this quiz first, to handle cascading manually just in case
+    await db.query("DELETE FROM questions WHERE quiz_id = $1", [id]);
+    await db.query("DELETE FROM quizzes WHERE id = $1", [id]);
+    return { id };
   }
 };

@@ -86,6 +86,8 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
   // Selection states
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const [selectedEssayId, setSelectedEssayId] = useState<string | null>(null);
+  const [assessmentType, setAssessmentType] = useState<"quiz" | "essay">("quiz");
 
   // Modal control states
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -573,6 +575,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
 
   const teacherPanelProps = {
     activeSubTab, setActiveSubTab, selectedCourseId, setSelectedCourseId, selectedQuizId, setSelectedQuizId,
+    selectedEssayId, setSelectedEssayId, assessmentType, setAssessmentType,
     showCourseModal, setShowCourseModal, courseModalMode, courseTitle, setCourseTitle, courseDesc, setCourseDesc,
     courseCategory, setCourseCategory, courseThumb, setCourseThumb, coursePrice, setCoursePrice, courseLevel, setCourseLevel, courseTags, setCourseTags,
     showLessonModal, setShowLessonModal, lessonTitle, setLessonTitle, lessonContent, setLessonContent, lessonVideo, setLessonVideo, lessonDuration, setLessonDuration,
