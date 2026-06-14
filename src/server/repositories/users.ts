@@ -32,11 +32,23 @@ export const usersRepository = {
   },
 
   async findAuthByEmail(db: Queryable, email: string) {
-    let cleanEmail = email.toLowerCase().trim();
+    const cleanEmail = email.toLowerCase().trim();
+    const exactMatch = (await db.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [cleanEmail])).rows[0];
+    if (exactMatch) return exactMatch;
+
     if (cleanEmail.endsWith("@e16.local")) {
-      cleanEmail = cleanEmail.replace("@e16.local", "@mcna.local");
+      const mappedEmail = cleanEmail.replace("@e16.local", "@mcna.local");
+      const mappedMatch = (await db.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [mappedEmail])).rows[0];
+      if (mappedMatch) return mappedMatch;
     }
-    return (await db.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [cleanEmail])).rows[0] || null;
+
+    if (cleanEmail.endsWith("@mcna.local")) {
+      const mappedEmail = cleanEmail.replace("@mcna.local", "@e16.local");
+      const mappedMatch = (await db.query<DbUserRow>("SELECT * FROM users WHERE lower(email) = $1", [mappedEmail])).rows[0];
+      if (mappedMatch) return mappedMatch;
+    }
+
+    return null;
   },
 
   async findById(db: Queryable, id: string) {

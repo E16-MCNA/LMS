@@ -30,22 +30,34 @@ export async function seedCoreLearningData(db: Queryable) {
   const needsMegaBackfill = initialCourseCount < 40 || initialProfileCount < 300;
 
   // 1. Seed Academic Years & Semesters
-  if (Number((await db.query("SELECT COUNT(*) AS count FROM academic_years")).rows[0].count) === 0) {
-    for (const y of store.academicYears) {
-      await db.query(
-        "INSERT INTO academic_years (id, name, start_date, end_date, is_current) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO NOTHING",
-        [y.id, y.name, y.startDate, y.endDate, y.isCurrent]
-      );
-    }
+  for (const y of store.academicYears) {
+    await db.query(
+      `INSERT INTO academic_years (id, name, start_date, end_date, is_current)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         start_date = EXCLUDED.start_date,
+         end_date = EXCLUDED.end_date,
+         is_current = EXCLUDED.is_current`,
+      [y.id, y.name, y.startDate, y.endDate, y.isCurrent]
+    );
   }
 
-  if (Number((await db.query("SELECT COUNT(*) AS count FROM semesters")).rows[0].count) === 0) {
-    for (const s of store.semesters) {
-      await db.query(
-        "INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close, is_current) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING",
-        [s.id, s.academicYearId, s.name, s.type, s.startDate, s.endDate, s.registrationOpen, s.registrationClose, Boolean(s.isCurrent)]
-      );
-    }
+  for (const s of store.semesters) {
+    await db.query(
+      `INSERT INTO semesters (id, academic_year_id, name, type, start_date, end_date, registration_open, registration_close, is_current)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (id) DO UPDATE SET
+         academic_year_id = EXCLUDED.academic_year_id,
+         name = EXCLUDED.name,
+         type = EXCLUDED.type,
+         start_date = EXCLUDED.start_date,
+         end_date = EXCLUDED.end_date,
+         registration_open = EXCLUDED.registration_open,
+         registration_close = EXCLUDED.registration_close,
+         is_current = EXCLUDED.is_current`,
+      [s.id, s.academicYearId, s.name, s.type, s.startDate, s.endDate, s.registrationOpen, s.registrationClose, Boolean(s.isCurrent)]
+    );
   }
 
   // 2. Seed Departments & Programs

@@ -634,8 +634,9 @@ export function backfillMegaDemoData(store: LMSDataStore) {
     }
 
     const randomCourses = [...store.courses].sort(() => 0.5 - Math.random()).slice(0, 2);
-    randomCourses.forEach((crs, crsIdx) => {
-      const enrollId = `enroll_gen_${sId}_${crsIdx}`;
+    randomCourses.forEach((crs) => {
+      const crsSuffix = crs.id.replace("course_", "");
+      const enrollId = `enroll_gen_${sId}_${crsSuffix}`;
       store.enrollments.push({
         id: enrollId,
         courseId: crs.id,
@@ -645,7 +646,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
       });
 
       store.lessonProgress.push({
-        id: `progress_gen_${sId}_${crsIdx}_1`,
+        id: `progress_gen_${sId}_${crsSuffix}_1`,
         enrollmentId: enrollId,
         lessonId: `lesson_en_${crs.id}_1`,
         completed: true,
@@ -654,7 +655,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
 
       const score = Math.floor(65 + Math.random() * 35); 
       store.quizAttempts.push({
-        id: `attempt_gen_${sId}_${crsIdx}`,
+        id: `attempt_gen_${sId}_${crsSuffix}`,
         quizId: `quiz_${crs.id}`,
         studentId: sId,
         answers: { [`q_${crs.id}_1`]: "0", [`q_${crs.id}_2`]: "1" },
@@ -664,7 +665,6 @@ export function backfillMegaDemoData(store: LMSDataStore) {
         submittedAt: new Date("2026-03-01T14:12:00Z").toISOString()
       });
 
-      const feeId = `fee_gen_${sId}_${crsIdx}`;
       const isPaid = Math.random() > 0.4;
       const isPending = !isPaid && Math.random() > 0.3; // 30% of unpaid fees are pending bank transfers
 
@@ -681,7 +681,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
 
         if (!store.transactions) store.transactions = [];
         store.transactions.push({
-          id: `tx_gen_${sId}_${crsIdx}`,
+          id: `tx_gen_${sId}_${crsSuffix}`,
           studentId: sId,
           courseId: crs.id,
           amount: paidAmount,
@@ -696,7 +696,7 @@ export function backfillMegaDemoData(store: LMSDataStore) {
         const pendingAt = new Date(Date.now() - Math.floor(Math.random() * 3) * 24 * 60 * 60 * 1000).toISOString();
         if (!store.transactions) store.transactions = [];
         store.transactions.push({
-          id: `tx_gen_${sId}_${crsIdx}`,
+          id: `tx_gen_${sId}_${crsSuffix}`,
           studentId: sId,
           courseId: crs.id,
           amount: crs.price || 2000000,
@@ -705,18 +705,37 @@ export function backfillMegaDemoData(store: LMSDataStore) {
           createdAt: pendingAt
         });
       }
+    });
 
-      store.tuitionFees.push({
-        id: feeId,
-        studentId: sId,
-        semesterId: "sem_spring25",
-        amount: crs.price || 2000000,
-        dueDate: "2026-06-30",
-        status: feeStatus,
-        paidAmount,
-        paidAt,
-        receiptCode
-      });
+    // Consolidate tuition fee for Spring 2025 per student
+    const feeId = `fee_gen_${sId}_spring25`;
+    const totalAmount = randomCourses.reduce((sum, crs) => sum + (crs.price || 2000000), 0);
+    const hasPaid = store.transactions?.some(t => t.studentId === sId && t.status === "approved" && t.id.startsWith("tx_gen_"));
+    const hasPending = !hasPaid && store.transactions?.some(t => t.studentId === sId && t.status === "pending" && t.id.startsWith("tx_gen_"));
+
+    let feeStatus: "paid" | "unpaid" = "unpaid";
+    let paidAmount = 0;
+    let paidAtDate: string | undefined = undefined;
+    let receiptCode: string | undefined = undefined;
+
+    if (hasPaid) {
+      feeStatus = "paid";
+      paidAmount = totalAmount;
+      const tx = store.transactions?.find(t => t.studentId === sId && t.status === "approved");
+      paidAtDate = tx?.createdAt;
+      receiptCode = `RC${222340 + index}`;
+    }
+
+    store.tuitionFees.push({
+      id: feeId,
+      studentId: sId,
+      semesterId: "sem_spring25",
+      amount: totalAmount,
+      dueDate: "2026-06-30",
+      status: feeStatus,
+      paidAmount,
+      paidAt: paidAtDate,
+      receiptCode
     });
   });
 
@@ -744,6 +763,289 @@ export function backfillMegaDemoData(store: LMSDataStore) {
         isActive: true,
         linkedStudentId: student.id,
         createdAt: student.createdAt
+      });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // SEED DATA FOR KỲ 2026.1 (Fall 2026 / Academic Year 2026-2027)
+  // -------------------------------------------------------------
+  
+  // 1. Mark older academic years and semesters as not current
+  store.academicYears.forEach(y => y.isCurrent = false);
+  store.semesters.forEach(s => s.isCurrent = false);
+
+  // 2. Add Academic Year 2026-2027
+  if (!store.academicYears.some(y => y.id === "ay_2026_2027")) {
+    store.academicYears.push({
+      id: "ay_2026_2027",
+      name: "2026–2027",
+      startDate: "2026-09-01",
+      endDate: "2027-06-30",
+      isCurrent: true
+    });
+  } else {
+    const ay = store.academicYears.find(y => y.id === "ay_2026_2027");
+    if (ay) ay.isCurrent = true;
+  }
+
+  // 3. Add Semester Fall 2026 (Kỳ 2026.1)
+  if (!store.semesters.some(s => s.id === "sem_fall26")) {
+    store.semesters.push({
+      id: "sem_fall26",
+      academicYearId: "ay_2026_2027",
+      name: "Kỳ 2026.1",
+      type: "fall",
+      startDate: "2026-09-01",
+      endDate: "2027-01-15",
+      registrationOpen: "2026-08-01",
+      registrationClose: "2026-08-31",
+      isCurrent: true
+    });
+  } else {
+    const sem = store.semesters.find(s => s.id === "sem_fall26");
+    if (sem) sem.isCurrent = true;
+  }
+
+  // 4. Add Registration Period for Kỳ 2026.1
+  if (!store.registrationPeriods) store.registrationPeriods = [];
+  if (!store.registrationPeriods.some(rp => rp.semesterId === "sem_fall26")) {
+    store.registrationPeriods.push({
+      id: "rp_fall26",
+      semesterId: "sem_fall26",
+      name: "Đăng ký học Kỳ 2026.1",
+      startDate: "2026-08-01",
+      endDate: "2026-12-31",
+      allowedYears: [1, 2, 3, 4],
+      isOpen: true
+    });
+  }
+
+  // 5. Create dynamic courseSections for Kỳ 2026.1
+  if (!store.courseSections) store.courseSections = [];
+  const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+  const rooms = ["Phòng A101", "Phòng A102", "Phòng B201", "Phòng B202", "Phòng C301", "Phòng C302", "Phòng D401"];
+  
+  store.courses.forEach((crs, index) => {
+    const sectionId = `sec_${crs.id}_01`;
+    if (!store.courseSections.some(sec => sec.id === sectionId)) {
+      const day1 = daysOfWeek[index % daysOfWeek.length];
+      const day2 = daysOfWeek[(index + 2) % daysOfWeek.length];
+      const timeSlot = index % 2 === 0 
+        ? { start: "08:00", end: "10:00" } 
+        : { start: "14:00", end: "16:00" };
+      const room = rooms[index % rooms.length];
+
+      store.courseSections.push({
+        id: sectionId,
+        courseId: crs.id,
+        semesterId: "sem_fall26",
+        teacherId: crs.teacherId,
+        sectionCode: `${crs.id.toUpperCase().replace("COURSE_", "")}-01`,
+        maxStudents: 40,
+        schedule: [
+          { dayOfWeek: day1, startTime: timeSlot.start, endTime: timeSlot.end, room },
+          { dayOfWeek: day2, startTime: timeSlot.start, endTime: timeSlot.end, room }
+        ],
+        status: "open"
+      });
+    }
+  });
+
+  // 6. Register student users to Kỳ 2026.1 sections
+  if (!store.courseRegistrations) store.courseRegistrations = [];
+  const studentsForFall26 = store.users.filter(u => u.role === "student");
+  const sectionsForFall26 = store.courseSections.filter(sec => sec.semesterId === "sem_fall26");
+
+  studentsForFall26.forEach((student, studIdx) => {
+    const hasReg = store.courseRegistrations.some(r => r.studentId === student.id && r.semesterId === "sem_fall26");
+    if (!hasReg && sectionsForFall26.length > 0) {
+      // Select 3 random sections
+      const selectedSections = [...sectionsForFall26]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3);
+
+      selectedSections.forEach((sec, secIdx) => {
+        store.courseRegistrations.push({
+          id: `cr_${student.id}_${sec.id}`,
+          studentId: student.id,
+          sectionId: sec.id,
+          semesterId: "sem_fall26",
+          status: "registered",
+          registeredAt: new Date("2026-08-15T09:00:00Z").toISOString(),
+          credits: 3
+        });
+
+        const alreadyEnrolled = store.enrollments.some(e => e.studentId === student.id && e.courseId === sec.courseId);
+        if (!alreadyEnrolled) {
+          const enrollId = `enroll_fall26_${student.id}_${sec.courseId}`;
+          store.enrollments.push({
+            id: enrollId,
+            courseId: sec.courseId,
+            studentId: student.id,
+            status: "active",
+            enrolledAt: new Date("2026-08-15T09:00:00Z").toISOString()
+          });
+        }
+      });
+    }
+  });
+
+  // 7. Pre-generate Attendance Sessions and Attendance Records for Kỳ 2026.1
+  if (!store.attendanceSessions) store.attendanceSessions = [];
+  if (!store.attendanceRecords) store.attendanceRecords = [];
+
+  sectionsForFall26.forEach((sec, secIdx) => {
+    // Session 1
+    const sess1Id = `sess_${sec.id}_1`;
+    if (!store.attendanceSessions.some(s => s.id === sess1Id)) {
+      store.attendanceSessions.push({
+        id: sess1Id,
+        courseId: sec.courseId,
+        semesterId: "sem_fall26",
+        teacherId: sec.teacherId,
+        date: "2026-09-15T08:00:00Z",
+        topic: "Bài học mở đầu: Giới thiệu đề cương môn học"
+      });
+
+      const regs = store.courseRegistrations.filter(r => r.sectionId === sec.id);
+      regs.forEach(reg => {
+        const statuses: Array<"present" | "absent" | "late" | "excused"> = ["present", "present", "present", "late", "absent"];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        store.attendanceRecords.push({
+          id: `att_${sess1Id}_${reg.studentId}`,
+          sessionId: sess1Id,
+          studentId: reg.studentId,
+          status,
+          note: status === "late" ? "Đi muộn 10 phút" : status === "absent" ? "Nghỉ không phép" : ""
+        });
+      });
+    }
+
+    // Session 2
+    const sess2Id = `sess_${sec.id}_2`;
+    if (!store.attendanceSessions.some(s => s.id === sess2Id)) {
+      store.attendanceSessions.push({
+        id: sess2Id,
+        courseId: sec.courseId,
+        semesterId: "sem_fall26",
+        teacherId: sec.teacherId,
+        date: "2026-09-22T08:00:00Z",
+        topic: "Buổi 2: Kiến thức nền tảng và bài tập thực hành"
+      });
+
+      const regs = store.courseRegistrations.filter(r => r.sectionId === sec.id);
+      regs.forEach(reg => {
+        const statuses: Array<"present" | "absent" | "late" | "excused"> = ["present", "absent", "late", "excused"] as any;
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        store.attendanceRecords.push({
+          id: `att_${sess2Id}_${reg.studentId}`,
+          sessionId: sess2Id,
+          studentId: reg.studentId,
+          status,
+          note: status === "late" ? "Đi muộn 5 phút" : ""
+        });
+      });
+    }
+  });
+
+  // 8. Advisor assignments for Kỳ 2026.1
+  if (!store.advisorAssignments) store.advisorAssignments = [];
+  studentsForFall26.forEach((student, index) => {
+    const hasAdv = store.advisorAssignments.some(aa => aa.studentId === student.id && aa.semesterId === "sem_fall26");
+    if (!hasAdv) {
+      store.advisorAssignments.push({
+        id: `aa_fall26_${index}`,
+        advisorId: "user_advisor",
+        studentId: student.id,
+        semesterId: "sem_fall26",
+        assignedAt: new Date("2026-08-01T00:00:00Z").toISOString()
+      });
+    }
+  });
+
+  // 9. Generate Tuition Fees and Transactions for Kỳ 2026.1
+  if (!store.tuitionFees) store.tuitionFees = [];
+  if (!store.transactions) store.transactions = [];
+
+  const fall26Registrations = store.courseRegistrations.filter(r => r.semesterId === "sem_fall26");
+  
+  // Group registrations by student
+  const regsByStudent = new Map<string, typeof fall26Registrations>();
+  fall26Registrations.forEach(reg => {
+    const list = regsByStudent.get(reg.studentId) || [];
+    list.push(reg);
+    regsByStudent.set(reg.studentId, list);
+  });
+
+  let feeIndex = 0;
+  regsByStudent.forEach((regs, studentId) => {
+    const feeId = `fee_fall26_${studentId}`;
+    if (!store.tuitionFees.some(f => f.id === feeId)) {
+      const isPaid = Math.random() > 0.4;
+      const isPending = !isPaid && Math.random() > 0.3;
+
+      let feeStatus: "paid" | "unpaid" = "unpaid";
+      let paidAmount = 0;
+      let paidAtDate: string | undefined = undefined;
+      let receiptCode: string | undefined = undefined;
+
+      let totalFee = 0;
+      const txRows: any[] = [];
+
+      regs.forEach((reg, regIdx) => {
+        const section = store.courseSections.find(s => s.id === reg.sectionId);
+        const course = section ? store.courses.find(c => c.id === section.courseId) : undefined;
+        const coursePrice = course?.price || 2000000;
+        totalFee += coursePrice;
+
+        if (isPaid) {
+          paidAtDate = new Date("2026-08-20T10:00:00Z").toISOString();
+          txRows.push({
+            id: `tx_fall26_${studentId}_${reg.id}`,
+            studentId,
+            courseId: course?.id,
+            amount: coursePrice,
+            status: "approved",
+            paymentMethod: "Chuyển khoản ngân hàng",
+            createdAt: paidAtDate,
+            processedAt: paidAtDate,
+            processedBy: "user_finance",
+            notes: `Học phí Kỳ 2026.1 - Môn ${course?.title || ""}`
+          });
+        } else if (isPending) {
+          const pendingAt = new Date("2026-08-25T11:00:00Z").toISOString();
+          txRows.push({
+            id: `tx_fall26_${studentId}_${reg.id}`,
+            studentId,
+            courseId: course?.id,
+            amount: coursePrice,
+            status: "pending",
+            paymentMethod: "Chuyển khoản ngân hàng",
+            createdAt: pendingAt
+          });
+        }
+      });
+
+      if (isPaid) {
+        feeStatus = "paid";
+        paidAmount = totalFee;
+        receiptCode = `RC_F26_${feeIndex++}`;
+        store.transactions.push(...txRows);
+      } else if (isPending) {
+        store.transactions.push(...txRows);
+      }
+
+      store.tuitionFees.push({
+        id: feeId,
+        studentId,
+        semesterId: "sem_fall26",
+        amount: totalFee,
+        dueDate: "2026-09-30",
+        status: feeStatus,
+        paidAmount,
+        paidAt: paidAtDate,
+        receiptCode
       });
     }
   });

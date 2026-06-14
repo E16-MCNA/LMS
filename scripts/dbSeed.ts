@@ -55,6 +55,53 @@ async function main() {
   try {
     await client.query("BEGIN");
 
+    console.log("[Seeding] Truncating existing mock data to ensure clean seed...");
+    await client.query("DELETE FROM notifications");
+    await client.query("DELETE FROM audit_logs");
+    await client.query("DELETE FROM payment_webhook_events");
+    await client.query("DELETE FROM password_reset_tokens");
+    await client.query("DELETE FROM system_events");
+    await client.query("DELETE FROM grades");
+    await client.query("DELETE FROM certificates");
+    await client.query("DELETE FROM graduation_applications");
+    await client.query("DELETE FROM leave_requests");
+    await client.query("DELETE FROM grade_appeals");
+    await client.query("DELETE FROM scholarship_applications");
+    await client.query("DELETE FROM forum_replies");
+    await client.query("DELETE FROM forum_posts");
+    await client.query("DELETE FROM teacher_attendance");
+    await client.query("DELETE FROM attendance_records");
+    await client.query("DELETE FROM attendance_sessions");
+    await client.query("DELETE FROM course_registrations");
+    await client.query("DELETE FROM section_schedules");
+    await client.query("DELETE FROM course_sections");
+    await client.query("DELETE FROM lesson_progress");
+    await client.query("DELETE FROM enrollments");
+    await client.query("DELETE FROM quiz_attempts");
+    await client.query("DELETE FROM submissions");
+    await client.query("DELETE FROM tuition_fees");
+    await client.query("DELETE FROM transactions");
+    await client.query("DELETE FROM academic_warnings");
+    await client.query("DELETE FROM advisor_assignments");
+    await client.query("DELETE FROM advisor_notes");
+    await client.query("DELETE FROM parent_links");
+    await client.query("DELETE FROM student_profiles");
+    await client.query("DELETE FROM questions");
+    await client.query("DELETE FROM quizzes");
+    await client.query("DELETE FROM assignments");
+    await client.query("DELETE FROM lessons");
+    await client.query("DELETE FROM courses");
+    await client.query("DELETE FROM scholarships");
+    await client.query("DELETE FROM registration_periods");
+    await client.query("DELETE FROM semesters");
+    await client.query("DELETE FROM academic_years");
+    await client.query(
+      `DELETE FROM users WHERE id NOT IN (
+        'user_admin', 'user_teacher', 'user_student', 'user_finance', 
+        'user_le_tan', 'user_academic', 'user_advisor'
+      )`
+    );
+
     await insertBatch(
       client,
       "users",
@@ -92,35 +139,40 @@ async function main() {
       client,
       "academic_years",
       ["id", "name", "start_date", "end_date", "is_current"],
-      store.academicYears.map(y => [y.id, y.name, y.startDate, y.endDate, y.isCurrent ? 1 : 0])
+      store.academicYears.map(y => [y.id, y.name, y.startDate, y.endDate, y.isCurrent ? 1 : 0]),
+      `(id) DO UPDATE SET name = EXCLUDED.name, start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, is_current = EXCLUDED.is_current`
     );
 
     await insertBatch(
       client,
       "semesters",
-      ["id", "academic_year_id", "name", "type", "start_date", "end_date", "registration_open", "registration_close"],
-      store.semesters.map(s => [s.id, s.academicYearId, s.name, s.type, s.startDate, s.endDate, s.registrationOpen, s.registrationClose])
+      ["id", "academic_year_id", "name", "type", "start_date", "end_date", "registration_open", "registration_close", "is_current"],
+      store.semesters.map(s => [s.id, s.academicYearId, s.name, s.type, s.startDate, s.endDate, s.registrationOpen, s.registrationClose, s.isCurrent ? 1 : 0]),
+      `(id) DO UPDATE SET academic_year_id = EXCLUDED.academic_year_id, name = EXCLUDED.name, type = EXCLUDED.type, start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date, registration_open = EXCLUDED.registration_open, registration_close = EXCLUDED.registration_close, is_current = EXCLUDED.is_current`
     );
 
     await insertBatch(
       client,
       "courses",
       ["id", "title", "description", "teacher_id", "status", "category", "thumbnail", "price", "level", "tags_json", "rejection_reason", "created_at"],
-      store.courses.map(c => [c.id, c.title, c.description, c.teacherId, c.status, c.category, c.thumbnail || null, c.price || 0, c.level || null, JSON.stringify(c.tags || []), c.rejectionReason || null, c.createdAt])
+      store.courses.map(c => [c.id, c.title, c.description, c.teacherId, c.status, c.category, c.thumbnail || null, c.price || 0, c.level || null, JSON.stringify(c.tags || []), c.rejectionReason || null, c.createdAt]),
+      `(id) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, teacher_id = EXCLUDED.teacher_id, status = EXCLUDED.status, category = EXCLUDED.category, thumbnail = EXCLUDED.thumbnail, price = EXCLUDED.price, level = EXCLUDED.level, tags_json = EXCLUDED.tags_json, rejection_reason = EXCLUDED.rejection_reason, created_at = EXCLUDED.created_at`
     );
 
     await insertBatch(
       client,
       "lessons",
       ["id", "course_id", "title", "content", "video_url", "lesson_order", "duration"],
-      store.lessons.map(l => [l.id, l.courseId, l.title, l.content, l.videoUrl || null, l.order, l.duration])
+      store.lessons.map(l => [l.id, l.courseId, l.title, l.content, l.videoUrl || null, l.order, l.duration]),
+      `(id) DO UPDATE SET course_id = EXCLUDED.course_id, title = EXCLUDED.title, content = EXCLUDED.content, video_url = EXCLUDED.video_url, lesson_order = EXCLUDED.lesson_order, duration = EXCLUDED.duration`
     );
 
     await insertBatch(
       client,
       "enrollments",
       ["id", "course_id", "student_id", "status", "enrolled_at", "completed_at"],
-      store.enrollments.map(e => [e.id, e.courseId, e.studentId, e.status, e.enrolledAt, e.completedAt || null])
+      store.enrollments.map(e => [e.id, e.courseId, e.studentId, e.status, e.enrolledAt, e.completedAt || null]),
+      `(student_id, course_id) DO UPDATE SET status = EXCLUDED.status, enrolled_at = EXCLUDED.enrolled_at, completed_at = EXCLUDED.completed_at`
     );
 
     const lessonIds = new Set(store.lessons.map(l => l.id));
@@ -131,21 +183,24 @@ async function main() {
       ["id", "enrollment_id", "lesson_id", "completed", "completed_at"],
       store.lessonProgress
         .filter(p => enrollmentIds.has(p.enrollmentId) && lessonIds.has(p.lessonId))
-        .map(p => [p.id, p.enrollmentId, p.lessonId, p.completed ? 1 : 0, p.completedAt || null])
+        .map(p => [p.id, p.enrollmentId, p.lessonId, p.completed ? 1 : 0, p.completedAt || null]),
+      `(enrollment_id, lesson_id) DO UPDATE SET completed = EXCLUDED.completed, completed_at = EXCLUDED.completed_at`
     );
 
     await insertBatch(
       client,
       "quizzes",
       ["id", "course_id", "lesson_id", "title", "passing_score", "time_limit", "max_attempts"],
-      store.quizzes.map(q => [q.id, q.courseId, q.lessonId || null, q.title, q.passingScore, q.timeLimit, q.maxAttempts])
+      store.quizzes.map(q => [q.id, q.courseId, q.lessonId || null, q.title, q.passingScore, q.timeLimit, q.maxAttempts]),
+      `(id) DO UPDATE SET course_id = EXCLUDED.course_id, lesson_id = EXCLUDED.lesson_id, title = EXCLUDED.title, passing_score = EXCLUDED.passing_score, time_limit = EXCLUDED.time_limit, max_attempts = EXCLUDED.max_attempts`
     );
 
     await insertBatch(
       client,
       "questions",
       ["id", "quiz_id", "text", "type", "options_json", "correct_answer"],
-      store.questions.map(q => [q.id, q.quizId, q.text, q.type, JSON.stringify(q.options || []), q.correctAnswer])
+      store.questions.map(q => [q.id, q.quizId, q.text, q.type, JSON.stringify(q.options || []), q.correctAnswer]),
+      `(id) DO UPDATE SET quiz_id = EXCLUDED.quiz_id, text = EXCLUDED.text, type = EXCLUDED.type, options_json = EXCLUDED.options_json, correct_answer = EXCLUDED.correct_answer`
     );
 
     await insertBatch(
@@ -154,42 +209,48 @@ async function main() {
       ["id", "quiz_id", "student_id", "answers_json", "score", "passed", "started_at", "submitted_at"],
       store.quizAttempts
         .filter(a => store.quizzes.some(q => q.id === a.quizId))
-        .map(a => [a.id, a.quizId, a.studentId, JSON.stringify(a.answers || {}), a.score, a.passed ? 1 : 0, a.startedAt, a.submittedAt])
+        .map(a => [a.id, a.quizId, a.studentId, JSON.stringify(a.answers || {}), a.score, a.passed ? 1 : 0, a.startedAt, a.submittedAt]),
+      `(id) DO UPDATE SET quiz_id = EXCLUDED.quiz_id, student_id = EXCLUDED.student_id, answers_json = EXCLUDED.answers_json, score = EXCLUDED.score, passed = EXCLUDED.passed, started_at = EXCLUDED.started_at, submitted_at = EXCLUDED.submitted_at`
     );
 
     await insertBatch(
       client,
       "assignments",
       ["id", "course_id", "title", "description", "deadline", "max_score"],
-      store.assignments.map(a => [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore])
+      store.assignments.map(a => [a.id, a.courseId, a.title, a.description, a.deadline, a.maxScore]),
+      `(id) DO UPDATE SET course_id = EXCLUDED.course_id, title = EXCLUDED.title, description = EXCLUDED.description, deadline = EXCLUDED.deadline, max_score = EXCLUDED.max_score`
     );
 
     await insertBatch(
       client,
       "submissions",
       ["id", "assignment_id", "student_id", "content", "score", "feedback", "submitted_at", "graded_at"],
-      store.submissions.map(s => [s.id, s.assignmentId, s.studentId, s.content, s.score ?? null, s.feedback || null, s.submittedAt, s.gradedAt || null])
+      store.submissions.map(s => [s.id, s.assignmentId, s.studentId, s.content, s.score ?? null, s.feedback || null, s.submittedAt, s.gradedAt || null]),
+      `(id) DO UPDATE SET assignment_id = EXCLUDED.assignment_id, student_id = EXCLUDED.student_id, content = EXCLUDED.content, score = EXCLUDED.score, feedback = EXCLUDED.feedback, submitted_at = EXCLUDED.submitted_at, graded_at = EXCLUDED.graded_at`
     );
 
     await insertBatch(
       client,
       "tuition_fees",
       ["id", "student_id", "semester_id", "amount", "due_date", "status", "paid_amount", "paid_at", "receipt_code"],
-      store.tuitionFees.map(f => [f.id, f.studentId, f.semesterId || null, f.amount, f.dueDate, f.status, f.paidAmount, f.paidAt || null, f.receiptCode || null])
+      store.tuitionFees.map(f => [f.id, f.studentId, f.semesterId || null, f.amount, f.dueDate, f.status, f.paidAmount, f.paidAt || null, f.receiptCode || null]),
+      `(id) DO UPDATE SET student_id = EXCLUDED.student_id, semester_id = EXCLUDED.semester_id, amount = EXCLUDED.amount, due_date = EXCLUDED.due_date, status = EXCLUDED.status, paid_amount = EXCLUDED.paid_amount, paid_at = EXCLUDED.paid_at, receipt_code = EXCLUDED.receipt_code`
     );
 
     await insertBatch(
       client,
       "academic_warnings",
       ["id", "student_id", "type", "message", "is_resolved", "created_at"],
-      store.academicWarnings.map(w => [w.id, w.studentId, w.type, w.message, w.isResolved ? 1 : 0, w.createdAt])
+      store.academicWarnings.map(w => [w.id, w.studentId, w.type, w.message, w.isResolved ? 1 : 0, w.createdAt]),
+      `(id) DO UPDATE SET student_id = EXCLUDED.student_id, type = EXCLUDED.type, message = EXCLUDED.message, is_resolved = EXCLUDED.is_resolved, created_at = EXCLUDED.created_at`
     );
 
     await insertBatch(
       client,
       "transactions",
       ["id", "student_id", "course_id", "amount", "status", "payment_method", "created_at", "processed_at", "processed_by", "notes"],
-      (store.transactions || []).map(t => [t.id, t.studentId, t.courseId, t.amount, t.status, t.paymentMethod, t.createdAt, t.processedAt || null, t.processedBy || null, t.notes || null])
+      (store.transactions || []).map(t => [t.id, t.studentId, t.courseId, t.amount, t.status, t.paymentMethod, t.createdAt, t.processedAt || null, t.processedBy || null, t.notes || null]),
+      `(id) DO UPDATE SET student_id = EXCLUDED.student_id, course_id = EXCLUDED.course_id, amount = EXCLUDED.amount, status = EXCLUDED.status, payment_method = EXCLUDED.payment_method, created_at = EXCLUDED.created_at, processed_at = EXCLUDED.processed_at, processed_by = EXCLUDED.processed_by, notes = EXCLUDED.notes`
     );
 
     await insertBatch(
@@ -283,6 +344,22 @@ async function main() {
       ["id", "session_id", "student_id", "status", "note"],
       (store.attendanceRecords || []).map(record => [record.id, record.sessionId, record.studentId, record.status, record.note || null]),
       `(id) DO UPDATE SET session_id = EXCLUDED.session_id, student_id = EXCLUDED.student_id, status = EXCLUDED.status, note = EXCLUDED.note`
+    );
+
+    await insertBatch(
+      client,
+      "scholarships",
+      ["id", "name", "type", "amount", "discount_percent", "semester_id", "conditions"],
+      (store.scholarships || []).map(s => [s.id, s.name, s.type, s.amount ?? null, s.discountPercent ?? null, s.semesterId || null, s.conditions || null]),
+      `(id) DO UPDATE SET name = EXCLUDED.name, type = EXCLUDED.type, amount = EXCLUDED.amount, discount_percent = EXCLUDED.discount_percent, semester_id = EXCLUDED.semester_id, conditions = EXCLUDED.conditions`
+    );
+
+    await insertBatch(
+      client,
+      "advisor_notes",
+      ["id", "advisor_id", "student_id", "content", "type", "created_at"],
+      (store.advisorNotes || []).map(n => [n.id, n.advisorId, n.studentId, n.content, n.type, n.createdAt]),
+      `(id) DO UPDATE SET advisor_id = EXCLUDED.advisor_id, student_id = EXCLUDED.student_id, content = EXCLUDED.content, type = EXCLUDED.type, created_at = EXCLUDED.created_at`
     );
 
     // Backfill school email for all student users in DB during seeding to satisfy new requirements
