@@ -173,6 +173,74 @@ export default function AssignmentGrader(props: ComponentProps) {
               />
             </div>
 
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h5 className="text-sm font-bold text-white">Bài tập đã giao</h5>
+                  <p className="text-[11px] text-white/45">Bài tập vừa tạo sẽ hiện ở đây ngay cả khi chưa có học viên nộp bài.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(true)}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <PlusCircle className="h-4 w-4" /> Tạo bài tập
+                </button>
+              </div>
+
+              {myAssignments.length === 0 ? (
+                <div className="bg-white/5 border border-dashed border-white/10 rounded-2xl p-6 text-center text-xs text-white/45">
+                  Chưa có bài tập nào được giao cho các khóa học của bạn.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myCourses.map((course: any) => {
+                    const assignmentsForCourse = myAssignments.filter((assignment: any) => assignment.courseId === course.id);
+                    if (assignmentsForCourse.length === 0) return null;
+
+                    return (
+                      <div key={`assigned-${course.id}`} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                          <div>
+                            <h6 className="text-sm font-bold text-indigo-200">{course.title}</h6>
+                            <p className="text-[10px] text-white/40">{assignmentsForCourse.length} bài tập đã giao</p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {assignmentsForCourse.map((assignment: any) => {
+                            const submissions = store.submissions.filter((submission: any) => submission.assignmentId === assignment.id);
+                            const gradedCount = submissions.filter((submission: any) => typeof submission.score === "number").length;
+                            const session = (store.attendanceSessions || []).find((item: any) => item.id === assignment.sessionId);
+                            return (
+                              <div key={assignment.id} className="bg-black/20 border border-white/10 rounded-xl p-3 space-y-2">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <h6 className="font-bold text-white text-xs leading-snug break-words">{assignment.title}</h6>
+                                    <p className="text-[10px] text-white/45 mt-1 line-clamp-2">{assignment.description}</p>
+                                  </div>
+                                  <span className="shrink-0 px-2 py-0.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[9px] font-bold">
+                                    {assignment.maxScore || 100} điểm
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-[10px] text-white/55">
+                                  <span>Hạn: <strong className="text-white">{new Date(assignment.deadline).toLocaleDateString("vi-VN")}</strong></span>
+                                  <span>Nộp: <strong className="text-white">{submissions.length}</strong></span>
+                                  <span>Đã chấm: <strong className="text-white">{gradedCount}</strong></span>
+                                  <span className="truncate" title={session?.topic || ""}>Buổi: <strong className="text-white">{session?.topic || "Chưa rõ"}</strong></span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-6">
               {myCourses.map(course => {
                 const courseAssignments = store.assignments.filter((a: any) => a.courseId === course.id);

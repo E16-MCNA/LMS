@@ -60,6 +60,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     studentName: string;
     courseId: string;
     courseTitle: string;
+    isPaymentPending: boolean;
   } | null>(null);
   const [selectedSectionId, setSelectedSectionId] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -84,7 +85,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
 
     // Filter course-level enrollment requests that still need class placement.
     const activeEnrollments = enrollments.filter(
-      e => e.status === "pending" || e.status === "active"
+      e => e.status === "pending" || e.status === "active" || e.status === "pending_payment"
     );
 
     return activeEnrollments.map(e => {
@@ -116,6 +117,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
           courseTitle: course.title,
           enrolledAt: e.enrolledAt,
           status: e.status,
+          isPaymentPending: e.status === "pending_payment",
           className: className
         };
       }
@@ -129,6 +131,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
       courseTitle: string;
       enrolledAt: string;
       status: string;
+      isPaymentPending: boolean;
       className: string;
     }>;
   };
@@ -211,7 +214,8 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
 
   const groupedUnplacedList = groupByCourse(filteredUnplacedList);
   const groupedWaitlistedList = groupByCourse(waitlistedList);
-  const selectedUnplacedItems = rawUnplacedList.filter(item => selectedEnrollmentIds.includes(item.enrollmentId));
+  const placeableUnplacedList = rawUnplacedList.filter(item => !item.isPaymentPending);
+  const selectedUnplacedItems = placeableUnplacedList.filter(item => selectedEnrollmentIds.includes(item.enrollmentId));
   const selectedCourseIds = Array.from(new Set(selectedUnplacedItems.map(item => item.courseId)));
   const selectedBulkCourseId = selectedCourseIds.length === 1 ? selectedCourseIds[0] : "";
   const selectedBulkCourse = store.courses.find(course => course.id === selectedBulkCourseId);
@@ -245,7 +249,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
   };
 
   const toggleCourseSelection = (items: typeof filteredUnplacedList, checked: boolean) => {
-    const itemIds = items.map(item => item.enrollmentId);
+    const itemIds = items.filter(item => !item.isPaymentPending).map(item => item.enrollmentId);
     updateSelectedEnrollmentIds(
       checked
         ? Array.from(new Set([...selectedEnrollmentIds, ...itemIds]))
@@ -263,7 +267,8 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
       studentId: item.studentId,
       studentName: item.studentName,
       courseId: item.courseId,
-      courseTitle: item.courseTitle
+      courseTitle: item.courseTitle,
+      isPaymentPending: item.isPaymentPending
     });
     // Set default section as first available
     const availableSections = (store.courseSections || []).filter(
@@ -299,13 +304,37 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     }
 
     try {
+      if (selectedEnrollment.isPaymentPending) {
+        const paymentTx = (store.transactions || []).find((tx: any) =>
+          tx.studentId === selectedEnrollment.studentId &&
+          tx.courseId === selectedEnrollment.courseId &&
+          (tx.status === "pending" || tx.status === "approved")
+        );
+
+        if (!paymentTx) {
+          triggerToast("Không tìm thấy giao dịch thanh toán để duyệt trước khi xếp lớp.");
+          return;
+        }
+
+        if (paymentTx.status === "pending") {
+          await api.reviewTransaction(paymentTx.id, {
+            status: "approved",
+            notes: "Class placement admin confirmed payment during placement."
+          });
+        }
+      }
+
       await api.approveEnrollment(selectedEnrollment.enrollmentId, {
         sectionId: selectedSectionId,
         semesterId: activeSemesterId
       });
       setShowModal(false);
       onRefreshData();
-      triggerToast(`✅ Đã xếp lớp thành công cho học viên ${selectedEnrollment.studentName}!`);
+      triggerToast(
+        selectedEnrollment.isPaymentPending
+          ? `✅ Đã duyệt thanh toán và xếp lớp thành công cho ${selectedEnrollment.studentName}!`
+          : `✅ Đã xếp lớp thành công cho học viên ${selectedEnrollment.studentName}!`
+      );
     } catch (err: any) {
       triggerToast(err.message || "Không thể duyệt và xếp lớp học viên.");
     }
@@ -314,6 +343,11 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
   // Submit bulk placement
   const handleBulkPlaceSubmit = async () => {
     if (!bulkPlaceSectionId || selectedEnrollmentIds.length === 0) return;
+    const selectedBlocked = rawUnplacedList.some(item => selectedEnrollmentIds.includes(item.enrollmentId) && item.isPaymentPending);
+    if (selectedBlocked) {
+      triggerToast("Payment must be confirmed before class placement.");
+      return;
+    }
 
     const section = (store.courseSections || []).find(s => s.id === bulkPlaceSectionId);
     if (!section) return;
@@ -342,7 +376,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
     const sectionId = groupBulkSectionIds[courseId];
     if (!sectionId) return;
 
-    const groupItems = filteredUnplacedList.filter(item => item.courseId === courseId);
+    const groupItems = filteredUnplacedList.filter(item => item.courseId === courseId && !item.isPaymentPending);
     const selectedGroupIds = groupItems
       .filter(item => selectedEnrollmentIds.includes(item.enrollmentId))
       .map(item => item.enrollmentId);
@@ -739,8 +773,9 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
               const openSections = (store.courseSections || []).filter(
                 section => section.courseId === group.courseId && section.semesterId === activeSemesterId && section.status === "open"
               );
-              const groupSelectedCount = group.items.filter(item => selectedEnrollmentIds.includes(item.enrollmentId)).length;
-              const allGroupSelected = group.items.length > 0 && groupSelectedCount === group.items.length;
+              const placeableGroupItems = group.items.filter(item => !item.isPaymentPending);
+              const groupSelectedCount = placeableGroupItems.filter(item => selectedEnrollmentIds.includes(item.enrollmentId)).length;
+              const allGroupSelected = placeableGroupItems.length > 0 && groupSelectedCount === placeableGroupItems.length;
               const groupKey = `unplaced:${group.courseId}`;
               const isExpanded = Boolean(expandedCourseGroups[groupKey]);
 
@@ -762,9 +797,14 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                     </button>
                     <div className="flex flex-wrap items-center gap-2 text-[10.5px] text-white/65">
                       <span className="px-2 py-1 rounded-lg bg-white/5 border border-white/10">{group.items.length} học viên chờ xếp</span>
+                      {group.items.some(item => item.isPaymentPending) && (
+                        <span className="px-2 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                          {group.items.filter(item => item.isPaymentPending).length} chờ thanh toán
+                        </span>
+                      )}
                       {groupSelectedCount > 0 && (
                         <span className="px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
-                          Đã chọn {groupSelectedCount}/{group.items.length}
+                          Đã chọn {groupSelectedCount}/{placeableGroupItems.length}
                         </span>
                       )}
                       <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">{openSections.length} lớp đang mở</span>
@@ -772,7 +812,8 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                         <input
                           type="checkbox"
                           checked={allGroupSelected}
-                          onChange={(e) => toggleCourseSelection(group.items, e.target.checked)}
+                          disabled={placeableGroupItems.length === 0}
+                          onChange={(e) => toggleCourseSelection(placeableGroupItems, e.target.checked)}
                           className="rounded border-white/20 bg-slate-950 text-indigo-600 focus:ring-indigo-500"
                         />
                         Chọn tất cả
@@ -834,6 +875,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                               <input
                                 type="checkbox"
                                 checked={selectedEnrollmentIds.includes(item.enrollmentId)}
+                                disabled={item.isPaymentPending}
                                 onChange={(e) => toggleEnrollmentSelection(item.enrollmentId, e.target.checked)}
                                 className="rounded border-white/20 bg-slate-950 text-indigo-600 focus:ring-indigo-500"
                               />
@@ -841,6 +883,11 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                             <td className="py-3.5">
                               <div className="font-bold text-white">{item.studentName}</div>
                               <div className="text-[10px] text-white/40 font-mono">{item.studentEmail}</div>
+                              {item.isPaymentPending && (
+                                <span className="mt-1 inline-block px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[9px] font-bold">
+                                  Chờ xác nhận thanh toán
+                                </span>
+                              )}
                             </td>
                             <td className="py-3.5">
                               <span className="inline-block px-1.5 py-0.5 bg-indigo-500/10 text-indigo-300 font-mono text-[9px] rounded border border-indigo-500/20">
@@ -855,7 +902,8 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                                 onClick={() => handleOpenPlacement(item)}
                                 className="px-3.5 py-1.5 bg-white text-indigo-950 font-bold rounded-xl hover:bg-slate-50 transition cursor-pointer text-[10.5px] inline-flex items-center gap-1"
                               >
-                                <UserCheck className="h-3.5 w-3.5" /> Xếp lớp học phần
+                                <UserCheck className="h-3.5 w-3.5" />
+                                {item.isPaymentPending ? "Duyệt & xếp lớp" : "Xếp lớp học phần"}
                               </button>
                             </td>
                           </tr>
@@ -977,6 +1025,11 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                 <span className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest font-mono">Học viên lựa chọn</span>
                 <div className="p-3 bg-black/20 rounded-xl border border-white/5">
                   <h5 className="font-bold text-white text-sm">{selectedEnrollment.studentName}</h5>
+                  {selectedEnrollment.isPaymentPending && (
+                    <div className="mt-2 p-3 bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-xl text-[11px] leading-relaxed">
+                      Học viên đang chờ xác nhận thanh toán. Khi bấm xác nhận, hệ thống sẽ duyệt giao dịch thanh toán trước rồi xếp học viên vào lớp đã chọn.
+                    </div>
+                  )}
                   <p className="text-[11px] text-white/50 mt-0.5">Môn học đã ghi danh: <strong className="text-white">{selectedEnrollment.courseTitle}</strong></p>
                 </div>
               </div>
@@ -1034,7 +1087,7 @@ export default function ClassPlacement({ store, currentUser, onRefreshData }: Cl
                   disabled={!selectedSectionId}
                   className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-500 transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  Xác nhận Xếp lớp
+                  {selectedEnrollment.isPaymentPending ? "Duyệt thanh toán & xếp lớp" : "Xác nhận Xếp lớp"}
                 </button>
               </div>
             </form>
