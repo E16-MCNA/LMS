@@ -231,6 +231,8 @@ export default function AttendanceManager({
   const [complianceSearch, setComplianceSearch] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [courseDetailId, setCourseDetailId] = useState<string | null>(null);
+  const [courseSearchText, setCourseSearchText] = useState("");
+  const [sectionSearchText, setSectionSearchText] = useState("");
   const [newSessionDate, setNewSessionDate] = useState("");
   const [newSessionTopic, setNewSessionTopic] = useState("");
   const [newSessionTime, setNewSessionTime] = useState("09:00 - 11:30");
@@ -258,6 +260,14 @@ export default function AttendanceManager({
   const curSemesterId = activeSemester ? activeSemester.id : "sem_spring25";
 
   const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === selectedCourseId && s.status !== "cancelled");
+  const filteredCourses = courses.filter(c =>
+    c.title.toLowerCase().includes(courseSearchText.toLowerCase()) ||
+    c.category.toLowerCase().includes(courseSearchText.toLowerCase()) ||
+    c.id.toLowerCase().includes(courseSearchText.toLowerCase())
+  );
+  const filteredSections = courseSections.filter((s: any) =>
+    s.sectionCode.toLowerCase().includes(sectionSearchText.toLowerCase())
+  );
   // Sessions for chosen course/section
   const sessions = (store.attendanceSessions || []).filter(s => (
     s.courseId === selectedCourseId && (!selectedSectionId || s.sectionId === selectedSectionId)
@@ -752,51 +762,112 @@ export default function AttendanceManager({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5 w-full" : "col-span-1 md:col-span-12 space-y-1.5 w-full"}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {/* Cột 1: Danh sách môn học / học phần */}
+            <div className="space-y-2 w-full">
               <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                1. Lựa chọn môn học / học phần:
+                1. Môn học / Học phần:
               </label>
-              <SearchableSelect
-                value={selectedCourseId}
-                onChange={(val) => { setSelectedCourseId(val); setSelectedSectionId(""); setActiveSessionId(""); }}
-                disabled={lockSelectors}
-                placeholder="-- Chọn môn học / học phần --"
-                searchPlaceholder="Tìm tên hoặc mã môn..."
-                options={courses.map(c => ({
-                  id: c.id,
-                  label: c.title,
-                  sublabel: c.category
-                }))}
-              />
-            </div>
-
-            {selectedCourseId && (
-              <>
-                <div className="col-span-1 md:col-span-3 space-y-1.5 w-full">
-                  <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
-                    2. Chọn lớp học phần:
-                  </label>
-                  <SearchableSelect
-                    value={selectedSectionId}
-                    onChange={(val) => { setSelectedSectionId(val); setActiveSessionId(""); }}
+              <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden flex flex-col h-60">
+                <div className="p-2 border-b border-white/5 bg-black/20">
+                  <input
+                    type="text"
+                    placeholder="Tìm nhanh môn..."
+                    value={courseSearchText}
+                    onChange={(e) => setCourseSearchText(e.target.value)}
                     disabled={lockSelectors}
-                    placeholder="-- Chọn lớp học phần --"
-                    searchPlaceholder="Tìm mã lớp học phần..."
-                    options={courseSections.map((s: any) => ({
-                      id: s.id,
-                      label: s.sectionCode
-                    }))}
+                    className="w-full px-2.5 py-1.5 bg-black/40 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500/50 text-xs font-sans disabled:opacity-50"
                   />
                 </div>
+                <div className="overflow-y-auto flex-1 divide-y divide-white/5">
+                  {filteredCourses.length > 0 ? (
+                    filteredCourses.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        disabled={lockSelectors}
+                        onClick={() => {
+                          setSelectedCourseId(c.id);
+                          setSelectedSectionId("");
+                          setActiveSessionId("");
+                        }}
+                        className={`w-full text-left px-3 py-2.5 text-xs hover:bg-white/5 transition flex flex-col gap-0.5 disabled:opacity-50 ${
+                          c.id === selectedCourseId ? "bg-indigo-600/30 text-indigo-300 font-bold border-l-2 border-indigo-500" : "text-white/80"
+                        }`}
+                      >
+                        <span className="truncate">{c.title}</span>
+                        <span className="text-[10px] text-white/40 truncate">{c.category}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-xs text-white/40 italic text-center font-sans">
+                      Không tìm thấy môn học
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                <div className="col-span-1 md:col-span-3 space-y-1.5 w-full">
-                  <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-                    3. Chọn đợt buổi học:
-                  </label>
+            {/* Cột 2: Danh sách Lớp học phần */}
+            <div className="space-y-2 w-full">
+              <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                2. Lớp học phần:
+              </label>
+              {selectedCourseId ? (
+                <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden flex flex-col h-60">
+                  <div className="p-2 border-b border-white/5 bg-black/20">
+                    <input
+                      type="text"
+                      placeholder="Tìm nhanh lớp..."
+                      value={sectionSearchText}
+                      onChange={(e) => setSectionSearchText(e.target.value)}
+                      disabled={lockSelectors}
+                      className="w-full px-2.5 py-1.5 bg-black/40 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-violet-500/50 text-xs font-sans disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="overflow-y-auto flex-1 divide-y divide-white/5">
+                    {filteredSections.length > 0 ? (
+                      filteredSections.map((s: any) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          disabled={lockSelectors}
+                          onClick={() => {
+                            setSelectedSectionId(s.id);
+                            setActiveSessionId("");
+                          }}
+                          className={`w-full text-left px-3 py-3 text-xs hover:bg-white/5 transition flex items-center justify-between disabled:opacity-50 ${
+                            s.id === selectedSectionId ? "bg-violet-600/30 text-violet-300 font-bold border-l-2 border-violet-500" : "text-white/80"
+                          }`}
+                        >
+                          <span className="font-mono">{s.sectionCode}</span>
+                          {s.id === selectedSectionId && <span className="text-[10px] text-violet-400">✓</span>}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-xs text-white/40 italic text-center font-sans">
+                        Không tìm thấy lớp
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-black/10 border border-white/5 border-dashed rounded-2xl h-60 flex flex-col items-center justify-center text-white/30 text-xs italic font-sans p-4 text-center">
+                  Vui lòng chọn môn học ở cột 1
+                </div>
+              )}
+            </div>
+
+            {/* Cột 3: Chọn đợt buổi học */}
+            <div className="space-y-4 w-full">
+              <div className="space-y-2">
+                <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
+                  3. Chọn đợt buổi học:
+                </label>
+                {selectedSectionId ? (
                   <select
                     value={activeSessionId}
                     onChange={(e) => setActiveSessionId(e.target.value)}
@@ -807,9 +878,15 @@ export default function AttendanceManager({
                       <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
                     ))}
                   </select>
-                </div>
-                
-                <div className="col-span-1 md:col-span-2 w-full">
+                ) : (
+                  <div className="p-2.5 bg-black/20 text-white/30 border border-white/5 rounded-xl text-center italic h-[38px] flex items-center justify-center">
+                    Chọn lớp học phần ở cột 2
+                  </div>
+                )}
+              </div>
+
+              {selectedSectionId && (
+                <div className="pt-2">
                   <button
                     onClick={() => setShowCreateSession(true)}
                     className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
@@ -818,8 +895,8 @@ export default function AttendanceManager({
                     <span className="truncate">Tạo buổi / Gửi link 🚀</span>
                   </button>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
