@@ -754,46 +754,45 @@ export default function AttendanceManager({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5 w-full" : "col-span-1 md:col-span-12 space-y-1.5 w-full"}>
+            <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
               <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                 1. Lựa chọn môn học / học phần:
               </label>
-              <SearchableSelect
+              <select
                 value={selectedCourseId}
-                onChange={(val) => { setSelectedCourseId(val); setSelectedSectionId(""); setActiveSessionId(""); }}
+                onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
                 disabled={lockSelectors}
-                placeholder="-- Chọn môn học / học phần --"
-                searchPlaceholder="Tìm tên hoặc mã môn..."
-                options={courses.map(c => ({
-                  id: c.id,
-                  label: c.title,
-                  sublabel: c.category
-                }))}
-              />
+                className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">-- Click chọn lớp môn học --</option>
+                {courses.map(c => (
+                  <option key={c.id} value={c.id} className="bg-slate-900">{c.title} ({c.category})</option>
+                ))}
+              </select>
             </div>
 
             {selectedCourseId && (
               <>
-                <div className="col-span-1 md:col-span-3 space-y-1.5 w-full">
+                <div className="col-span-1 md:col-span-3 space-y-1.5">
                   <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
                     2. Chọn lớp học phần:
                   </label>
-                  <SearchableSelect
+                  <select
                     value={selectedSectionId}
-                    onChange={(val) => { setSelectedSectionId(val); setActiveSessionId(""); }}
+                    onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}
                     disabled={lockSelectors}
-                    placeholder="-- Chọn lớp học phần --"
-                    searchPlaceholder="Tìm mã lớp học phần..."
-                    options={courseSections.map((s: any) => ({
-                      id: s.id,
-                      label: s.sectionCode
-                    }))}
-                  />
+                    className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">-- Chọn lớp --</option>
+                    {courseSections.map((section: any) => (
+                      <option key={section.id} value={section.id} className="bg-slate-900">{section.sectionCode}</option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="col-span-1 md:col-span-3 space-y-1.5 w-full">
+                <div className="col-span-1 md:col-span-3 space-y-1.5">
                   <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
                     3. Chọn đợt buổi học:
@@ -801,16 +800,16 @@ export default function AttendanceManager({
                   <select
                     value={activeSessionId}
                     onChange={(e) => setActiveSessionId(e.target.value)}
-                    className="w-full p-2.5 bg-white text-slate-800 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all h-[38px] shadow-sm hover:border-slate-400"
+                    className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
                   >
-                    <option value="" className="text-slate-800">-- Mở bảng tháng --</option>
+                    <option value="">-- Mở bảng tháng --</option>
                     {sessions.map(s => (
-                      <option key={s.id} value={s.id} className="text-slate-800 bg-white">{s.date} -- Đề mục: {s.topic}</option>
+                      <option key={s.id} value={s.id} className="bg-slate-900">{s.date} -- Đề mục: {s.topic}</option>
                     ))}
                   </select>
                 </div>
                 
-                <div className="col-span-1 md:col-span-2 w-full">
+                <div className="col-span-1 md:col-span-2">
                   <button
                     onClick={() => setShowCreateSession(true)}
                     className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
