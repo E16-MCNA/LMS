@@ -126,7 +126,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
       } else if (currentUser.role === "manager") {
         allowedSisTabs.push("users", "audit");
       } else if (currentUser.role === "admin") {
-        allowedSisTabs.push("attendance", "admin_timetable", "teacher_timetable", "warnings", "users", "audit");
+        allowedSisTabs.push("attendance", "teacher_timetable", "warnings", "users", "audit");
       }
       if (!allowedSisTabs.includes(activeSubTab)) {
         setActiveSubTab("admin_guide");
@@ -627,8 +627,7 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                   <span className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Thanh toán Học phí</span>
                 </button>
               )}
-              {currentUser.role !== "manager" && (
-                <>
+              {currentUser.role === "super_admin" && (
                 <button
                   onClick={() => { setActiveSubTab("admin_timetable"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
@@ -637,6 +636,8 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                 >
                   <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Quản lý Thời khóa biểu</span>
                 </button>
+              )}
+              {currentUser.role !== "manager" && (
                 <button
                   onClick={() => { setActiveSubTab("teacher_timetable"); setRegistryLookupStudentId(null); }}
                   className={`w-full text-left py-2 px-3 rounded-xl transition font-medium flex items-center justify-between ${
@@ -645,7 +646,6 @@ export default function AdminPanel({ currentUser, onLogout, onRefreshData, activ
                 >
                   <span className="flex items-center gap-2"><Calendar className="h-4 w-4" /> Thời khóa biểu Giảng viên</span>
                 </button>
-                </>
               )}
               <button
                 onClick={() => { setActiveSubTab("class_placement"); setRegistryLookupStudentId(null); }}
