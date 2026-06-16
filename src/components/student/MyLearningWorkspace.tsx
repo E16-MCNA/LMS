@@ -151,6 +151,8 @@ export default function MyLearningWorkspace(props: ComponentProps) {
     if (activePresentationSessionNumber && session.number === activePresentationSessionNumber) return true;
     return false;
   }) || null;
+  const activeLessonVideoUrl = currentLessonContentObj?.videoUrl || activePresentationSession?.videoUrl || "";
+  const activeLessonVideoTitle = currentLessonContentObj?.title || activePresentationSession?.topic || activePresentationSession?.title || "Video bài giảng";
   const renderPresentationSessionInfo = (session: any) => session ? (
     <div className="relative z-10 bg-black/20 border border-white/10 rounded-2xl p-4 md:p-5 space-y-3">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -173,6 +175,28 @@ export default function MyLearningWorkspace(props: ComponentProps) {
       )}
     </div>
   ) : null;
+  const renderVideoStage = (videoUrl: string, title: string) => (
+    <div className="bg-black border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+      <div className="aspect-video w-full bg-black flex items-center justify-center">
+        <video
+          controls
+          src={videoUrl}
+          className="w-full h-full object-contain"
+        />
+      </div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 md:px-5 py-3 bg-slate-950/95 border-t border-white/10">
+        <span className="text-xs md:text-sm font-bold text-white truncate">{title}</span>
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[10px] font-mono font-bold text-cyan-300 hover:text-cyan-200 transition shrink-0"
+        >
+          Mở video trong tab mới ↗
+        </a>
+      </div>
+    </div>
+  );
   const getEnrollmentSection = (enroll: any) => {
     const registration = (store.courseRegistrations || []).find((r: any) => {
       if (r.studentId !== currentUser.id || ["dropped", "waitlisted", "withdrawn"].includes(r.status)) return false;
@@ -469,7 +493,7 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                         {isExpanded && (
                           <div className="p-3.5 space-y-4 bg-slate-900/40 border-t border-white/5">
                             
-                            {/* Topic, content & video if present */}
+                            {/* Topic and summary only; video is shown in the main presentation area. */}
                             {(session.topic || session.content || session.videoUrl) && (
                               <div className="space-y-3 bg-black/25 p-3 rounded-xl border border-white/5 text-[11px] font-sans text-left">
                                 {session.topic && (
@@ -487,24 +511,21 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                                   </div>
                                 )}
                                 {session.videoUrl && (
-                                  <div>
-                                    <span className="text-white/40 block text-[9px] uppercase font-mono font-bold">Video bài giảng</span>
-                                    <div className="mt-1 space-y-1">
-                                      <video 
-                                        src={session.videoUrl} 
-                                        controls 
-                                        className="w-full max-h-32 bg-black rounded-lg border border-white/10"
-                                      />
-                                      <a 
-                                        href={session.videoUrl} 
-                                        target="_blank" 
-                                        rel="noreferrer" 
-                                        className="text-cyan-400 hover:underline inline-block font-mono text-[9px]"
-                                      >
-                                        Mở video trong tab mới ↗
-                                      </a>
-                                    </div>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActivePresentationSessionNumber(session.number);
+                                      const firstLesson = session.lessons[0];
+                                      setActiveLessonId(firstLesson?.id || null);
+                                      setActiveAssignmentId(null);
+                                    }}
+                                    className="w-full inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 text-cyan-200 transition cursor-pointer"
+                                  >
+                                    <span className="inline-flex items-center gap-1.5 font-mono font-bold text-[9px] uppercase tracking-widest">
+                                      <Play className="h-3.5 w-3.5" /> Trình chiếu video
+                                    </span>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                  </button>
                                 )}
                               </div>
                             )}
@@ -789,62 +810,44 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                     </div>
                   );
                 })() : currentLessonContentObj ? (
-                  
                   // Condition 2: View Lesson content (default display)
-                  <div className="bg-gradient-to-b from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-                    {/* Decorative glow */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full filter blur-3xl pointer-events-none" />
-                    {renderPresentationSessionInfo(activePresentationSession)}
-                    
-                    <div className="space-y-3">
-                      <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-widest">BÀI HỌC CHI TIẾT</span>
-                      <h5 className="text-xl md:text-2xl font-display font-extrabold text-white leading-tight">{currentLessonContentObj.title}</h5>
-                      
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-white/40 pt-2 border-b border-white/5 pb-4">
-                        <span className="flex items-center gap-1.5"><User className="h-4 w-4 text-indigo-400" /> Hệ thống giáo dục E16</span>
-                        <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-indigo-400" /> Thời lượng: {currentLessonContentObj.duration}</span>
-                      </div>
-                    </div>
+                  <>
+                    {activeLessonVideoUrl && renderVideoStage(activeLessonVideoUrl, activeLessonVideoTitle)}
 
-                    <div className="text-sm text-white/80 leading-relaxed font-sans prose prose-invert max-w-none space-y-4 whitespace-pre-line bg-black/10 p-5 rounded-2xl border border-white/5 shadow-inner">
-                      {currentLessonContentObj.content}
-                    </div>
+                    <div className="bg-gradient-to-b from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full filter blur-3xl pointer-events-none" />
+                      {renderPresentationSessionInfo(activePresentationSession)}
 
-                    {currentLessonContentObj.videoUrl && (
-                      <div className="space-y-3 pt-2">
-                        <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-widest block">Video bài giảng đi kèm</span>
-                        <div className="aspect-video bg-black/40 rounded-2xl overflow-hidden border border-white/10 shadow-lg relative flex items-center justify-center group">
-                          <video 
-                            controls 
-                            src={currentLessonContentObj.videoUrl} 
-                            className="w-full h-full object-contain"
-                          />
+                      <div className="space-y-3 relative z-10">
+                        <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-widest">BÀI HỌC CHI TIẾT</span>
+                        <h5 className="text-xl md:text-2xl font-display font-extrabold text-white leading-tight">{currentLessonContentObj.title}</h5>
+
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-white/40 pt-2 border-b border-white/5 pb-4">
+                          <span className="flex items-center gap-1.5"><User className="h-4 w-4 text-indigo-400" /> Hệ thống giáo dục E16</span>
+                          <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-indigo-400" /> Thời lượng: {currentLessonContentObj.duration}</span>
                         </div>
                       </div>
-                    )}
-                  </div>
+
+                      <div className="relative z-10 text-sm text-white/80 leading-relaxed font-sans prose prose-invert max-w-none space-y-4 whitespace-pre-line bg-black/10 p-5 rounded-2xl border border-white/5 shadow-inner">
+                        {currentLessonContentObj.content}
+                      </div>
+                    </div>
+                  </>
                 ) : activePresentationSession ? (
-                  <div className="bg-gradient-to-b from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full filter blur-3xl pointer-events-none" />
-                    {renderPresentationSessionInfo(activePresentationSession)}
-
+                  <>
                     {activePresentationSession.videoUrl ? (
-                      <div className="space-y-3 pt-2 relative z-10">
-                        <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-widest block">Video bài giảng của buổi học</span>
-                        <div className="aspect-video bg-black/40 rounded-2xl overflow-hidden border border-white/10 shadow-lg relative flex items-center justify-center">
-                          <video
-                            controls
-                            src={activePresentationSession.videoUrl}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                      </div>
+                      renderVideoStage(activePresentationSession.videoUrl, activePresentationSession.topic || activePresentationSession.title)
                     ) : (
-                      <div className="relative z-10 text-center py-16 bg-black/10 border border-dashed border-white/10 rounded-2xl text-xs text-white/45">
+                      <div className="text-center py-16 bg-black/10 border border-dashed border-white/10 rounded-2xl text-xs text-white/45">
                         Buổi học này chưa có video hoặc bài học chi tiết để trình chiếu.
                       </div>
                     )}
-                  </div>
+
+                    <div className="bg-gradient-to-b from-white/5 to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full filter blur-3xl pointer-events-none" />
+                      {renderPresentationSessionInfo(activePresentationSession)}
+                    </div>
+                  </>
                 ) : (
                   
                   // Condition 3: Default Blank State Placeholder
