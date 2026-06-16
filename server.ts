@@ -823,6 +823,112 @@ const dateTimeForSlot = (dateOnly: string, slot?: SectionScheduleSlot | null) =>
   return /^\d{2}:\d{2}$/.test(startTime) ? `${dateOnly}T${startTime}:00` : dateOnly;
 };
 
+const scheduleSlotTime = (slot: any, key: "start" | "end") => String(
+  key === "start"
+    ? slot?.startTime || slot?.start_time || ""
+    : slot?.endTime || slot?.end_time || ""
+).trim();
+
+const scheduleSlotRoom = (slot: any) => String(slot?.room || "").trim();
+
+const scheduleSlotDayLabel = (slot: any) => String(slot?.dayOfWeek || slot?.day_of_week || slot?.specificDate || slot?.specific_date || "").trim();
+
+const timeToMinutes = (value: any) => {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+};
+
+const slotDateDayIndex = (slot: any) => {
+  const specificDate = String(slot?.specificDate || slot?.specific_date || "").slice(0, 10);
+  if (!isDateOnlyText(specificDate)) return null;
+  const [year, month, day] = specificDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+};
+
+const slotsOccurOnSameDay = (left: any, right: any) => {
+  const leftDate = String(left?.specificDate || left?.specific_date || "").slice(0, 10);
+  const rightDate = String(right?.specificDate || right?.specific_date || "").slice(0, 10);
+  if (isDateOnlyText(leftDate) && isDateOnlyText(rightDate)) return leftDate === rightDate;
+
+  const leftDay = slotDateDayIndex(left) ?? dayOfWeekIndex(left?.dayOfWeek || left?.day_of_week);
+  const rightDay = slotDateDayIndex(right) ?? dayOfWeekIndex(right?.dayOfWeek || right?.day_of_week);
+  return leftDay !== null && rightDay !== null && leftDay === rightDay;
+};
+
+const slotsOverlap = (left: any, right: any) => {
+  if (!slotsOccurOnSameDay(left, right)) return false;
+  const leftStart = timeToMinutes(scheduleSlotTime(left, "start"));
+  const leftEnd = timeToMinutes(scheduleSlotTime(left, "end"));
+  const rightStart = timeToMinutes(scheduleSlotTime(right, "start"));
+  const rightEnd = timeToMinutes(scheduleSlotTime(right, "end"));
+  if (leftStart === null || leftEnd === null || rightStart === null || rightEnd === null) return false;
+  return leftStart < rightEnd && rightStart < leftEnd;
+};
+
+async function validateCourseSectionScheduleConflicts(db: Queryable, section: SectionPayload) {
+  const schedule = Array.isArray(section.schedule) ? section.schedule : [];
+  const errors: string[] = [];
+
+  for (const slot of schedule) {
+    const start = timeToMinutes(scheduleSlotTime(slot, "start"));
+    const end = timeToMinutes(scheduleSlotTime(slot, "end"));
+    if (start === null || end === null || start >= end) {
+      errors.push(`Invalid class time for ${scheduleSlotDayLabel(slot) || "schedule slot"}: ${scheduleSlotTime(slot, "start")} - ${scheduleSlotTime(slot, "end")}.`);
+    }
+  }
+
+  for (let i = 0; i < schedule.length; i++) {
+    for (let j = i + 1; j < schedule.length; j++) {
+      if (slotsOverlap(schedule[i], schedule[j])) {
+        errors.push(`This class has overlapping schedule slots on ${scheduleSlotDayLabel(schedule[i]) || "the same day"}.`);
+      }
+    }
+  }
+
+  if (!section.teacherId || !section.semesterId || schedule.length === 0) return errors;
+
+  const existingSections = (await db.query(
+    `SELECT cs.*, c.title AS course_title, u.name AS teacher_name
+     FROM course_sections cs
+     LEFT JOIN courses c ON c.id = cs.course_id
+     LEFT JOIN users u ON u.id = cs.teacher_id
+     WHERE cs.semester_id = $1
+       AND cs.status <> 'cancelled'
+       AND cs.id <> $2
+       AND (cs.teacher_id = $3 OR cs.schedule IS NOT NULL OR cs.schedule_json IS NOT NULL)`,
+    [section.semesterId, section.id || "", section.teacherId]
+  )).rows;
+
+  for (const existing of existingSections) {
+    const existingSchedule = parseSchedule(existing);
+    for (const slot of schedule) {
+      for (const existingSlot of existingSchedule) {
+        if (!slotsOverlap(slot, existingSlot)) continue;
+
+        if (existing.teacher_id === section.teacherId) {
+          errors.push(
+            `Teacher schedule conflict with class ${existing.section_code} (${existing.course_title || "course"}) on ${scheduleSlotDayLabel(slot)} ${scheduleSlotTime(slot, "start")} - ${scheduleSlotTime(slot, "end")}.`
+          );
+        }
+
+        const room = scheduleSlotRoom(slot).toLowerCase();
+        const existingRoom = scheduleSlotRoom(existingSlot).toLowerCase();
+        if (room && existingRoom && room === existingRoom) {
+          errors.push(
+            `Room schedule conflict with class ${existing.section_code} (${existing.course_title || "course"}) in room ${scheduleSlotRoom(slot)} on ${scheduleSlotDayLabel(slot)} ${scheduleSlotTime(slot, "start")} - ${scheduleSlotTime(slot, "end")}.`
+          );
+        }
+      }
+    }
+  }
+
+  return Array.from(new Set(errors));
+}
+
 const buildScheduledSessionSeed = (order: number, schedule: SectionScheduleSlot[], openingDate?: string | null) => {
   const slotCount = Math.max(schedule.length, 1);
   const slot = schedule.length > 0 ? schedule[(order - 1) % slotCount] : null;
@@ -2218,7 +2324,7 @@ app.post("/api/enrollments/:id/activate", requireAuth, requireRole(["admin", "su
   await audit(req, "activate_enrollment", enrollment.id, `Activated enrollment for student ID: ${enrollment.studentId}`);
   res.json(enrollment);
 }));
-app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["admin", "super_admin"]), validateBody(schemas.approveEnrollment), asyncHandler(async (req, res) => {
+app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["manager", "admin", "super_admin"]), validateBody(schemas.approveEnrollment), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   let committed = false;
   try {
@@ -2228,10 +2334,6 @@ app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["admin", "su
     if (!enrollmentRow) {
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "Enrollment not found." });
-    }
-    if (enrollmentRow.status === "pending_payment") {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Payment must be confirmed before class placement." });
     }
     if (!await hasConfirmedPaymentForCoursePlacement(client, enrollmentRow.student_id, enrollmentRow.course_id)) {
       await client.query("ROLLBACK");
@@ -2316,7 +2418,7 @@ app.patch("/api/enrollments/:id/approve", requireAuth, requireRole(["admin", "su
   }
 }));
 
-app.post("/api/admin/enrollments/bulk-place", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.post("/api/admin/enrollments/bulk-place", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const { placements } = req.body;
   if (!Array.isArray(placements)) {
     return res.status(400).json({ error: "Mảng danh sách xếp lớp placements là bắt buộc." });
@@ -2419,10 +2521,6 @@ app.post("/api/admin/enrollments/bulk-place", requireAuth, requireRole(["admin",
       }
       if (enrollmentRow.course_id !== section.course_id) {
         errors.push({ index, error: "Enrollment does not belong to the target class course." });
-        continue;
-      }
-      if (enrollmentRow.status === "pending_payment") {
-        errors.push({ index, error: "Payment is not confirmed yet; class placement is blocked." });
         continue;
       }
       if (!await hasConfirmedPaymentForCoursePlacement(client, enrollmentRow.student_id, enrollmentRow.course_id)) {
@@ -3245,6 +3343,10 @@ app.post("/api/course-sections", requireAuth, requireRole(["teacher", "admin", "
     openingDate: req.body.openingDate || course.openingDate
   };
   if (!payload.teacherId) return res.status(400).json({ error: "teacherId is required." });
+  const scheduleConflicts = await validateCourseSectionScheduleConflicts(pool, payload);
+  if (scheduleConflicts.length > 0) {
+    return res.status(409).json({ error: scheduleConflicts[0], conflicts: scheduleConflicts });
+  }
   const row = await upsertCourseSection(pool, payload);
   invalidateStoreCache();
   await audit(req, "create_course_section", row.id, row.sectionCode);
@@ -3270,6 +3372,10 @@ app.put("/api/course-sections/:id", requireAuth, requireRole(["teacher", "admin"
     openingDate: req.body.openingDate || existing.opening_date || course.openingDate
   };
   if (!payload.teacherId) return res.status(400).json({ error: "teacherId is required." });
+  const scheduleConflicts = await validateCourseSectionScheduleConflicts(pool, payload);
+  if (scheduleConflicts.length > 0) {
+    return res.status(409).json({ error: scheduleConflicts[0], conflicts: scheduleConflicts });
+  }
   const row = await upsertCourseSection(pool, payload);
   invalidateStoreCache();
   await audit(req, "update_course_section", row.id, row.sectionCode);
@@ -3313,7 +3419,7 @@ app.patch("/api/course-registrations/:id/drop", requireAuth, requireRole(["stude
   res.json(registration);
 }));
 
-app.patch("/api/course-registrations/:id/approve", requireAuth, requireRole(["admin", "super_admin"]), asyncHandler(async (req, res) => {
+app.patch("/api/course-registrations/:id/approve", requireAuth, requireRole(["manager", "admin", "super_admin"]), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -3333,9 +3439,9 @@ app.patch("/api/course-registrations/:id/approve", requireAuth, requireRole(["ad
       "SELECT * FROM enrollments WHERE student_id = $1 AND course_id = $2 FOR UPDATE",
       [registration.student_id, registration.course_id]
     )).rows[0];
-    if (!enrollment || enrollment.status === "pending_payment") {
+    if (!enrollment) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ error: "Payment must be confirmed before class placement." });
+      return res.status(404).json({ error: "Enrollment not found." });
     }
     if (!await hasConfirmedPaymentForCoursePlacement(client, registration.student_id, registration.course_id)) {
       await client.query("ROLLBACK");
