@@ -1,0 +1,6 @@
+{
+  "name": "Flask Entrypoint Reader",
+  "description": "An interactive, full-stack code viewer and inspector that analyzes, explains, and port-guides Flask/Python web entrypoints using Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

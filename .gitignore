@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+data/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.understand-anything/
+.cursor/
+scratch/
+public/uploads/
