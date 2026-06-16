@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCheck, Inbox, Search } from "lucide-react";
 import { api } from "../api";
 import { LMSDataStore, Notification, User } from "../types";
@@ -66,12 +66,24 @@ export default function NotificationInbox({ store, currentUser, onRefreshData, t
   const [checkinSuccess, setCheckinSuccess] = useState<Record<string, boolean>>({});
   const [checkinLoading, setCheckinLoading] = useState<Record<string, boolean>>({});
 
+  // Local state to keep track of notifications marked read in the current view session
+  const [locallyMarkedReadIds, setLocallyMarkedReadIds] = useState<Set<string>>(new Set());
+
+  // Reset local read state when filter tab changes so they finally filter out if viewing "unread"
+  useEffect(() => {
+    setLocallyMarkedReadIds(new Set());
+  }, [filter]);
+
   const notifications = useMemo(() => {
     const query = search.trim().toLowerCase();
     return (store.notifications || [])
       .filter(note => note.userId === currentUser.id)
       .filter(note => {
-        if (filter === "unread") return !note.isRead;
+        if (filter === "unread") {
+          // If the notification was marked read in this view session, keep showing it
+          if (locallyMarkedReadIds.has(note.id)) return true;
+          return !note.isRead;
+        }
         return true;
       })
       .filter(note => {
@@ -79,14 +91,15 @@ export default function NotificationInbox({ store, currentUser, onRefreshData, t
         return note.message.toLowerCase().includes(query) || note.type.toLowerCase().includes(query);
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [currentUser.id, search, store.notifications, filter]);
+  }, [currentUser.id, search, store.notifications, filter, locallyMarkedReadIds]);
 
   const totalUnreadCount = useMemo(() => {
     return (store.notifications || []).filter(note => note.userId === currentUser.id && !note.isRead).length;
   }, [currentUser.id, store.notifications]);
 
   const markRead = async (note: Notification) => {
-    if (note.isRead) return;
+    if (note.isRead || locallyMarkedReadIds.has(note.id)) return;
+    setLocallyMarkedReadIds(prev => new Set(prev).add(note.id));
     setBusyId(note.id);
     setError(null);
     try {
@@ -94,12 +107,23 @@ export default function NotificationInbox({ store, currentUser, onRefreshData, t
       onRefreshData();
     } catch (err: any) {
       setError(err.message || "Không thể đánh dấu thông báo đã đọc.");
+      setLocallyMarkedReadIds(prev => {
+        const next = new Set(prev);
+        next.delete(note.id);
+        return next;
+      });
     } finally {
       setBusyId(null);
     }
   };
 
   const markAllRead = async () => {
+    const unreadIds = notifications.filter(n => !n.isRead && !locallyMarkedReadIds.has(n.id)).map(n => n.id);
+    setLocallyMarkedReadIds(prev => {
+      const next = new Set(prev);
+      unreadIds.forEach(id => next.add(id));
+      return next;
+    });
     setBusyId("all");
     setError(null);
     try {
@@ -107,6 +131,11 @@ export default function NotificationInbox({ store, currentUser, onRefreshData, t
       onRefreshData();
     } catch (err: any) {
       setError(err.message || "Không thể đánh dấu toàn bộ thông báo đã đọc.");
+      setLocallyMarkedReadIds(prev => {
+        const next = new Set(prev);
+        unreadIds.forEach(id => next.delete(id));
+        return next;
+      });
     } finally {
       setBusyId(null);
     }
@@ -208,34 +237,36 @@ export default function NotificationInbox({ store, currentUser, onRefreshData, t
       )}
 
       <div className="space-y-2">
-        {notifications.map(note => (
-          <button
-            key={note.id}
-            onClick={() => {
-              if (note.type !== "attendance_link") {
-                markRead(note);
-              }
-            }}
-            className={`w-full text-left rounded-2xl border p-4 transition cursor-pointer ${
-              note.isRead
-                ? "bg-white/50 border-slate-100 dark:bg-white/[0.03] dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/[0.06]"
-                : "bg-cyan-500/5 border-cyan-300/20 shadow-sm dark:bg-cyan-500/10 dark:border-cyan-300/30 dark:shadow-lg dark:shadow-cyan-950/20 hover:bg-cyan-500/10 dark:hover:bg-cyan-500/15"
-            }`}
-            disabled={busyId === note.id}
-          >
-            <div className="flex items-start gap-3">
-              <div className={`mt-0.5 h-9 w-9 rounded-xl border flex items-center justify-center ${typeClasses(note.type)}`}>
-                <Bell className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded-full border text-[10px] font-black uppercase ${typeClasses(note.type)}`}>
-                    {translateType(note.type)}
-                  </span>
-                  <span className="text-[11px] text-slate-400 dark:text-white/45">{formatNotificationTime(note.createdAt)}</span>
-                  {!note.isRead && <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-200">Chưa đọc</span>}
+        {notifications.map(note => {
+          const isNoteRead = note.isRead || locallyMarkedReadIds.has(note.id);
+          return (
+            <button
+              key={note.id}
+              onClick={() => {
+                if (note.type !== "attendance_link") {
+                  markRead(note);
+                }
+              }}
+              className={`w-full text-left rounded-2xl border p-4 transition cursor-pointer ${
+                isNoteRead
+                  ? "bg-white/50 border-slate-100 dark:bg-white/[0.03] dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/[0.06]"
+                  : "bg-cyan-500/5 border-cyan-300/20 shadow-sm dark:bg-cyan-500/10 dark:border-cyan-300/30 dark:shadow-lg dark:shadow-cyan-950/20 hover:bg-cyan-500/10 dark:hover:bg-cyan-500/15"
+              }`}
+              disabled={busyId === note.id}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 h-9 w-9 rounded-xl border flex items-center justify-center ${typeClasses(note.type)}`}>
+                  <Bell className="h-4 w-4" />
                 </div>
-                <p className="mt-2 text-sm text-slate-700 dark:text-white/85 leading-relaxed">{note.message}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full border text-[10px] font-black uppercase ${typeClasses(note.type)}`}>
+                      {translateType(note.type)}
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-white/45">{formatNotificationTime(note.createdAt)}</span>
+                    {!isNoteRead && <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-200">Chưa đọc</span>}
+                  </div>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-white/85 leading-relaxed">{note.message}</p>
 
                 {/* Inline checkin form for students directly in their notifications */}
                 {note.type === "attendance_link" && note.relatedEntityId && (() => {
@@ -280,7 +311,7 @@ export default function NotificationInbox({ store, currentUser, onRefreshData, t
               </div>
             </div>
           </button>
-        ))}
+        )})}
 
         {notifications.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/15 bg-slate-50 dark:bg-white/[0.03] p-10 text-center">

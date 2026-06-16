@@ -143,7 +143,7 @@ export default function AssignmentSubmit(props: ComponentProps) {
         {/* Tab 3: Assignments list & Submissions panels */}
         {activeSubTab === "assignments" && (
           <div className="space-y-6">
-            <h4 className="text-base font-display font-semibold text-white">Bài tập chưa hoàn thành của các khóa học</h4>
+            <h4 className="text-base font-display font-semibold text-white">Bài tập chưa hoàn thành</h4>
 
             <div className="space-y-4">
               {(() => {
@@ -256,7 +256,7 @@ export default function AssignmentSubmit(props: ComponentProps) {
             </div>
 
             <div className="space-y-4 border-t border-white/10 pt-6">
-              <h4 className="text-base font-display font-semibold text-white">Bài tập đã làm</h4>
+              <h4 className="text-base font-display font-semibold text-white">Bài tập đã hoàn thành</h4>
               {(() => {
                 const placedCourseIds = (store.courseRegistrations || [])
                   .filter((r: any) => r.studentId === currentUser.id && ["registered", "completed"].includes(r.status))
@@ -329,8 +329,8 @@ export default function AssignmentSubmit(props: ComponentProps) {
                               return null;
                             })()}
                             <span className="text-[10px] font-mono text-white/45">Đã nộp: {new Date(submission.submittedAt).toLocaleString("vi-VN")}</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeof submission.score === "number" ? "bg-emerald-200 text-emerald-950 border-emerald-100" : "bg-amber-500/10 text-amber-200 border-amber-300/20"}`}>
-                              {typeof submission.score === "number" ? `${submission.score}/${assignment.maxScore} điểm` : "Chờ chấm"}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeof submission.score === "number" ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-amber-500/20 text-amber-300 border-amber-500/30"}`}>
+                              {typeof submission.score === "number" ? `Đã chấm: ${submission.score}/${assignment.maxScore} điểm` : "Chờ chấm"}
                             </span>
                           </div>
                           <h5 className="text-sm font-bold text-white leading-snug">{assignment.title}</h5>

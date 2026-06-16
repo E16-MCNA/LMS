@@ -593,12 +593,12 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                                   let statusBg = "bg-white/5 text-white/40 border-white/5";
                                   let statusText = "Chưa nộp";
                                   if (sub) {
-                                    if (sub.score !== undefined) {
+                                    if (typeof sub.score === "number") {
                                       statusBg = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-                                      statusText = `${sub.score}/${assign.maxScore} đ`;
+                                      statusText = `Đã chấm (${sub.score}/${assign.maxScore} đ)`;
                                     } else {
                                       statusBg = "bg-amber-500/20 text-amber-300 border-amber-500/30";
-                                      statusText = "Đang chấm";
+                                      statusText = "Chờ chấm";
                                     }
                                   }
 
@@ -747,24 +747,24 @@ export default function MyLearningWorkspace(props: ComponentProps) {
                             {sub.content}
                           </div>
                           
-                          {sub.score !== undefined ? (
-                            <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl text-xs md:text-sm text-white flex flex-col gap-2 shadow-lg shadow-emerald-500/5">
-                              <span className="font-bold flex items-center gap-2 text-emerald-400 text-sm">
-                                <CheckCircle className="h-5 w-5 shrink-0" />
-                                Điểm đánh giá học phần: {sub.score}/{assignObj.maxScore} đ
-                              </span>
-                              {sub.feedback && (
-                                <p className="text-white/60 font-sans italic border-t border-white/5 pt-2 mt-1">
-                                  Nhận xét của giảng viên: "{sub.feedback}"
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-xs font-medium text-amber-300 flex items-center gap-2 shadow-lg shadow-amber-500/5">
-                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
-                              <span>⏳ Trạng thái: Bài làm của bạn đang được giảng viên xem xét & chấm điểm.</span>
-                            </div>
-                          )}
+                           {sub.score !== undefined ? (
+                             <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-2xl text-xs md:text-sm text-white flex flex-col gap-2 shadow-lg shadow-emerald-500/5">
+                               <span className="font-bold flex items-center gap-2 text-emerald-400 text-sm">
+                                 <CheckCircle className="h-5 w-5 shrink-0" />
+                                 Trạng thái: Đã chấm | Điểm: {sub.score}/{assignObj.maxScore} đ
+                               </span>
+                               {sub.feedback && (
+                                 <p className="text-white/60 font-sans italic border-t border-white/5 pt-2 mt-1">
+                                   Nhận xét của giảng viên: "{sub.feedback}"
+                                 </p>
+                               )}
+                             </div>
+                           ) : (
+                             <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-xs font-medium text-amber-300 flex items-center gap-2 shadow-lg shadow-amber-500/5">
+                               <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                               <span>⏳ Trạng thái: Chờ chấm (Bài làm của bạn đang được giảng viên xem xét & chấm điểm)</span>
+                             </div>
+                           )}
                         </div>
                       )}
 
