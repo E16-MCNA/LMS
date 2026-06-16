@@ -886,7 +886,7 @@ export default function CourseBuilder(props: ComponentProps) {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column: Sections list and Lessons list */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className={currentUser.role === "teacher" ? "lg:col-span-3 space-y-6" : "lg:col-span-2 space-y-6"}>
                   {/* Card 1: Class Sections list */}
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
                     <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
@@ -990,227 +990,231 @@ export default function CourseBuilder(props: ComponentProps) {
                   </div>
 
                   {/* Card 2: Lessons List */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                      <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học trong môn ({lessons.length})</span>
-                      {currentUser.role !== "teacher" && (
-                        <button
-                          onClick={() => setShowLessonModal(true)}
-                          className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
-                        >
-                          <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm Bài học
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      {lessons.map(lesson => (
-                        <div key={lesson.id} className="bg-black/25 border border-white/10 rounded-2xl p-4 flex items-start gap-3.5 hover:bg-black/35 transition">
-                          <div className="w-14 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[10px] flex items-center justify-center flex-shrink-0">
-                            Buổi {lesson.order}
-                          </div>
-
-                          <div className="flex-1 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <h6 className="text-xs font-display font-bold text-white">Buổi học {lesson.order}: {lesson.title}</h6>
-                              <span className="text-[10px] font-mono text-white/40">{lesson.duration}</span>
-                            </div>
-                            <p className="text-xs text-white/65 leading-relaxed font-sans">{lesson.content}</p>
-                            {lesson.videoUrl && (
-                              <div className="text-[10px] text-indigo-200 font-mono flex items-center gap-1 pt-1">
-                                <Tv className="h-3 w-3" /> Bài giảng đính kèm: {lesson.videoUrl}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-
-                      {lessons.length === 0 && (
-                        <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
-                          <p className="text-xs text-white/50">Môn học hiện chưa có buổi học nào. Hãy bấm "Thêm Bài học" để bắt đầu thiết lập nội dung từng buổi.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column: Status & actions block, quizzes, assignments */}
-                <div className="space-y-6">
-                  {/* Actions Block */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5">Hành động tiến trình</span>
-                    
-                    {activeCourse.status === "draft" && (
-                      <button
-                        onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
-                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
-                      >
-                        Gửi duyệt khóa học
-                      </button>
-                    )}
-
-                    {activeCourse.status === "rejected" && (
-                      <div className="space-y-2">
-                        <div className="bg-red-500/15 border border-red-500/20 rounded-xl p-3 text-[11px] text-red-200/90 leading-relaxed">
-                          Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và gửi duyệt lại.
-                        </div>
-                        <button
-                          onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
-                          className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl cursor-pointer"
-                        >
-                          Gửi duyệt lại khóa học
-                        </button>
-                      </div>
-                    )}
-
-                    {activeCourse.status === "published" && (
-                      <div className="bg-emerald-500/15 border border-emerald-500/20 rounded-xl p-3 text-[11px] text-emerald-300 flex items-center gap-1.5 font-semibold">
-                        <Check className="h-4 w-4" /> Giáo trình đã xuất bản và đang hoạt động.
-                      </div>
-                    )}
-
-                    {activeCourse.status === "pending" && (
-                      <div className="bg-amber-500/15 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-normal">
-                        Khóa học đã gửi duyệt và đang chờ quản lý phê duyệt trước khi công khai.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Settings / Config Number of Lessons for Teacher */}
                   {currentUser.role !== "teacher" && (
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                      <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5 flex items-center gap-1.5">
-                        <Settings className="h-4 w-4 text-indigo-400" /> Thiết lập Khóa học
-                      </span>
-                      <div className="space-y-3 text-xs font-sans">
-                        <div className="space-y-1">
-                          <label className="text-[11px] text-white/50 block">Số buổi học thiết lập</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              min={1}
-                              max={100}
-                              className="w-20 px-2 py-1 bg-black/25 text-white border border-white/10 rounded-lg text-xs"
-                              value={localLessonsCount}
-                              onChange={(e) => setLocalLessonsCount(Number(e.target.value))}
-                            />
-                            <button
-                              onClick={handleUpdateLessonsCount}
-                              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition cursor-pointer"
-                            >
-                              Lưu lại
-                            </button>
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                        <span className="text-xs font-semibold text-white tracking-widest uppercase">Các buổi học trong môn ({lessons.length})</span>
+                        {currentUser.role !== "teacher" && (
+                          <button
+                            onClick={() => setShowLessonModal(true)}
+                            className="p-1.5 bg-white/15 hover:bg-white/20 text-[11px] text-white font-bold rounded-xl border border-white/10 cursor-pointer"
+                          >
+                            <Plus className="h-3.5 w-3.5 inline mr-1" /> Thêm Bài học
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        {lessons.map(lesson => (
+                          <div key={lesson.id} className="bg-black/25 border border-white/10 rounded-2xl p-4 flex items-start gap-3.5 hover:bg-black/35 transition">
+                            <div className="w-14 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/20 text-indigo-300 font-mono text-[10px] flex items-center justify-center flex-shrink-0">
+                              Buổi {lesson.order}
+                            </div>
+
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <h6 className="text-xs font-display font-bold text-white">Buổi học {lesson.order}: {lesson.title}</h6>
+                                <span className="text-[10px] font-mono text-white/40">{lesson.duration}</span>
+                              </div>
+                              <p className="text-xs text-white/65 leading-relaxed font-sans">{lesson.content}</p>
+                              {lesson.videoUrl && (
+                                <div className="text-[10px] text-indigo-200 font-mono flex items-center gap-1 pt-1">
+                                  <Tv className="h-3 w-3" /> Bài giảng đính kèm: {lesson.videoUrl}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        {activeCourse.openingDate && (
-                          <div>
-                            <span className="text-[11px] text-white/50 block">Ngày khai giảng</span>
-                            <span className="text-white font-medium">{new Date(activeCourse.openingDate).toLocaleDateString("vi-VN")}</span>
+                        ))}
+
+                        {lessons.length === 0 && (
+                          <div className="text-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                            <p className="text-xs text-white/50">Môn học hiện chưa có buổi học nào. Hãy bấm "Thêm Bài học" để bắt đầu thiết lập nội dung từng buổi.</p>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
+                </div>
 
-                  {/* Quizzes overview in Course details */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                      <span className="text-xs font-semibold text-white">Bài thi trắc nghiệm tương tác</span>
-                      <button 
-                        onClick={() => {
-                          if (setQuizLessonId) setQuizLessonId(lessons[0]?.id || "");
-                          setShowQuizModal(true);
-                        }}
-                        className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
-                      >
-                        + Tạo Đề thi
-                      </button>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {courseQuizzes.map(q => (
+                {/* Right Column: Status & actions block, quizzes, assignments */}
+                {currentUser.role !== "teacher" && (
+                  <div className="space-y-6">
+                    {/* Actions Block */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                      <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5">Hành động tiến trình</span>
+                      
+                      {activeCourse.status === "draft" && (
                         <button
-                          key={q.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedQuizId(q.id);
-                            setAssessmentType("quiz");
-                            setActiveSubTab("quizzes");
-                          }}
-                          className="w-full text-left text-xs flex items-center justify-between bg-black/25 hover:bg-white/5 hover:text-white p-2 rounded-xl border border-white/5 transition duration-150 cursor-pointer text-white"
-                          title="Click để chỉnh sửa / import câu hỏi đề thi"
+                          onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
+                          className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl cursor-pointer"
                         >
-                          <span className="truncate max-w-[140px] font-medium">{q.title}</span>
-                          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/80 font-mono">
-                            {q.passingScore}% đạt
-                          </span>
+                          Gửi duyệt khóa học
                         </button>
-                      ))}
+                      )}
 
-                      {courseQuizzes.length === 0 && (
-                        <p className="text-[11px] text-white/40">Chưa có bài thi trắc nghiệm nào được tạo.</p>
+                      {activeCourse.status === "rejected" && (
+                        <div className="space-y-2">
+                          <div className="bg-red-500/15 border border-red-500/20 rounded-xl p-3 text-[11px] text-red-200/90 leading-relaxed">
+                            Khóa học bị trả về. Vui lòng đọc chi tiết lý do, cập nhật các nội dung cần thiết và gửi duyệt lại.
+                          </div>
+                          <button
+                            onClick={() => handleSubmitCourseForApproval(activeCourse.id)}
+                            className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold rounded-xl cursor-pointer"
+                          >
+                            Gửi duyệt lại khóa học
+                          </button>
+                        </div>
+                      )}
+
+                      {activeCourse.status === "published" && (
+                        <div className="bg-emerald-500/15 border border-emerald-500/20 rounded-xl p-3 text-[11px] text-emerald-300 flex items-center gap-1.5 font-semibold">
+                          <Check className="h-4 w-4" /> Giáo trình đã xuất bản và đang hoạt động.
+                        </div>
+                      )}
+
+                      {activeCourse.status === "pending" && (
+                        <div className="bg-amber-500/15 border border-amber-500/20 rounded-xl p-3 text-[11px] text-amber-300 leading-normal">
+                          Khóa học đã gửi duyệt và đang chờ quản lý phê duyệt trước khi công khai.
+                        </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* Assignments overview in Course details */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                      <span className="text-xs font-semibold text-white">Thử thách Bài tự luận</span>
-                      <button 
-                        onClick={() => {
-                          if (props.setAssignType) props.setAssignType("lesson");
-                          if (props.setAssignLessonId) props.setAssignLessonId(lessons[0]?.id || "");
-                          setShowAssignModal(true);
-                        }}
-                        className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
-                      >
-                        + Tạo Bài tập
-                      </button>
-                    </div>
+                    {/* Settings / Config Number of Lessons for Teacher */}
+                    {currentUser.role !== "teacher" && (
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                        <span className="text-xs font-semibold text-white block border-b border-white/10 pb-2.5 flex items-center gap-1.5">
+                          <Settings className="h-4 w-4 text-indigo-400" /> Thiết lập Khóa học
+                        </span>
+                        <div className="space-y-3 text-xs font-sans">
+                          <div className="space-y-1">
+                            <label className="text-[11px] text-white/50 block">Số buổi học thiết lập</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                className="w-20 px-2 py-1 bg-black/25 text-white border border-white/10 rounded-lg text-xs"
+                                value={localLessonsCount}
+                                onChange={(e) => setLocalLessonsCount(Number(e.target.value))}
+                              />
+                              <button
+                                onClick={handleUpdateLessonsCount}
+                                className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition cursor-pointer"
+                              >
+                                Lưu lại
+                              </button>
+                            </div>
+                          </div>
+                          {activeCourse.openingDate && (
+                            <div>
+                              <span className="text-[11px] text-white/50 block">Ngày khai giảng</span>
+                              <span className="text-white font-medium">{new Date(activeCourse.openingDate).toLocaleDateString("vi-VN")}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                    <div className="space-y-2.5">
-                      {courseAssignments.map(a => {
-                        let typeLabel = "";
-                        if (a.type === "lesson" && a.lessonId) {
-                          const lesson = lessons.find((l: any) => l.id === a.lessonId);
-                          typeLabel = `[Buổi ${lesson?.order || ""}]`;
-                        } else if (a.type === "chapter") {
-                          typeLabel = "[Cuối chương]";
-                        } else if (a.type === "midterm") {
-                          typeLabel = "[Giữa kỳ]";
-                        } else if (a.type === "final") {
-                          typeLabel = "[Cuối kỳ]";
-                        }
-                        return (
+                    {/* Quizzes overview in Course details */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                        <span className="text-xs font-semibold text-white">Bài thi trắc nghiệm tương tác</span>
+                        <button 
+                          onClick={() => {
+                            if (setQuizLessonId) setQuizLessonId(lessons[0]?.id || "");
+                            setShowQuizModal(true);
+                          }}
+                          className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+                        >
+                          + Tạo Đề thi
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {courseQuizzes.map(q => (
                           <button
-                            key={a.id}
+                            key={q.id}
                             type="button"
                             onClick={() => {
-                              setSelectedEssayId(a.id);
-                              setAssessmentType("essay");
+                              setSelectedQuizId(q.id);
+                              setAssessmentType("quiz");
                               setActiveSubTab("quizzes");
                             }}
-                            className="w-full text-left text-xs flex items-center justify-between bg-black/25 hover:bg-white/5 hover:text-white p-2 rounded-xl border border-white/5 transition duration-150 cursor-pointer font-sans text-white"
-                            title="Click để chấm bài học viên"
+                            className="w-full text-left text-xs flex items-center justify-between bg-black/25 hover:bg-white/5 hover:text-white p-2 rounded-xl border border-white/5 transition duration-150 cursor-pointer text-white"
+                            title="Click để chỉnh sửa / import câu hỏi đề thi"
                           >
-                            <div className="flex flex-col min-w-0 pr-2 flex-1">
-                              <span className="truncate font-medium">{a.title}</span>
-                              {typeLabel && <span className="text-[9px] text-white/45 mt-0.5">{typeLabel}</span>}
-                            </div>
-                            <span className="text-[10px] font-mono text-indigo-200 shrink-0">
-                              Tối đa: {a.maxScore} đ
+                            <span className="truncate max-w-[140px] font-medium">{q.title}</span>
+                            <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/80 font-mono">
+                              {q.passingScore}% đạt
                             </span>
                           </button>
-                        );
-                      })}
+                        ))}
 
-                      {courseAssignments.length === 0 && (
-                        <p className="text-[11px] text-white/40">Chưa có thử thách bài tập tự luận nào được tạo.</p>
-                      )}
+                        {courseQuizzes.length === 0 && (
+                          <p className="text-[11px] text-white/40">Chưa có bài thi trắc nghiệm nào được tạo.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Assignments overview in Course details */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
+                        <span className="text-xs font-semibold text-white">Thử thách Bài tự luận</span>
+                        <button 
+                          onClick={() => {
+                            if (props.setAssignType) props.setAssignType("lesson");
+                            if (props.setAssignLessonId) props.setAssignLessonId(lessons[0]?.id || "");
+                            setShowAssignModal(true);
+                          }}
+                          className="text-[10px] text-indigo-300 font-bold hover:underline cursor-pointer"
+                        >
+                          + Tạo Bài tập
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {courseAssignments.map(a => {
+                          let typeLabel = "";
+                          if (a.type === "lesson" && a.lessonId) {
+                            const lesson = lessons.find((l: any) => l.id === a.lessonId);
+                            typeLabel = `[Buổi ${lesson?.order || ""}]`;
+                          } else if (a.type === "chapter") {
+                            typeLabel = "[Cuối chương]";
+                          } else if (a.type === "midterm") {
+                            typeLabel = "[Giữa kỳ]";
+                          } else if (a.type === "final") {
+                            typeLabel = "[Cuối kỳ]";
+                          }
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedEssayId(a.id);
+                                setAssessmentType("essay");
+                                setActiveSubTab("quizzes");
+                              }}
+                              className="w-full text-left text-xs flex items-center justify-between bg-black/25 hover:bg-white/5 hover:text-white p-2 rounded-xl border border-white/5 transition duration-150 cursor-pointer font-sans text-white"
+                              title="Click để chấm bài học viên"
+                            >
+                              <div className="flex flex-col min-w-0 pr-2 flex-1">
+                                <span className="truncate font-medium">{a.title}</span>
+                                {typeLabel && <span className="text-[9px] text-white/45 mt-0.5">{typeLabel}</span>}
+                              </div>
+                              <span className="text-[10px] font-mono text-indigo-200 shrink-0">
+                                Tối đa: {a.maxScore} đ
+                              </span>
+                            </button>
+                          );
+                        })}
+
+                        {courseAssignments.length === 0 && (
+                          <p className="text-[11px] text-white/40">Chưa có thử thách bài tập tự luận nào được tạo.</p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
