@@ -732,17 +732,7 @@ export default function TeacherPanel({ currentUser, onLogout, onRefreshData, act
                   <BookOpen className={`h-4.5 w-4.5 ${activeSubTab === "courses" ? "text-indigo-300" : "text-white/40"}`} />
                   <span>Chương trình Đào tạo</span>
                 </button>
-                <button
-                  onClick={() => handleNavClick("quizzes")}
-                  className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
-                    activeSubTab === "quizzes" 
-                      ? "bg-white/10 text-indigo-300 font-bold border border-white/10 shadow-lg shadow-indigo-500/5" 
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <FileText className={`h-4.5 w-4.5 ${activeSubTab === "quizzes" ? "text-indigo-300" : "text-white/40"}`} />
-                  <span>Đề thi & Đánh giá</span>
-                </button>
+
                 <button
                   onClick={() => handleNavClick("assignments")}
                   className={`w-full text-left px-4 py-3 font-semibold rounded-2xl transition duration-150 cursor-pointer flex items-center gap-2.5 ${
