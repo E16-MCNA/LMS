@@ -19,6 +19,117 @@ import { MAX_UPLOAD_FILE_BYTES, MAX_UPLOAD_FILE_LABEL } from "../utils";
 import { normalizeWarningType, warningTypesMatch } from "../gradeUtils";
 import ModalPortal from "./ModalPortal";
 
+interface SearchableSelectOption {
+  id: string;
+  label: string;
+  sublabel?: string;
+}
+
+interface SearchableSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: SearchableSelectOption[];
+  placeholder: string;
+  searchPlaceholder: string;
+  disabled?: boolean;
+}
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchPlaceholder,
+  disabled = false
+}: SearchableSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const selectedOption = options.find(opt => opt.id === value);
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (opt.sublabel && opt.sublabel.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  return (
+    <div ref={containerRef} className="relative flex-1 min-w-[200px]">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full text-left p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between gap-2 h-[38px]"
+      >
+        <span className="truncate">
+          {selectedOption ? (
+            `${selectedOption.label}${selectedOption.sublabel ? ` (${selectedOption.sublabel})` : ""}`
+          ) : (
+            <span className="text-white/40">{placeholder}</span>
+          )}
+        </span>
+        <span className="text-white/40 text-[10px]">▼</span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-hidden flex flex-col">
+          <div className="p-2 border-b border-white/5 bg-black/20">
+            <input
+              type="text"
+              autoFocus
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-2.5 py-1.5 bg-black/40 text-white placeholder-white/30 border border-white/10 rounded-lg focus:outline-none focus:border-indigo-500/50 text-xs font-sans"
+            />
+          </div>
+          <div className="overflow-y-auto max-h-48 divide-y divide-white/5">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.id);
+                    setIsOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-white/5 transition flex flex-col gap-0.5 ${
+                    opt.id === value ? "bg-indigo-600/20 text-indigo-300 font-semibold" : "text-white/80"
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {opt.sublabel && (
+                    <span className="text-[10px] text-white/40 truncate">{opt.sublabel}</span>
+                  )}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-3 text-xs text-white/40 italic text-center font-sans">
+                Không tìm thấy kết quả
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface AttendanceManagerProps {
   store: LMSDataStore;
   currentUser: User;
@@ -120,8 +231,6 @@ export default function AttendanceManager({
   const [complianceSearch, setComplianceSearch] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [courseDetailId, setCourseDetailId] = useState<string | null>(null);
-  const [courseFilterText, setCourseFilterText] = useState("");
-  const [sectionFilterText, setSectionFilterText] = useState("");
   const [newSessionDate, setNewSessionDate] = useState("");
   const [newSessionTopic, setNewSessionTopic] = useState("");
   const [newSessionTime, setNewSessionTime] = useState("09:00 - 11:30");
@@ -149,13 +258,6 @@ export default function AttendanceManager({
   const curSemesterId = activeSemester ? activeSemester.id : "sem_spring25";
 
   const courseSections = (store.courseSections || []).filter((s: any) => s.courseId === selectedCourseId && s.status !== "cancelled");
-  const filteredCourses = courses.filter(c => 
-    c.title.toLowerCase().includes(courseFilterText.toLowerCase()) || 
-    c.category.toLowerCase().includes(courseFilterText.toLowerCase())
-  );
-  const filteredCourseSections = courseSections.filter((s: any) => 
-    s.sectionCode.toLowerCase().includes(sectionFilterText.toLowerCase())
-  );
   // Sessions for chosen course/section
   const sessions = (store.attendanceSessions || []).filter(s => (
     s.courseId === selectedCourseId && (!selectedSectionId || s.sectionId === selectedSectionId)
@@ -651,69 +753,46 @@ export default function AttendanceManager({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-            <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5" : "col-span-1 md:col-span-12 space-y-1.5"}>
+            <div className={selectedCourseId ? "col-span-1 md:col-span-4 space-y-1.5 w-full" : "col-span-1 md:col-span-12 space-y-1.5 w-full"}>
               <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                1. Lựa chọn môn học / lớp học phần:
+                1. Lựa chọn môn học / học phần:
               </label>
-              <div className="flex gap-2">
-                {currentUser.role !== "teacher" && (
-                <input
-                  type="text"
-                  placeholder="Lọc môn..."
-                  value={courseFilterText}
-                  onChange={(e) => setCourseFilterText(e.target.value)}
-                  disabled={lockSelectors}
-                  className="w-24 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                )}
-                <select
-                  value={selectedCourseId}
-                  onChange={(e) => { setSelectedCourseId(e.target.value); setSelectedSectionId(""); setActiveSessionId(""); }}
-                  disabled={lockSelectors}
-                  className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">-- Click chọn lớp môn học --</option>
-                  {filteredCourses.map(c => (
-                    <option key={c.id} value={c.id} className="bg-slate-900">{c.title} ({c.category})</option>
-                  ))}
-                </select>
-              </div>
+              <SearchableSelect
+                value={selectedCourseId}
+                onChange={(val) => { setSelectedCourseId(val); setSelectedSectionId(""); setActiveSessionId(""); }}
+                disabled={lockSelectors}
+                placeholder="-- Chọn môn học / học phần --"
+                searchPlaceholder="Tìm tên hoặc mã môn..."
+                options={courses.map(c => ({
+                  id: c.id,
+                  label: c.title,
+                  sublabel: c.category
+                }))}
+              />
             </div>
 
             {selectedCourseId && (
               <>
-                <div className="col-span-1 md:col-span-3 space-y-1.5">
+                <div className="col-span-1 md:col-span-3 space-y-1.5 w-full">
                   <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
                     2. Chọn lớp học phần:
                   </label>
-                  <div className="flex gap-2">
-                    {currentUser.role !== "teacher" && (
-                    <input
-                      type="text"
-                      placeholder="Lọc lớp..."
-                      value={sectionFilterText}
-                      onChange={(e) => setSectionFilterText(e.target.value)}
-                      disabled={lockSelectors}
-                      className="w-20 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    )}
-                    <select
-                      value={selectedSectionId}
-                      onChange={(e) => { setSelectedSectionId(e.target.value); setActiveSessionId(""); }}
-                      disabled={lockSelectors}
-                      className="flex-1 p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 font-sans transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">-- Chọn lớp --</option>
-                      {filteredCourseSections.map((section: any) => (
-                        <option key={section.id} value={section.id} className="bg-slate-900">{section.sectionCode}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <SearchableSelect
+                    value={selectedSectionId}
+                    onChange={(val) => { setSelectedSectionId(val); setActiveSessionId(""); }}
+                    disabled={lockSelectors}
+                    placeholder="-- Chọn lớp học phần --"
+                    searchPlaceholder="Tìm mã lớp học phần..."
+                    options={courseSections.map((s: any) => ({
+                      id: s.id,
+                      label: s.sectionCode
+                    }))}
+                  />
                 </div>
 
-                <div className="col-span-1 md:col-span-3 space-y-1.5">
+                <div className="col-span-1 md:col-span-3 space-y-1.5 w-full">
                   <label className="text-white/60 font-semibold tracking-wide block flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
                     3. Chọn đợt buổi học:
@@ -721,7 +800,7 @@ export default function AttendanceManager({
                   <select
                     value={activeSessionId}
                     onChange={(e) => setActiveSessionId(e.target.value)}
-                    className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all"
+                    className="w-full p-2.5 bg-black/40 text-white border border-white/10 rounded-xl focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 font-sans transition-all h-[38px]"
                   >
                     <option value="">-- Mở bảng tháng --</option>
                     {sessions.map(s => (
@@ -730,7 +809,7 @@ export default function AttendanceManager({
                   </select>
                 </div>
                 
-                <div className="col-span-1 md:col-span-2">
+                <div className="col-span-1 md:col-span-2 w-full">
                   <button
                     onClick={() => setShowCreateSession(true)}
                     className="w-full p-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 rounded-xl font-bold text-white flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer text-xs shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-[0.98] h-[38px] truncate"
